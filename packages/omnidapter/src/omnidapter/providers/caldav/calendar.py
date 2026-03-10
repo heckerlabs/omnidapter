@@ -135,7 +135,7 @@ class CalDAVCalendarService(CalendarService):
         return calendars
 
     async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
-        self._require_capability(CalendarCapability.LIST_EVENTS)
+        self._require_capability(CalendarCapability.GET_AVAILABILITY)
         return AvailabilityResponse(
             queried_calendars=request.calendar_ids,
             time_min=request.time_min,

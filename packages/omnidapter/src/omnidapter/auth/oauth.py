@@ -162,10 +162,8 @@ class OAuthHelper:
             raise OAuthStateError("OAuth state connection_id mismatch")
         if pending.provider != provider:
             raise OAuthStateError("OAuth state provider mismatch")
-
-        now = datetime.now(tz=timezone.utc)
-        if now > pending.expires_at:
-            raise OAuthStateError("OAuth state has expired")
+        if pending.redirect_uri != redirect_uri:
+            raise OAuthStateError("OAuth state redirect_uri mismatch")
 
         # Exchange code for tokens
         provider_impl = self._registry.get(provider)
