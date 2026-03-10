@@ -8,6 +8,7 @@ Public API:
 """
 from __future__ import annotations
 
+import contextlib
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -23,7 +24,6 @@ from omnidapter.services.calendar.models import (
     Organizer,
     Recurrence,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Private helpers                                                              #
@@ -115,10 +115,8 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         original_start = None
         orig_raw = raw.get("originalStartTime")
         if orig_raw:
-            try:
+            with contextlib.suppress(Exception):
                 original_start = _parse_event_time(orig_raw)
-            except Exception:
-                pass
         recurrence = Recurrence(
             rules=rules,
             recurring_event_id=recurring_event_id,
@@ -150,17 +148,13 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
 
     created_at = None
     if raw.get("created"):
-        try:
+        with contextlib.suppress(Exception):
             created_at = datetime.fromisoformat(raw["created"].replace("Z", "+00:00"))
-        except Exception:
-            pass
 
     updated_at = None
     if raw.get("updated"):
-        try:
+        with contextlib.suppress(Exception):
             updated_at = datetime.fromisoformat(raw["updated"].replace("Z", "+00:00"))
-        except Exception:
-            pass
 
     _MAPPED_KEYS = frozenset({
         "id", "summary", "description", "location", "status", "visibility",

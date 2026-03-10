@@ -3,13 +3,13 @@ Google OAuth2 flow implementation.
 """
 from __future__ import annotations
 
-import httpx
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import httpx
+
 from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.core.errors import TokenRefreshError
-from omnidapter.core.logging import auth_logger
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers._base import OAuthConfig
 from omnidapter.providers.google.metadata import GOOGLE_PROVIDER_KEY

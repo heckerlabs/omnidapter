@@ -7,26 +7,22 @@ from __future__ import annotations
 
 import secrets
 import xml.etree.ElementTree as ET
-from datetime import date, datetime
 from typing import Any
 
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.providers.caldav import mappers
 from omnidapter.providers.caldav.auth import basic_auth_header
-from omnidapter.providers.caldav.server_hints import CalDAVServerHint, detect_server_hint
+from omnidapter.providers.caldav.server_hints import detect_server_hint
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.interface import CalendarService
 from omnidapter.services.calendar.models import (
     AvailabilityResponse,
     Calendar,
     CalendarEvent,
-    FreeBusyInterval,
-    WatchSubscription,
 )
 from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
-    CreateWatchRequest,
     GetAvailabilityRequest,
     UpdateEventRequest,
 )

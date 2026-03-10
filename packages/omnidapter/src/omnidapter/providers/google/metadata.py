@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from omnidapter.core.metadata import (
     AuthKind,
-    ConnectionConfigField,
     OAuthMetadata,
     OAuthScopeGroup,
     ProviderMetadata,

@@ -1,21 +1,19 @@
 """
 Unit tests for the error hierarchy.
 """
-import pytest
 from datetime import datetime, timezone
 
 from omnidapter.core.errors import (
-    OmnidapterError,
     AuthError,
-    OAuthStateError,
-    TokenRefreshError,
-    UnsupportedCapabilityError,
     ConnectionNotFoundError,
-    InvalidCredentialFormatError,
-    ScopeInsufficientError,
-    TransportError,
+    OAuthStateError,
+    OmnidapterError,
     ProviderAPIError,
     RateLimitError,
+    ScopeInsufficientError,
+    TokenRefreshError,
+    TransportError,
+    UnsupportedCapabilityError,
 )
 from omnidapter.services.calendar.capabilities import CalendarCapability
 

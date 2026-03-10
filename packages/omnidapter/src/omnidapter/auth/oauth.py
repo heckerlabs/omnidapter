@@ -4,7 +4,6 @@ OAuth 2.0 flow helpers — begin and complete flows.
 from __future__ import annotations
 
 import hashlib
-import logging
 import secrets
 import urllib.parse
 from datetime import datetime, timedelta, timezone
@@ -58,9 +57,9 @@ class OAuthHelper:
 
     def __init__(
         self,
-        registry: "ProviderRegistry",
-        credential_store: "CredentialStore",
-        oauth_state_store: "OAuthStateStore",
+        registry: ProviderRegistry,
+        credential_store: CredentialStore,
+        oauth_state_store: OAuthStateStore,
         on_credentials_updated: Any = None,
     ) -> None:
         self._registry = registry
@@ -157,8 +156,6 @@ class OAuthHelper:
             The StoredCredential (for inspection only — already persisted).
         """
         from omnidapter.core.errors import OAuthStateError
-        from omnidapter.stores.credentials import StoredCredential
-        from omnidapter.core.metadata import AuthKind
 
         # Load and validate state
         state_payload = await self._oauth_state_store.load_state(state)

@@ -6,7 +6,7 @@ All provider calendar implementations must implement this interface.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.models import (

@@ -3,8 +3,6 @@ Automatic token refresh logic.
 """
 from __future__ import annotations
 
-import asyncio
-import logging
 from typing import TYPE_CHECKING, Any
 
 from omnidapter.core.logging import auth_logger
@@ -20,9 +18,9 @@ class TokenRefreshManager:
 
     def __init__(
         self,
-        registry: "ProviderRegistry",
-        credential_store: "CredentialStore",
-        lock_manager: "ConnectionLockManager",
+        registry: ProviderRegistry,
+        credential_store: CredentialStore,
+        lock_manager: ConnectionLockManager,
         on_credentials_updated: Any = None,
     ) -> None:
         self._registry = registry
@@ -30,7 +28,7 @@ class TokenRefreshManager:
         self._lock_manager = lock_manager
         self._on_credentials_updated = on_credentials_updated
 
-    async def ensure_fresh(self, connection_id: str) -> "StoredCredential":
+    async def ensure_fresh(self, connection_id: str) -> StoredCredential:
         """Ensure credentials are fresh, refreshing if necessary.
 
         Uses per-connection async lock to prevent concurrent refresh races.

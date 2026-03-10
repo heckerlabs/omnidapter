@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
-from omnidapter.core.errors import UnsupportedCapabilityError
 from omnidapter.providers.google import mappers
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.interface import CalendarService

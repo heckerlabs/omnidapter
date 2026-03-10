@@ -15,41 +15,46 @@ Quick start:
     async for event in calendar.list_events(calendar_id="primary"):
         print(event.summary)
 """
-from omnidapter.core.omnidapter import Omnidapter
+from omnidapter.auth.models import (
+    ApiKeyCredentials,
+    BaseCredentials,
+    BasicCredentials,
+    OAuth2Credentials,
+)
 from omnidapter.core.errors import (
-    OmnidapterError,
     AuthError,
-    OAuthStateError,
-    TokenRefreshError,
-    UnsupportedCapabilityError,
     ConnectionNotFoundError,
     InvalidCredentialFormatError,
-    ScopeInsufficientError,
-    TransportError,
+    OAuthStateError,
+    OmnidapterError,
     ProviderAPIError,
     RateLimitError,
+    ScopeInsufficientError,
+    TokenRefreshError,
+    TransportError,
+    UnsupportedCapabilityError,
 )
-from omnidapter.auth.models import OAuth2Credentials, ApiKeyCredentials, BasicCredentials
-from omnidapter.stores.credentials import StoredCredential, CredentialStore
-from omnidapter.stores.oauth_state import OAuthStateStore
-from omnidapter.transport.retry import RetryPolicy
-from omnidapter.core.metadata import AuthKind, ServiceKind, ProviderMetadata
+from omnidapter.core.metadata import AuthKind, ProviderMetadata, ServiceKind
+from omnidapter.core.omnidapter import Omnidapter
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.models import (
-    CalendarEvent,
-    Calendar,
-    AvailabilityResponse,
     Attendee,
+    AvailabilityResponse,
+    Calendar,
+    CalendarEvent,
+    ConferenceData,
     Organizer,
     Recurrence,
-    ConferenceData,
-)
-from omnidapter.services.calendar.requests import (
-    CreateEventRequest,
-    UpdateEventRequest,
-    GetAvailabilityRequest,
 )
 from omnidapter.services.calendar.pagination import Page
+from omnidapter.services.calendar.requests import (
+    CreateEventRequest,
+    GetAvailabilityRequest,
+    UpdateEventRequest,
+)
+from omnidapter.stores.credentials import CredentialStore, StoredCredential
+from omnidapter.stores.oauth_state import OAuthStateStore
+from omnidapter.transport.retry import RetryPolicy
 
 __version__ = "0.1.0"
 
@@ -68,6 +73,7 @@ __all__ = [
     "ProviderAPIError",
     "RateLimitError",
     # Auth
+    "BaseCredentials",
     "OAuth2Credentials",
     "ApiKeyCredentials",
     "BasicCredentials",

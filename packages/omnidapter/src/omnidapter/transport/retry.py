@@ -3,12 +3,8 @@ Retry policy and backoff configuration.
 """
 from __future__ import annotations
 
-import asyncio
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from omnidapter.core.logging import transport_logger
 
 if TYPE_CHECKING:
     pass
@@ -36,12 +32,12 @@ class RetryPolicy:
     jitter: bool = True
 
     @classmethod
-    def default(cls) -> "RetryPolicy":
+    def default(cls) -> RetryPolicy:
         """Return the default retry policy."""
         return cls()
 
     @classmethod
-    def no_retry(cls) -> "RetryPolicy":
+    def no_retry(cls) -> RetryPolicy:
         """Return a policy with no retries."""
         return cls(max_retries=0)
 

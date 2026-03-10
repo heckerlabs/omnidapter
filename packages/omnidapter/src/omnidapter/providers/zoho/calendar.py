@@ -14,12 +14,10 @@ from omnidapter.services.calendar.models import (
     AvailabilityResponse,
     Calendar,
     CalendarEvent,
-    WatchSubscription,
 )
 from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
-    CreateWatchRequest,
     GetAvailabilityRequest,
     UpdateEventRequest,
 )

@@ -26,7 +26,6 @@ from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from omnidapter.services.calendar.models import CalendarEvent, EventStatus
 from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
 
