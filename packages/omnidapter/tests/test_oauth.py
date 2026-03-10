@@ -232,6 +232,12 @@ class TestOAuthHelperComplete:
         with pytest.raises(OAuthStateError, match="provider mismatch"):
             await helper.complete("provider-B", "conn-1", "code", state_id, "https://r")
 
+    async def test_redirect_uri_mismatch_raises(self):
+        helper, state_store, _, _ = _make_helper()
+        state_id = await self._setup_pending_state(state_store)
+        with pytest.raises(OAuthStateError, match="redirect_uri mismatch"):
+            await helper.complete("p", "conn-1", "code", state_id, "https://different.example/cb")
+
     async def test_expired_state_raises(self):
         helper, state_store, _, _ = _make_helper()
         pending = OAuthPendingState(

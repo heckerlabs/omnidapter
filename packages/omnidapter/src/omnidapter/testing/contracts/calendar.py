@@ -66,8 +66,9 @@ class CalendarProviderContract:
                 )
 
     def test_unsupported_capability_raises_typed_error(self, calendar_service):
-        """Methods for unsupported capabilities must raise UnsupportedCapabilityError."""
-        # Find a capability not supported by this service
+        """_require_capability must raise UnsupportedCapabilityError for unsupported caps."""
+        from omnidapter.core.errors import UnsupportedCapabilityError
+
         unsupported = [
             cap for cap in CalendarCapability
             if not calendar_service.supports(cap)
@@ -78,15 +79,17 @@ class CalendarProviderContract:
         if not unsupported:
             pytest.skip("Provider supports all standard capabilities")
 
+        with pytest.raises(UnsupportedCapabilityError):
+            calendar_service._require_capability(unsupported[0])
+
     @pytest.mark.asyncio
-    async def test_list_events_page_returns_page(self, calendar_service, mocker):
+    async def test_list_events_page_returns_page(self, calendar_service):
         """list_events_page must return a Page object (if LIST_EVENTS is supported)."""
         if not calendar_service.supports(CalendarCapability.LIST_EVENTS):
             pytest.skip("LIST_EVENTS not supported")
 
-
-        # This test will be overridden in real implementations
-        # with appropriate mocks. Here we just verify the interface.
+        # This test is overridden in real implementations with appropriate mocks.
+        # Here we just verify the interface is present.
         assert hasattr(calendar_service, "list_events_page")
         assert hasattr(calendar_service, "list_events")
 
