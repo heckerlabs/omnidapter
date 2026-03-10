@@ -180,10 +180,9 @@ class OAuthHelper:
         # Fire callback
         if self._on_credentials_updated is not None:
             import inspect
-            if inspect.iscoroutinefunction(self._on_credentials_updated):
-                await self._on_credentials_updated(connection_id, stored_credential)
-            else:
-                self._on_credentials_updated(connection_id, stored_credential)
+            result = self._on_credentials_updated(connection_id, stored_credential)
+            if inspect.isawaitable(result):
+                await result
 
         # Clean up state
         await self._oauth_state_store.delete_state(state)

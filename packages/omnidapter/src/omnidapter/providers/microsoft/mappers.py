@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 from datetime import date, datetime, timezone
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from omnidapter.services.calendar.models import (
     Attendee,
@@ -39,7 +40,16 @@ def _parse_ms_datetime(obj: dict | None) -> datetime | None:
     try:
         dt = datetime.fromisoformat(dt_str)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            tz_str = obj.get("timeZone")
+            if tz_str:
+                try:
+                    dt = dt.replace(tzinfo=ZoneInfo(tz_str))
+                except ZoneInfoNotFoundError:
+                    # Windows timezone names (e.g. "Eastern Standard Time") are not
+                    # recognised by zoneinfo; fall back to UTC.
+                    dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.replace(tzinfo=timezone.utc)
         return dt
     except ValueError:
         return None
