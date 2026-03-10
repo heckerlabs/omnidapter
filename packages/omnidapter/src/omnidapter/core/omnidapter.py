@@ -15,7 +15,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from omnidapter.auth.locking import ConnectionLockManager
 from omnidapter.auth.oauth import OAuthHelper
 from omnidapter.auth.refresh import TokenRefreshManager
 from omnidapter.core.connection import Connection
@@ -61,7 +60,6 @@ class Omnidapter:
         self._on_credentials_updated = on_credentials_updated
 
         self._registry = ProviderRegistry()
-        self._lock_manager = ConnectionLockManager()
 
         if register_builtins:
             self._registry.register_builtins()
@@ -76,7 +74,6 @@ class Omnidapter:
         self._refresh_manager = TokenRefreshManager(
             registry=self._registry,
             credential_store=self._credential_store,
-            lock_manager=self._lock_manager,
             on_credentials_updated=self._on_credentials_updated,
         )
 
