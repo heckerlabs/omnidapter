@@ -187,8 +187,14 @@ class TestToCalendar:
         cal = mappers.to_calendar(raw)
         assert cal.calendar_id == "id-only"
 
-    def test_provider_data_contains_full_raw(self):
+    def test_extra_keys_in_provider_data(self):
         raw = {"uid": "c", "name": "s", "extra": "value"}
         cal = mappers.to_calendar(raw)
         assert cal.provider_data is not None
         assert cal.provider_data["extra"] == "value"
+
+    def test_mapped_keys_not_in_provider_data(self):
+        raw = {"uid": "c", "name": "s", "description": "d", "timezone": "UTC", "isprimary": True}
+        cal = mappers.to_calendar(raw)
+        for key in ("uid", "name", "description", "timezone", "isprimary"):
+            assert key not in (cal.provider_data or {})

@@ -24,15 +24,8 @@ from omnidapter.services.calendar.models import (
 def _parse_ical_datetime(value: str) -> datetime | date:
     value = value.strip()
     if "T" in value:
-        value = value.rstrip("Z")
-        try:
-            return datetime.strptime(value, "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
-        except ValueError:
-            return datetime.now(tz=timezone.utc)
-    try:
-        return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
-    except (ValueError, IndexError):
-        return date.today()
+        return datetime.strptime(value.rstrip("Z"), "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+    return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
 
 
 def _format_ical_datetime(dt: datetime | date, all_day: bool = False) -> str:
@@ -92,14 +85,8 @@ def to_calendar_event(ical_text: str, calendar_id: str) -> CalendarEvent | None:
     dtend_str = props.get("DTEND", "")
     all_day = "T" not in dtstart_str
 
-    try:
-        start = _parse_ical_datetime(dtstart_str)
-    except Exception:
-        start = datetime.now(tz=timezone.utc)
-    try:
-        end = _parse_ical_datetime(dtend_str)
-    except Exception:
-        end = datetime.now(tz=timezone.utc)
+    start = _parse_ical_datetime(dtstart_str)
+    end = _parse_ical_datetime(dtend_str)
 
     status = _ICAL_STATUS.get(props.get("STATUS", "CONFIRMED").upper(), EventStatus.CONFIRMED)
 
