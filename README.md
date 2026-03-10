@@ -31,6 +31,7 @@ Omnidapter normalizes Google Calendar, Microsoft Calendar (Graph API), Zoho Cale
 - [Pagination](#pagination)
 - [Capabilities](#capabilities)
 - [Provider Reference](#provider-reference)
+  - [Capability Matrix](#capability-matrix)
   - [Google Calendar](#google-calendar)
   - [Microsoft Calendar](#microsoft-calendar)
   - [Zoho Calendar](#zoho-calendar)
@@ -578,6 +579,23 @@ print(calendar.capabilities)
 
 ## Provider Reference
 
+### Capability Matrix
+
+| Capability | Google | Microsoft | Zoho | CalDAV |
+|---|:---:|:---:|:---:|:---:|
+| `LIST_CALENDARS` | ✓ | ✓ | ✓ | ✓ |
+| `LIST_EVENTS` | ✓ | ✓ | ✓ | ✓ |
+| `GET_EVENT` | ✓ | ✓ | ✓ | ✓ |
+| `CREATE_EVENT` | ✓ | ✓ | ✓ | ✓ |
+| `UPDATE_EVENT` | ✓ | ✓ | ✓ | ✓ |
+| `DELETE_EVENT` | ✓ | ✓ | ✓ | ✓ |
+| `ATTENDEES` | ✓ | ✓ | ✓ | ✓ |
+| `RECURRENCE` | ✓ | ✓ | — | ✓ |
+| `GET_AVAILABILITY` | ✓ | ✓ | — | — |
+| `CONFERENCE_LINKS` | ✓ | ✓ | — | — |
+| `CREATE_WATCH` | ✓ | — | — | — |
+| `PARSE_WEBHOOK` | ✓ | — | — | — |
+
 ### Google Calendar
 
 - **Provider key:** `"google"`
@@ -585,7 +603,7 @@ print(calendar.capabilities)
 - **Authorization endpoint:** `https://accounts.google.com/o/oauth2/v2/auth`
 - **Token endpoint:** `https://oauth2.googleapis.com/token`
 - **Default scopes:** `https://www.googleapis.com/auth/calendar`, `openid`, `email`
-- **Capabilities:** All capabilities including `GET_AVAILABILITY`, `CREATE_WATCH`, `PARSE_WEBHOOK`, `CONFERENCE_LINKS`
+- **Capabilities:** All (see matrix above)
 
 **Setup:**
 ```bash
@@ -602,7 +620,7 @@ In Google Cloud Console: enable the **Google Calendar API** and configure an OAu
 - **Authorization endpoint:** `https://login.microsoftonline.com/common/oauth2/v2.0/authorize`
 - **Token endpoint:** `https://login.microsoftonline.com/common/oauth2/v2.0/token`
 - **Default scopes:** `Calendars.ReadWrite`, `offline_access`, `openid`, `email`
-- **Capabilities:** All capabilities except `CREATE_WATCH` and `PARSE_WEBHOOK`
+- **Capabilities:** See matrix above
 
 **Setup:**
 ```bash
@@ -619,7 +637,7 @@ In Azure Portal: register an app, add `Calendars.ReadWrite` delegated permission
 - **Authorization endpoint:** `https://accounts.zoho.com/oauth/v2/auth`
 - **Token endpoint:** `https://accounts.zoho.com/oauth/v2/token`
 - **Default scopes:** `ZohoCalendar.calendar.ALL`, `ZohoCalendar.event.ALL`
-- **Capabilities:** `LIST_CALENDARS`, `LIST_EVENTS`, `GET_EVENT`, `CREATE_EVENT`, `UPDATE_EVENT`, `DELETE_EVENT`, `ATTENDEES`
+- **Capabilities:** See matrix above
 
 **Setup:**
 ```bash
@@ -633,7 +651,7 @@ In Zoho API Console: register a server-based application and add your redirect U
 
 - **Provider key:** `"caldav"`
 - **Auth:** HTTP Basic authentication
-- **Capabilities:** `LIST_CALENDARS`, `LIST_EVENTS`, `GET_EVENT`, `CREATE_EVENT`, `UPDATE_EVENT`, `DELETE_EVENT`, `RECURRENCE`, `ATTENDEES`
+- **Capabilities:** See matrix above
 
 CalDAV does not use OAuth. Store credentials directly before resolving a connection:
 
