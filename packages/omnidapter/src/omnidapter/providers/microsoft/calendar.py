@@ -3,25 +3,19 @@ Microsoft Calendar (Graph API) service implementation.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
+from omnidapter.providers.microsoft import mappers
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.interface import CalendarService
 from omnidapter.services.calendar.models import (
-    Attendee,
-    AttendeeStatus,
     AvailabilityResponse,
     Calendar,
     CalendarEvent,
-    ConferenceData,
-    ConferenceEntryPoint,
     EventStatus,
     EventVisibility,
     FreeBusyInterval,
-    Organizer,
-    Recurrence,
     WatchSubscription,
 )
 from omnidapter.services.calendar.pagination import Page
@@ -49,130 +43,6 @@ _MS_CAPABILITIES = frozenset({
     CalendarCapability.RECURRENCE,
     CalendarCapability.ATTENDEES,
 })
-
-_STATUS_MAP = {
-    "normal": EventStatus.CONFIRMED,
-    "tentative": EventStatus.TENTATIVE,
-    "cancelled": EventStatus.CANCELLED,
-}
-
-_ATTENDEE_STATUS_MAP = {
-    "accepted": AttendeeStatus.ACCEPTED,
-    "declined": AttendeeStatus.DECLINED,
-    "tentative": AttendeeStatus.TENTATIVE,
-    "none": AttendeeStatus.NEEDS_ACTION,
-    "notResponded": AttendeeStatus.NEEDS_ACTION,
-}
-
-
-def _parse_ms_datetime(obj: dict | None) -> datetime | date | None:
-    if not obj:
-        return None
-    dt_str = obj.get("dateTime")
-    tz_str = obj.get("timeZone", "UTC")
-    if not dt_str:
-        return None
-    # Microsoft uses a format like "2024-01-15T09:00:00.0000000"
-    dt_str = dt_str.split(".")[0]  # strip fractional seconds
-    try:
-        dt = datetime.fromisoformat(dt_str)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt
-    except ValueError:
-        return None
-
-
-def _normalize_ms_event(raw: dict, calendar_id: str) -> CalendarEvent:
-    start_obj = raw.get("start", {})
-    end_obj = raw.get("end", {})
-    start = _parse_ms_datetime(start_obj) or datetime.now(tz=timezone.utc)
-    end = _parse_ms_datetime(end_obj) or datetime.now(tz=timezone.utc)
-    all_day = raw.get("isAllDay", False)
-
-    organizer_raw = raw.get("organizer", {}).get("emailAddress", {})
-    organizer = None
-    if organizer_raw:
-        organizer = Organizer(
-            email=organizer_raw.get("address", ""),
-            display_name=organizer_raw.get("name"),
-        )
-
-    attendees = []
-    for att in raw.get("attendees", []):
-        email_obj = att.get("emailAddress", {})
-        status_obj = att.get("status", {})
-        attendees.append(Attendee(
-            email=email_obj.get("address", ""),
-            display_name=email_obj.get("name"),
-            status=_ATTENDEE_STATUS_MAP.get(
-                status_obj.get("response", "none"), AttendeeStatus.NEEDS_ACTION
-            ),
-        ))
-
-    recurrence = None
-    if raw.get("recurrence"):
-        recurrence = Recurrence(
-            provider_data=raw["recurrence"],
-        )
-
-    online_meeting = raw.get("onlineMeeting")
-    conference_data = None
-    if online_meeting and online_meeting.get("joinUrl"):
-        conference_data = ConferenceData(
-            join_url=online_meeting["joinUrl"],
-            entry_points=[ConferenceEntryPoint(
-                entry_point_type="video",
-                uri=online_meeting["joinUrl"],
-            )],
-            provider_data=online_meeting,
-        )
-
-    created_at = None
-    if raw.get("createdDateTime"):
-        try:
-            created_at = datetime.fromisoformat(
-                raw["createdDateTime"].replace("Z", "+00:00")
-            )
-        except Exception:
-            pass
-
-    updated_at = None
-    if raw.get("lastModifiedDateTime"):
-        try:
-            updated_at = datetime.fromisoformat(
-                raw["lastModifiedDateTime"].replace("Z", "+00:00")
-            )
-        except Exception:
-            pass
-
-    return CalendarEvent(
-        event_id=raw["id"],
-        calendar_id=calendar_id,
-        summary=raw.get("subject"),
-        description=raw.get("body", {}).get("content") if raw.get("body") else None,
-        location=raw.get("location", {}).get("displayName") if raw.get("location") else None,
-        status=_STATUS_MAP.get(raw.get("showAs", "normal"), EventStatus.CONFIRMED),
-        visibility=EventVisibility.DEFAULT,
-        start=start,
-        end=end,
-        all_day=all_day,
-        timezone=start_obj.get("timeZone"),
-        organizer=organizer,
-        attendees=attendees,
-        recurrence=recurrence,
-        conference_data=conference_data,
-        created_at=created_at,
-        updated_at=updated_at,
-        html_link=raw.get("webLink"),
-        ical_uid=raw.get("iCalUId"),
-        etag=raw.get("@odata.etag"),
-        provider_data={k: v for k, v in raw.items()
-                       if k not in ("id", "subject", "body", "location", "showAs",
-                                    "start", "end", "isAllDay", "organizer", "attendees",
-                                    "recurrence", "onlineMeeting", "createdDateTime",
-                                    "lastModifiedDateTime", "webLink", "iCalUId")},
-    )
 
 
 class MicrosoftCalendarService(CalendarService):
@@ -218,18 +88,7 @@ class MicrosoftCalendarService(CalendarService):
             response = await self._http.request("GET", url, headers=self._auth_headers())
             data = response.json()
             for item in data.get("value", []):
-                all_calendars.append(Calendar(
-                    calendar_id=item["id"],
-                    summary=item.get("name", ""),
-                    description=item.get("description"),
-                    timezone=item.get("timeZone"),
-                    is_primary=item.get("isDefaultCalendar", False),
-                    is_read_only=not item.get("canEdit", True),
-                    background_color=item.get("hexColor"),
-                    provider_data={k: v for k, v in item.items()
-                                   if k not in ("id", "name", "description", "timeZone",
-                                                "isDefaultCalendar", "canEdit", "hexColor")},
-                ))
+                all_calendars.append(mappers.to_calendar(item))
             url = data.get("@odata.nextLink")
         return all_calendars
 
@@ -249,10 +108,8 @@ class MicrosoftCalendarService(CalendarService):
         for schedule in data.get("value", []):
             for item in schedule.get("scheduleItems", []):
                 if item.get("status", "").lower() in ("busy", "tentative", "oof"):
-                    start_obj = item.get("start", {})
-                    end_obj = item.get("end", {})
-                    start = _parse_ms_datetime(start_obj)
-                    end = _parse_ms_datetime(end_obj)
+                    start = mappers._parse_ms_datetime(item.get("start", {}))
+                    end = mappers._parse_ms_datetime(item.get("end", {}))
                     if start and end:
                         busy_intervals.append(FreeBusyInterval(start=start, end=end))
 
@@ -266,10 +123,29 @@ class MicrosoftCalendarService(CalendarService):
 
     async def create_event(self, request: CreateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.CREATE_EVENT)
+        event = CalendarEvent(
+            event_id="",
+            calendar_id=request.calendar_id,
+            summary=request.summary,
+            start=request.start,
+            end=request.end,
+            all_day=request.all_day,
+            timezone=request.timezone,
+            description=request.description,
+            location=request.location,
+            status=_parse_event_status(request.status),
+            visibility=_parse_event_visibility(request.visibility),
+            attendees=request.attendees,
+            recurrence=request.recurrence,
+            conference_data=request.conference_data,
+            reminders=request.reminders,
+        )
+        body = mappers.from_calendar_event(event)
+        body.update(request.extra)
+
         url = f"{MS_GRAPH_BASE}/me/calendars/{request.calendar_id}/events"
-        body = self._build_event_body(request)
         response = await self._http.request("POST", url, headers=self._auth_headers(), json=body)
-        return _normalize_ms_event(response.json(), request.calendar_id)
+        return mappers.to_calendar_event(response.json(), request.calendar_id)
 
     async def update_event(self, request: UpdateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.UPDATE_EVENT)
@@ -282,9 +158,9 @@ class MicrosoftCalendarService(CalendarService):
         if request.location is not None:
             body["location"] = {"displayName": request.location}
         if request.start is not None:
-            body["start"] = self._format_ms_time(request.start, request.timezone)
+            body["start"] = mappers._format_ms_datetime(request.start, request.timezone)
         if request.end is not None:
-            body["end"] = self._format_ms_time(request.end, request.timezone)
+            body["end"] = mappers._format_ms_datetime(request.end, request.timezone)
         if request.attendees is not None:
             body["attendees"] = [
                 {"emailAddress": {"address": a.email, "name": a.display_name or ""},
@@ -293,7 +169,7 @@ class MicrosoftCalendarService(CalendarService):
             ]
         body.update(request.extra)
         response = await self._http.request("PATCH", url, headers=self._auth_headers(), json=body)
-        return _normalize_ms_event(response.json(), request.calendar_id)
+        return mappers.to_calendar_event(response.json(), request.calendar_id)
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         self._require_capability(CalendarCapability.DELETE_EVENT)
@@ -304,7 +180,7 @@ class MicrosoftCalendarService(CalendarService):
         self._require_capability(CalendarCapability.GET_EVENT)
         url = f"{MS_GRAPH_BASE}/me/calendars/{calendar_id}/events/{event_id}"
         response = await self._http.request("GET", url, headers=self._auth_headers())
-        return _normalize_ms_event(response.json(), calendar_id)
+        return mappers.to_calendar_event(response.json(), calendar_id)
 
     async def list_events_page(
         self,
@@ -318,7 +194,6 @@ class MicrosoftCalendarService(CalendarService):
     ) -> Page[CalendarEvent]:
         self._require_capability(CalendarCapability.LIST_EVENTS)
         if page_token:
-            # Microsoft uses full URL as skip token
             url = page_token
             params = None
         else:
@@ -336,30 +211,23 @@ class MicrosoftCalendarService(CalendarService):
             "GET", url, headers=self._auth_headers(), params=params
         )
         data = response.json()
-        events = [_normalize_ms_event(item, calendar_id) for item in data.get("value", [])]
+        events = [mappers.to_calendar_event(item, calendar_id) for item in data.get("value", [])]
         return Page(items=events, next_page_token=data.get("@odata.nextLink"))
 
-    def _format_ms_time(self, dt: datetime | date, tz: str | None) -> dict:
-        if isinstance(dt, datetime):
-            return {"dateTime": dt.isoformat(), "timeZone": tz or "UTC"}
-        return {"dateTime": f"{dt}T00:00:00", "timeZone": tz or "UTC"}
 
-    def _build_event_body(self, request: CreateEventRequest) -> dict[str, Any]:
-        body: dict[str, Any] = {
-            "subject": request.summary,
-            "start": self._format_ms_time(request.start, request.timezone),
-            "end": self._format_ms_time(request.end, request.timezone),
-            "isAllDay": request.all_day,
-        }
-        if request.description:
-            body["body"] = {"contentType": "text", "content": request.description}
-        if request.location:
-            body["location"] = {"displayName": request.location}
-        if request.attendees:
-            body["attendees"] = [
-                {"emailAddress": {"address": a.email, "name": a.display_name or ""},
-                 "type": "required"}
-                for a in request.attendees
-            ]
-        body.update(request.extra)
-        return body
+def _parse_event_status(value: str | None) -> EventStatus:
+    if value is None:
+        return EventStatus.CONFIRMED
+    try:
+        return EventStatus(value)
+    except ValueError:
+        return EventStatus.CONFIRMED
+
+
+def _parse_event_visibility(value: str | None) -> EventVisibility:
+    if value is None:
+        return EventVisibility.DEFAULT
+    try:
+        return EventVisibility(value)
+    except ValueError:
+        return EventVisibility.DEFAULT
