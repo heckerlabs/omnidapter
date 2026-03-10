@@ -5,14 +5,14 @@ Services are accessed from a connection.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from omnidapter.core.registry import ProviderRegistry
     from omnidapter.services.calendar.interface import CalendarService
     from omnidapter.stores.credentials import StoredCredential
-    from omnidapter.transport.retry import RetryPolicy
     from omnidapter.transport.hooks import TransportHooks
+    from omnidapter.transport.retry import RetryPolicy
 
 
 class Connection:
@@ -28,10 +28,10 @@ class Connection:
     def __init__(
         self,
         connection_id: str,
-        stored_credential: "StoredCredential",
-        registry: "ProviderRegistry",
-        retry_policy: "RetryPolicy | None" = None,
-        hooks: "TransportHooks | None" = None,
+        stored_credential: StoredCredential,
+        registry: ProviderRegistry,
+        retry_policy: RetryPolicy | None = None,
+        hooks: TransportHooks | None = None,
     ) -> None:
         self._connection_id = connection_id
         self._stored = stored_credential
@@ -48,10 +48,10 @@ class Connection:
         return self._stored.provider_key
 
     @property
-    def stored_credential(self) -> "StoredCredential":
+    def stored_credential(self) -> StoredCredential:
         return self._stored
 
-    def calendar(self) -> "CalendarService":
+    def calendar(self) -> CalendarService:
         """Return the calendar service for this connection.
 
         Raises:

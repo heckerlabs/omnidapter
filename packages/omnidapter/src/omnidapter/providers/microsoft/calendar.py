@@ -16,12 +16,10 @@ from omnidapter.services.calendar.models import (
     EventStatus,
     EventVisibility,
     FreeBusyInterval,
-    WatchSubscription,
 )
 from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
-    CreateWatchRequest,
     GetAvailabilityRequest,
     UpdateEventRequest,
 )

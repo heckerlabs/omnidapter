@@ -1,9 +1,9 @@
 """
 Unit tests for in-memory store implementations.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.stores.credentials import StoredCredential

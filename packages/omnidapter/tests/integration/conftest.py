@@ -13,11 +13,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-from contextlib import suppress
 from datetime import datetime, timezone
 
 import pytest
-
 from omnidapter.auth.models import BasicCredentials, OAuth2Credentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.stores.credentials import StoredCredential
@@ -38,11 +36,8 @@ PAGINATION_PAGE_SIZE = 5
 @pytest.fixture(autouse=True)
 def _require_integration_flag(request):
     """Skip any @pytest.mark.integration test unless OMNIDAPTER_INTEGRATION=1."""
-    if request.node.get_closest_marker("integration"):
-        if os.getenv("OMNIDAPTER_INTEGRATION") != "1":
-            pytest.skip(
-                "Integration tests disabled. Set OMNIDAPTER_INTEGRATION=1 to run."
-            )
+    if request.node.get_closest_marker("integration") and os.getenv("OMNIDAPTER_INTEGRATION") != "1":
+        pytest.skip("Integration tests disabled. Set OMNIDAPTER_INTEGRATION=1 to run.")
 
 
 # --------------------------------------------------------------------------- #

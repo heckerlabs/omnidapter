@@ -1,10 +1,9 @@
 """
 Unit tests for auth models.
 """
-import pytest
 from datetime import datetime, timedelta, timezone
 
-from omnidapter.auth.models import OAuth2Credentials, ApiKeyCredentials, BasicCredentials
+from omnidapter.auth.models import ApiKeyCredentials, BasicCredentials, OAuth2Credentials
 
 
 class TestOAuth2Credentials:

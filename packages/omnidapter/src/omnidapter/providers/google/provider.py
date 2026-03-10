@@ -8,7 +8,7 @@ from typing import Any
 
 from omnidapter.core.metadata import ProviderMetadata
 from omnidapter.providers._base import BaseProvider, OAuthConfig
-from omnidapter.providers.google.metadata import GOOGLE_METADATA, GOOGLE_PROVIDER_KEY
+from omnidapter.providers.google.metadata import GOOGLE_METADATA
 from omnidapter.providers.google.oauth import (
     build_google_oauth_config,
     exchange_google_code,

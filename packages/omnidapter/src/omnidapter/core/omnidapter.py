@@ -12,8 +12,8 @@ Example usage:
 """
 from __future__ import annotations
 
-import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from omnidapter.auth.locking import ConnectionLockManager
 from omnidapter.auth.oauth import OAuthHelper
@@ -25,7 +25,6 @@ from omnidapter.core.metadata import ProviderMetadata
 from omnidapter.core.registry import ProviderRegistry
 from omnidapter.stores.credentials import CredentialStore
 from omnidapter.stores.oauth_state import OAuthStateStore
-from omnidapter.transport.hooks import TransportHooks
 from omnidapter.transport.retry import RetryPolicy
 
 logger = get_logger("omnidapter")

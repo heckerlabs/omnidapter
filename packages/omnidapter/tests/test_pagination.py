@@ -1,7 +1,6 @@
 """
 Unit tests for pagination utilities.
 """
-import pytest
 
 from omnidapter.services.calendar.pagination import Page, iter_pages
 

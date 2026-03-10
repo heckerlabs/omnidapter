@@ -20,16 +20,17 @@ from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
-
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,
     EventStatus,
     EventVisibility,
 )
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
-from omnidapter.services.calendar.capabilities import CalendarCapability
-from omnidapter.services.calendar.requests import GetAvailabilityRequest
+from omnidapter.services.calendar.requests import (
+    CreateEventRequest,
+    GetAvailabilityRequest,
+    UpdateEventRequest,
+)
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
 

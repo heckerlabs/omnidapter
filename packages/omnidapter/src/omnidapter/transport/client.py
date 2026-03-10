@@ -22,7 +22,7 @@ import httpx
 from omnidapter.core.errors import ProviderAPIError, RateLimitError, TransportError
 from omnidapter.core.logging import transport_logger
 from omnidapter.transport.correlation import new_correlation_id
-from omnidapter.transport.hooks import TransportHooks, RequestHookContext, ResponseHookContext
+from omnidapter.transport.hooks import RequestHookContext, ResponseHookContext, TransportHooks
 from omnidapter.transport.retry import RetryPolicy
 
 

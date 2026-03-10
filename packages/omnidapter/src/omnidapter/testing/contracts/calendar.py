@@ -16,15 +16,14 @@ Usage:
 """
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
+
+import pytest
 
 if TYPE_CHECKING:
     from omnidapter.services.calendar.interface import CalendarService
 
 from omnidapter.services.calendar.capabilities import CalendarCapability
-from omnidapter.core.errors import UnsupportedCapabilityError
 
 
 class CalendarProviderContract:
@@ -34,7 +33,7 @@ class CalendarProviderContract:
     """
 
     @pytest.fixture
-    def calendar_service(self) -> "CalendarService":
+    def calendar_service(self) -> CalendarService:
         """Return the CalendarService under test."""
         raise NotImplementedError(
             "Subclasses must implement the calendar_service fixture"
@@ -85,7 +84,6 @@ class CalendarProviderContract:
         if not calendar_service.supports(CalendarCapability.LIST_EVENTS):
             pytest.skip("LIST_EVENTS not supported")
 
-        from omnidapter.services.calendar.pagination import Page
 
         # This test will be overridden in real implementations
         # with appropriate mocks. Here we just verify the interface.

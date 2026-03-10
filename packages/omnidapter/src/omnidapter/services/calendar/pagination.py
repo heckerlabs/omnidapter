@@ -3,7 +3,8 @@ Pagination utilities for calendar list operations.
 """
 from __future__ import annotations
 
-from typing import AsyncIterator, Generic, TypeVar
+from collections.abc import AsyncIterator
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 

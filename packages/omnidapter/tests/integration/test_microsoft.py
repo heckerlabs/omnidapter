@@ -17,10 +17,9 @@ from __future__ import annotations
 
 import os
 from contextlib import suppress
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,

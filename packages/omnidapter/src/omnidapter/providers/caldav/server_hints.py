@@ -52,7 +52,7 @@ def get_principal_url_template(server_hint: CalDAVServerHint, server_url: str, u
     base = server_url.rstrip("/")
 
     if server_hint == CalDAVServerHint.ICLOUD:
-        return f"https://caldav.icloud.com"
+        return "https://caldav.icloud.com"
     if server_hint == CalDAVServerHint.NEXTCLOUD:
         return f"{base}/remote.php/dav/principals/users/{username}/"
     if server_hint == CalDAVServerHint.FASTMAIL:

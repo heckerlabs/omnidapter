@@ -19,12 +19,10 @@ CalDAV uses Basic auth, not OAuth, so there is no token-refresh test.
 """
 from __future__ import annotations
 
-import os
 from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
-
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,

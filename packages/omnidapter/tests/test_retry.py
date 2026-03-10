@@ -1,7 +1,6 @@
 """
 Unit tests for retry policy.
 """
-import pytest
 
 from omnidapter.transport.retry import RetryPolicy
 
