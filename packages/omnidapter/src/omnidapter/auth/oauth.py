@@ -1,0 +1,207 @@
+"""
+OAuth 2.0 flow helpers — begin and complete flows.
+"""
+from __future__ import annotations
+
+import hashlib
+import logging
+import secrets
+import urllib.parse
+from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Any
+
+from pydantic import BaseModel
+
+from omnidapter.core.logging import auth_logger
+
+if TYPE_CHECKING:
+    from omnidapter.core.registry import ProviderRegistry
+    from omnidapter.stores.credentials import CredentialStore
+    from omnidapter.stores.oauth_state import OAuthStateStore
+
+
+class OAuthBeginResult(BaseModel):
+    """Result of beginning an OAuth flow."""
+    authorization_url: str
+    state: str
+    connection_id: str
+    provider: str
+
+
+class OAuthPendingState(BaseModel):
+    """Payload stored in the OAuthStateStore during a pending OAuth flow."""
+    connection_id: str
+    provider: str
+    redirect_uri: str
+    code_verifier: str | None = None
+    expires_at: datetime  # UTC
+
+
+def _generate_pkce_pair() -> tuple[str, str]:
+    """Generate a PKCE code_verifier and code_challenge pair."""
+    verifier = secrets.token_urlsafe(64)
+    challenge = (
+        hashlib.sha256(verifier.encode())
+        .digest()
+        .hex()
+    )
+    # Base64url encode without padding
+    import base64
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()
+    ).rstrip(b"=").decode()
+    return verifier, challenge
+
+
+class OAuthHelper:
+    """Manages OAuth begin/complete flows with automatic credential persistence."""
+
+    def __init__(
+        self,
+        registry: "ProviderRegistry",
+        credential_store: "CredentialStore",
+        oauth_state_store: "OAuthStateStore",
+        on_credentials_updated: Any = None,
+    ) -> None:
+        self._registry = registry
+        self._credential_store = credential_store
+        self._oauth_state_store = oauth_state_store
+        self._on_credentials_updated = on_credentials_updated
+
+    async def begin(
+        self,
+        provider: str,
+        connection_id: str,
+        redirect_uri: str,
+        scopes: list[str] | None = None,
+        extra_params: dict[str, str] | None = None,
+    ) -> OAuthBeginResult:
+        """Begin an OAuth flow.
+
+        Generates authorization URL, persists temporary state, returns the redirect URL.
+        """
+        provider_impl = self._registry.get(provider)
+        oauth_config = provider_impl.get_oauth_config()
+        if oauth_config is None:
+            raise ValueError(f"Provider {provider!r} does not support OAuth2")
+
+        state_id = secrets.token_urlsafe(32)
+        code_verifier: str | None = None
+
+        params: dict[str, str] = {
+            "response_type": "code",
+            "client_id": oauth_config.client_id,
+            "redirect_uri": redirect_uri,
+            "state": state_id,
+        }
+
+        # Scopes
+        effective_scopes = scopes or oauth_config.default_scopes
+        if effective_scopes:
+            params["scope"] = " ".join(effective_scopes)
+
+        # PKCE
+        if oauth_config.supports_pkce:
+            code_verifier, code_challenge = _generate_pkce_pair()
+            params["code_challenge"] = code_challenge
+            params["code_challenge_method"] = "S256"
+
+        if extra_params:
+            params.update(extra_params)
+
+        authorization_url = (
+            oauth_config.authorization_endpoint
+            + "?"
+            + urllib.parse.urlencode(params)
+        )
+
+        pending = OAuthPendingState(
+            connection_id=connection_id,
+            provider=provider,
+            redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
+            expires_at=datetime.now(tz=timezone.utc) + timedelta(minutes=15),
+        )
+
+        await self._oauth_state_store.save_state(
+            state_id=state_id,
+            payload=pending.model_dump(mode="json"),
+            expires_at=pending.expires_at,
+        )
+
+        auth_logger.info(
+            "OAuth begin: provider=%r connection_id=%r state=%r",
+            provider, connection_id, state_id,
+        )
+
+        return OAuthBeginResult(
+            authorization_url=authorization_url,
+            state=state_id,
+            connection_id=connection_id,
+            provider=provider,
+        )
+
+    async def complete(
+        self,
+        provider: str,
+        connection_id: str,
+        code: str,
+        state: str,
+        redirect_uri: str,
+    ) -> Any:
+        """Complete an OAuth flow.
+
+        Validates state, exchanges code for tokens, persists credentials.
+
+        Returns:
+            The StoredCredential (for inspection only — already persisted).
+        """
+        from omnidapter.core.errors import OAuthStateError
+        from omnidapter.stores.credentials import StoredCredential
+        from omnidapter.core.metadata import AuthKind
+
+        # Load and validate state
+        state_payload = await self._oauth_state_store.load_state(state)
+        if state_payload is None:
+            raise OAuthStateError("OAuth state not found or expired")
+
+        pending = OAuthPendingState.model_validate(state_payload)
+
+        if pending.connection_id != connection_id:
+            raise OAuthStateError("OAuth state connection_id mismatch")
+        if pending.provider != provider:
+            raise OAuthStateError("OAuth state provider mismatch")
+
+        now = datetime.now(tz=timezone.utc)
+        if now > pending.expires_at:
+            raise OAuthStateError("OAuth state has expired")
+
+        # Exchange code for tokens
+        provider_impl = self._registry.get(provider)
+        stored_credential = await provider_impl.exchange_code_for_tokens(
+            connection_id=connection_id,
+            code=code,
+            redirect_uri=redirect_uri,
+            code_verifier=pending.code_verifier,
+        )
+
+        # Persist credentials
+        await self._credential_store.save_credentials(connection_id, stored_credential)
+
+        # Fire callback
+        if self._on_credentials_updated is not None:
+            import inspect
+            if inspect.iscoroutinefunction(self._on_credentials_updated):
+                await self._on_credentials_updated(connection_id, stored_credential)
+            else:
+                self._on_credentials_updated(connection_id, stored_credential)
+
+        # Clean up state
+        await self._oauth_state_store.delete_state(state)
+
+        auth_logger.info(
+            "OAuth complete: provider=%r connection_id=%r",
+            provider, connection_id,
+        )
+
+        return stored_credential
