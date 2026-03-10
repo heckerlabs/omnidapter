@@ -105,11 +105,12 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
 
 def to_calendar(raw: dict) -> Calendar:
     """Map a raw Zoho calendar dict to a canonical Calendar."""
+    _MAPPED_KEYS = frozenset({"uid", "id", "name", "description", "timezone", "isprimary"})
     return Calendar(
         calendar_id=raw.get("uid", raw.get("id", "")),
         summary=raw.get("name", ""),
         description=raw.get("description"),
         timezone=raw.get("timezone"),
         is_primary=raw.get("isprimary", False),
-        provider_data=raw,
+        provider_data={k: v for k, v in raw.items() if k not in _MAPPED_KEYS},
     )

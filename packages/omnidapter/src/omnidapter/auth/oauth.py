@@ -37,15 +37,9 @@ class OAuthPendingState(BaseModel):
 
 
 def _generate_pkce_pair() -> tuple[str, str]:
-    """Generate a PKCE code_verifier and code_challenge pair."""
-    verifier = secrets.token_urlsafe(64)
-    challenge = (
-        hashlib.sha256(verifier.encode())
-        .digest()
-        .hex()
-    )
-    # Base64url encode without padding
+    """Generate a PKCE code_verifier and code_challenge pair (S256 method)."""
     import base64
+    verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(
         hashlib.sha256(verifier.encode()).digest()
     ).rstrip(b"=").decode()
