@@ -4,6 +4,7 @@ Unit tests for omnidapter.providers.microsoft.mappers.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from omnidapter.providers.microsoft import mappers
 from omnidapter.services.calendar.models import (
@@ -64,6 +65,28 @@ class TestToCalendarEvent:
         event = mappers.to_calendar_event(_make_raw(), "c")
         assert isinstance(event.start, datetime)
         assert event.all_day is False
+
+    def test_datetime_utc_timezone(self):
+        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "UTC"},
+                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "UTC"}})
+        event = mappers.to_calendar_event(raw, "c")
+        assert event.start.tzinfo is not None
+        assert event.start.utcoffset().total_seconds() == 0
+
+    def test_datetime_iana_timezone(self):
+        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "America/New_York"},
+                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "America/New_York"}})
+        event = mappers.to_calendar_event(raw, "c")
+        assert event.start.tzinfo == ZoneInfo("America/New_York")
+        # A 10:00 Eastern datetime is not 10:00 UTC
+        assert event.start.utcoffset() is not None
+        assert event.start.utcoffset().total_seconds() != 0
+
+    def test_datetime_unknown_windows_tz_falls_back_to_utc(self):
+        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "Eastern Standard Time"},
+                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "Eastern Standard Time"}})
+        event = mappers.to_calendar_event(raw, "c")
+        assert event.start.tzinfo == timezone.utc
 
     def test_all_day_event(self):
         raw = _make_raw({"isAllDay": True})

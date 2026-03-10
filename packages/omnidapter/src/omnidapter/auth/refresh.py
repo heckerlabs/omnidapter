@@ -68,10 +68,9 @@ class TokenRefreshManager:
         # Fire callback
         if self._on_credentials_updated is not None:
             import inspect
-            if inspect.iscoroutinefunction(self._on_credentials_updated):
-                await self._on_credentials_updated(connection_id, updated)
-            else:
-                self._on_credentials_updated(connection_id, updated)
+            result = self._on_credentials_updated(connection_id, updated)
+            if inspect.isawaitable(result):
+                await result
 
         auth_logger.info(
             "Token refreshed successfully: connection_id=%r provider=%r",
