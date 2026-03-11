@@ -13,11 +13,9 @@ from omnidapter.services.calendar.models import (
     AvailabilityResponse,
     Calendar,
     CalendarEvent,
-    WatchSubscription,
 )
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
-    CreateWatchRequest,
     GetAvailabilityRequest,
     UpdateEventRequest,
 )
@@ -100,27 +98,3 @@ class CalendarService(ABC):
         """Return an async iterator over all events."""
         ...
 
-    async def create_watch(
-        self, request: CreateWatchRequest
-    ) -> WatchSubscription:
-        """Create a push notification subscription (webhook watch)."""
-        self._require_capability(CalendarCapability.CREATE_WATCH)
-        return await self._create_watch(request)
-
-    async def _create_watch(
-        self, request: CreateWatchRequest
-    ) -> WatchSubscription:
-        """Provider-specific watch creation. Override if CREATE_WATCH is supported."""
-        raise NotImplementedError  # pragma: no cover
-
-    async def parse_webhook(
-        self, headers: dict[str, str], body: bytes
-    ) -> dict:
-        """Parse an incoming webhook notification."""
-        self._require_capability(CalendarCapability.PARSE_WEBHOOK)
-        return await self._parse_webhook(headers, body)
-
-    async def _parse_webhook(
-        self, headers: dict[str, str], body: bytes
-    ) -> dict:
-        raise NotImplementedError  # pragma: no cover

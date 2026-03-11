@@ -3,7 +3,7 @@ Google Calendar service implementation.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
@@ -17,11 +17,9 @@ from omnidapter.services.calendar.models import (
     EventStatus,
     EventVisibility,
     FreeBusyInterval,
-    WatchSubscription,
 )
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
-    CreateWatchRequest,
     GetAvailabilityRequest,
     UpdateEventRequest,
 )
@@ -38,8 +36,6 @@ _GOOGLE_CAPABILITIES = frozenset({
     CalendarCapability.DELETE_EVENT,
     CalendarCapability.GET_EVENT,
     CalendarCapability.LIST_EVENTS,
-    CalendarCapability.CREATE_WATCH,
-    CalendarCapability.PARSE_WEBHOOK,
     CalendarCapability.CONFERENCE_LINKS,
     CalendarCapability.RECURRENCE,
     CalendarCapability.ATTENDEES,
@@ -242,41 +238,6 @@ class GoogleCalendarService(CalendarService):
             if not page_token:
                 break
 
-    async def _create_watch(self, request: CreateWatchRequest) -> WatchSubscription:
-        import secrets
-        url = f"{GOOGLE_API_BASE}/calendars/{request.calendar_id}/events/watch"
-        body: dict[str, Any] = {
-            "id": secrets.token_urlsafe(16),
-            "type": "web_hook",
-            "address": request.webhook_url,
-        }
-        if request.token:
-            body["token"] = request.token
-        if request.expiration:
-            body["expiration"] = int(request.expiration.timestamp() * 1000)
-        response = await self._http.request(
-            "POST", url, headers=self._auth_headers(), json=body
-        )
-        data = response.json()
-        exp = None
-        if data.get("expiration"):
-            exp = datetime.fromtimestamp(int(data["expiration"]) / 1000, tz=timezone.utc)
-        return WatchSubscription(
-            subscription_id=data.get("id", ""),
-            resource_id=data.get("resourceId"),
-            expiration=exp,
-            provider_data=data,
-        )
-
-    async def _parse_webhook(self, headers: dict[str, str], body: bytes) -> dict:
-        from omnidapter.services.calendar.webhooks import WebhookParseResult
-        return WebhookParseResult(
-            provider_key="google",
-            event_type=headers.get("X-Goog-Resource-State"),
-            resource_id=headers.get("X-Goog-Resource-ID"),
-            channel_id=headers.get("X-Goog-Channel-ID"),
-            raw={"headers": headers},
-        ).model_dump()
 
 
 def _parse_event_status(value: str | None) -> EventStatus:

@@ -63,11 +63,3 @@ class GetAvailabilityRequest(BaseModel):
     time_max: datetime
     timezone: str | None = None
 
-
-class CreateWatchRequest(BaseModel):
-    """Request model for creating a push notification subscription."""
-    calendar_id: str
-    webhook_url: str
-    token: str | None = None
-    expiration: datetime | None = None
-    extra: dict[str, Any] = {}
