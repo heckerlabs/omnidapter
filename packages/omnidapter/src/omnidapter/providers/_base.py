@@ -33,6 +33,7 @@ class OAuthConfig:
         default_scopes: list[str] | None = None,
         supports_pkce: bool = False,
         extra_auth_params: dict[str, str] | None = None,
+        scope_separator: str = " ",
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
@@ -41,6 +42,7 @@ class OAuthConfig:
         self.default_scopes = default_scopes or []
         self.supports_pkce = supports_pkce
         self.extra_auth_params = extra_auth_params or {}
+        self.scope_separator = scope_separator
 
 
 class BaseProvider(ABC):

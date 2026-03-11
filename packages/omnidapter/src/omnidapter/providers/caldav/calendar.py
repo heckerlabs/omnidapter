@@ -61,11 +61,22 @@ class CalDAVCalendarService(CalendarService):
         stored_credential: StoredCredential,
         retry_policy: RetryPolicy | None = None,
         hooks: Any = None,
+        *,
+        _server_url: str | None = None,
     ) -> None:
         self._connection_id = connection_id
         self._stored = stored_credential
         config = stored_credential.provider_config or {}
-        self._server_url = config.get("server_url", "").rstrip("/")
+        server_url = (_server_url or config.get("server_url", "")).rstrip("/")
+        if not server_url:
+            from omnidapter.core.errors import InvalidCredentialFormatError
+
+            raise InvalidCredentialFormatError(
+                "CalDAV credentials missing required 'server_url' in provider_config. "
+                "Set provider_config={'server_url': 'https://caldav.example.com/user/calendars/'}.",
+                provider_key="caldav",
+            )
+        self._server_url = server_url
         self._server_hint = detect_server_hint(self._server_url)
         self._http = OmnidapterHttpClient(
             provider_key="caldav",

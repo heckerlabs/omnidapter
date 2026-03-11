@@ -32,8 +32,9 @@ class AppleCalendarService(CalDAVCalendarService):
         retry_policy: RetryPolicy | None = None,
         hooks: Any = None,
     ) -> None:
-        super().__init__(connection_id, stored_credential, retry_policy, hooks)
-        self._server_url = ICLOUD_CALDAV_URL
+        super().__init__(
+            connection_id, stored_credential, retry_policy, hooks, _server_url=ICLOUD_CALDAV_URL
+        )
         self._server_hint = CalDAVServerHint.ICLOUD
         self._http = OmnidapterHttpClient(
             provider_key="apple",

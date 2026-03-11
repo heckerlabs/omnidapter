@@ -159,6 +159,86 @@ class TestOAuthHelperBegin:
         )
         assert "prompt=consent" in result.authorization_url
 
+    async def test_provider_extra_auth_params_included(self):
+        """OAuthConfig.extra_auth_params are baked into the authorization URL."""
+        from omnidapter.providers._base import OAuthConfig
+
+        oauth_config = OAuthConfig(
+            client_id="cid",
+            client_secret="cs",
+            authorization_endpoint="https://provider.example/auth",
+            token_endpoint="https://provider.example/token",
+            extra_auth_params={"access_type": "offline", "prompt": "consent"},
+        )
+        mock_provider = MagicMock()
+        mock_provider.get_oauth_config.return_value = oauth_config
+        registry = MagicMock()
+        registry.get.return_value = mock_provider
+
+        helper = OAuthHelper(
+            registry=registry,
+            credential_store=InMemoryCredentialStore(),
+            oauth_state_store=InMemoryOAuthStateStore(),
+        )
+        result = await helper.begin("p", "conn-1", "https://app.example/cb")
+        assert "access_type=offline" in result.authorization_url
+        assert "prompt=consent" in result.authorization_url
+
+    async def test_caller_extra_params_override_provider_extra_auth_params(self):
+        """Caller-supplied extra_params win over provider defaults."""
+        from omnidapter.providers._base import OAuthConfig
+
+        oauth_config = OAuthConfig(
+            client_id="cid",
+            client_secret="cs",
+            authorization_endpoint="https://provider.example/auth",
+            token_endpoint="https://provider.example/token",
+            extra_auth_params={"prompt": "consent"},
+        )
+        mock_provider = MagicMock()
+        mock_provider.get_oauth_config.return_value = oauth_config
+        registry = MagicMock()
+        registry.get.return_value = mock_provider
+
+        helper = OAuthHelper(
+            registry=registry,
+            credential_store=InMemoryCredentialStore(),
+            oauth_state_store=InMemoryOAuthStateStore(),
+        )
+        result = await helper.begin(
+            "p", "conn-1", "https://app.example/cb", extra_params={"prompt": "select_account"}
+        )
+        assert "prompt=select_account" in result.authorization_url
+        assert "prompt=consent" not in result.authorization_url
+
+    async def test_scope_separator_respected(self):
+        """Scopes are joined using OAuthConfig.scope_separator."""
+        import urllib.parse
+
+        from omnidapter.providers._base import OAuthConfig
+
+        oauth_config = OAuthConfig(
+            client_id="cid",
+            client_secret="cs",
+            authorization_endpoint="https://provider.example/auth",
+            token_endpoint="https://provider.example/token",
+            default_scopes=["Calendar.ALL", "Event.ALL"],
+            scope_separator=",",
+        )
+        mock_provider = MagicMock()
+        mock_provider.get_oauth_config.return_value = oauth_config
+        registry = MagicMock()
+        registry.get.return_value = mock_provider
+
+        helper = OAuthHelper(
+            registry=registry,
+            credential_store=InMemoryCredentialStore(),
+            oauth_state_store=InMemoryOAuthStateStore(),
+        )
+        result = await helper.begin("p", "conn-1", "https://app.example/cb")
+        parsed = urllib.parse.parse_qs(urllib.parse.urlsplit(result.authorization_url).query)
+        assert parsed["scope"] == ["Calendar.ALL,Event.ALL"]
+
 
 # --------------------------------------------------------------------------- #
 # OAuthHelper.complete                                                         #
