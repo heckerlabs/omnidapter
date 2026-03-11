@@ -4,6 +4,7 @@ Provider registry — registration, lookup, and plugin architecture.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from omnidapter.core.logging import registry_logger
@@ -11,6 +12,14 @@ from omnidapter.core.logging import registry_logger
 if TYPE_CHECKING:
     from omnidapter.core.metadata import ProviderMetadata
     from omnidapter.providers._base import BaseProvider
+
+
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def _env_flag_enabled(var_name: str) -> bool:
+    value = os.environ.get(var_name)
+    return value is not None and value.strip().lower() in _TRUTHY_ENV_VALUES
 
 
 class ProviderRegistry:
@@ -53,11 +62,17 @@ class ProviderRegistry:
         """Return metadata for a registered provider."""
         return self.get(provider_key).metadata
 
-    def register_builtins(self) -> None:
+    def register_builtins(self, *, auto_register_by_env: bool = True) -> None:
         """Register built-in providers that are available by default.
 
-        OAuth providers are only auto-registered when their environment-based
-        credentials are present. Non-OAuth providers are always registered.
+        When ``auto_register_by_env`` is True (default):
+        - OAuth providers are auto-registered only when their environment-based
+          credentials are present.
+        - Apple is auto-registered only when ``OMNIDAPTER_ENABLE_APPLE`` is
+          set to a truthy value (1/true/yes/on).
+
+        When ``auto_register_by_env`` is False, all built-in providers are
+        registered regardless of environment configuration.
         """
         from omnidapter.core.errors import ProviderNotConfiguredError
         from omnidapter.core.metadata import AuthKind
@@ -73,26 +88,49 @@ class ProviderRegistry:
             try:
                 provider = provider_cls()
                 provider_key = provider.metadata.provider_key
+                is_oauth = AuthKind.OAUTH2 in provider.metadata.auth_kinds
 
-                if AuthKind.OAUTH2 in provider.metadata.auth_kinds:
+                if auto_register_by_env:
+                    if is_oauth:
+                        try:
+                            oauth_config = provider.get_oauth_config()
+                        except ProviderNotConfiguredError as exc:
+                            registry_logger.info(
+                                "Skipping built-in provider %r: missing OAuth configuration (%s)",
+                                provider_key,
+                                ", ".join(exc.missing_fields),
+                            )
+                            continue
+
+                        if oauth_config is None:
+                            registry_logger.info(
+                                "Skipping built-in provider %r: OAuth configuration unavailable",
+                                provider_key,
+                            )
+                            continue
+
+                        oauth_registered_count += 1
+
+                    elif provider_key == "apple" and not _env_flag_enabled(
+                        "OMNIDAPTER_ENABLE_APPLE"
+                    ):
+                        registry_logger.info(
+                            "Skipping built-in provider %r: set OMNIDAPTER_ENABLE_APPLE=1 "
+                            "to enable auto-registration",
+                            provider_key,
+                        )
+                        continue
+                elif is_oauth:
                     try:
-                        oauth_config = provider.get_oauth_config()
+                        provider.get_oauth_config()
+                        oauth_registered_count += 1
                     except ProviderNotConfiguredError as exc:
                         registry_logger.info(
-                            "Skipping built-in provider %r: missing OAuth configuration (%s)",
+                            "Registering built-in provider %r without OAuth configuration (%s) "
+                            "because auto_register_by_env is disabled",
                             provider_key,
                             ", ".join(exc.missing_fields),
                         )
-                        continue
-
-                    if oauth_config is None:
-                        registry_logger.info(
-                            "Skipping built-in provider %r: OAuth configuration unavailable",
-                            provider_key,
-                        )
-                        continue
-
-                    oauth_registered_count += 1
 
                 self.register(provider)
                 registered_count += 1
@@ -104,11 +142,16 @@ class ProviderRegistry:
                 )
 
         if registered_count == 0:
-            registry_logger.warning(
-                "No built-in providers were auto-registered. "
-                "Configure provider env vars or register providers manually."
-            )
-        elif oauth_registered_count == 0:
+            if auto_register_by_env:
+                registry_logger.warning(
+                    "No built-in providers were auto-registered. "
+                    "Configure provider env vars and/or set OMNIDAPTER_ENABLE_APPLE=1."
+                )
+            else:
+                registry_logger.warning(
+                    "No built-in providers were registered due to initialization errors."
+                )
+        elif auto_register_by_env and oauth_registered_count == 0:
             registry_logger.warning(
                 "No OAuth providers were auto-registered. "
                 "Set provider env vars to enable Google, Microsoft, or Zoho by default."
