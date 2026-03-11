@@ -23,6 +23,7 @@ from omnidapter.core.logging import get_logger
 from omnidapter.core.metadata import ProviderMetadata
 from omnidapter.core.registry import ProviderRegistry
 from omnidapter.stores.credentials import CredentialStore
+from omnidapter.stores.memory import InMemoryCredentialStore, InMemoryOAuthStateStore
 from omnidapter.stores.oauth_state import OAuthStateStore
 from omnidapter.transport.retry import RetryPolicy
 
@@ -45,16 +46,16 @@ class Omnidapter:
 
     def __init__(
         self,
-        credential_store: CredentialStore,
-        oauth_state_store: OAuthStateStore,
+        credential_store: CredentialStore | None = None,
+        oauth_state_store: OAuthStateStore | None = None,
         *,
         auto_refresh: bool = True,
         retry_policy: RetryPolicy | None = None,
         on_credentials_updated: Callable | None = None,
         register_builtins: bool = True,
     ) -> None:
-        self._credential_store = credential_store
-        self._oauth_state_store = oauth_state_store
+        self._credential_store = credential_store or InMemoryCredentialStore()
+        self._oauth_state_store = oauth_state_store or InMemoryOAuthStateStore()
         self._auto_refresh = auto_refresh
         self._retry_policy = retry_policy or RetryPolicy.default()
         self._on_credentials_updated = on_credentials_updated
