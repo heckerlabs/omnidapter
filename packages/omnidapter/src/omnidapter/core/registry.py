@@ -55,12 +55,11 @@ class ProviderRegistry:
     def register_builtins(self) -> None:
         """Register all built-in providers."""
         from omnidapter.providers.apple.provider import AppleProvider
-        from omnidapter.providers.caldav.provider import CalDAVProvider
         from omnidapter.providers.google.provider import GoogleProvider
         from omnidapter.providers.microsoft.provider import MicrosoftProvider
         from omnidapter.providers.zoho.provider import ZohoProvider
 
-        for provider_cls in [GoogleProvider, MicrosoftProvider, CalDAVProvider, ZohoProvider, AppleProvider]:
+        for provider_cls in [GoogleProvider, MicrosoftProvider, ZohoProvider, AppleProvider]:
             try:
                 self.register(provider_cls())
             except Exception as exc:  # pragma: no cover
