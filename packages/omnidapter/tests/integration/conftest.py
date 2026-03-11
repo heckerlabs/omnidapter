@@ -298,3 +298,43 @@ async def caldav_calendar_id(caldav_service):
     calendars = await caldav_service.list_calendars()
     assert calendars, "No CalDAV calendars found at the configured server URL"
     return calendars[0].calendar_id
+
+
+# --------------------------------------------------------------------------- #
+# Apple Calendar fixtures                                                      #
+# --------------------------------------------------------------------------- #
+
+_APPLE_VARS = (
+    "OMNIDAPTER_TEST_APPLE_USERNAME",
+    "OMNIDAPTER_TEST_APPLE_PASSWORD",
+)
+
+
+@pytest.fixture(scope="module")
+def apple_stored():
+    _require_env(*_APPLE_VARS)
+    return StoredCredential(
+        provider_key="apple",
+        auth_kind=AuthKind.BASIC,
+        credentials=BasicCredentials(
+            username=os.environ["OMNIDAPTER_TEST_APPLE_USERNAME"],
+            password=os.environ["OMNIDAPTER_TEST_APPLE_PASSWORD"],
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
+def apple_service(apple_stored):
+    from omnidapter.providers.apple.provider import AppleProvider
+
+    return AppleProvider().get_calendar_service("integration-apple", apple_stored)
+
+
+@pytest.fixture(scope="module")
+async def apple_calendar_id(apple_service):
+    cal_id = os.getenv("OMNIDAPTER_TEST_APPLE_CALENDAR_ID")
+    if cal_id:
+        return cal_id
+    calendars = await apple_service.list_calendars()
+    assert calendars, "No Apple calendars found on this iCloud account"
+    return calendars[0].calendar_id
