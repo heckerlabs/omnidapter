@@ -46,9 +46,12 @@ def _stored_oauth(provider_key: str = "google", expired: bool = False) -> Stored
 
 
 def _mock_registry(provider_key: str = "google") -> MagicMock:
+    from omnidapter.core.metadata import ServiceKind
+
     mock_service = MagicMock()
     mock_provider = MagicMock()
     mock_provider.get_calendar_service.return_value = mock_service
+    mock_provider.metadata.services = {ServiceKind.CALENDAR}
 
     registry = MagicMock()
     registry.get.return_value = mock_provider
@@ -74,7 +77,7 @@ class TestConnection:
         conn = Connection("conn-1", stored, registry)
         svc = conn.calendar()
         assert svc is not None
-        registry.get.assert_called_once_with("google")
+        registry.get.assert_called_with("google")
         registry.get.return_value.get_calendar_service.assert_called_once_with(
             connection_id="conn-1",
             stored_credential=stored,
