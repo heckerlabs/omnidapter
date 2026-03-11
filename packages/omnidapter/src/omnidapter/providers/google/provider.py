@@ -7,17 +7,12 @@ import os
 from typing import Any
 
 from omnidapter.core.metadata import ProviderMetadata
-from omnidapter.providers._base import BaseProvider, OAuthConfig
+from omnidapter.providers._base import BaseProvider
 from omnidapter.providers.google.metadata import GOOGLE_METADATA
-from omnidapter.providers.google.oauth import (
-    build_google_oauth_config,
-    exchange_google_code,
-    refresh_google_token,
-)
-from omnidapter.stores.credentials import StoredCredential
+from omnidapter.providers.google.oauth import GoogleOAuthMixin
 
 
-class GoogleProvider(BaseProvider):
+class GoogleProvider(GoogleOAuthMixin, BaseProvider):
     """Google Calendar provider implementation."""
 
     def __init__(
@@ -32,33 +27,10 @@ class GoogleProvider(BaseProvider):
     def metadata(self) -> ProviderMetadata:
         return GOOGLE_METADATA
 
-    def get_oauth_config(self) -> OAuthConfig | None:
-        if not self._client_id:
-            return None
-        return build_google_oauth_config(self._client_id, self._client_secret)
-
-    async def exchange_code_for_tokens(
-        self,
-        connection_id: str,
-        code: str,
-        redirect_uri: str,
-        code_verifier: str | None = None,
-    ) -> StoredCredential:
-        return await exchange_google_code(
-            self._client_id,
-            self._client_secret,
-            code,
-            redirect_uri,
-            code_verifier=code_verifier,
-        )
-
-    async def refresh_token(self, stored: StoredCredential) -> StoredCredential:
-        return await refresh_google_token(self._client_id, self._client_secret, stored)
-
     def get_calendar_service(
         self,
         connection_id: str,
-        stored_credential: StoredCredential,
+        stored_credential: Any,
         retry_policy: Any = None,
         hooks: Any = None,
     ) -> Any:
