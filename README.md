@@ -11,27 +11,28 @@ pip install omnidapter
 ## Quick start
 
 ```python
-from omnidapter import Omnidapter, StoredCredential, OAuth2Credentials
-from omnidapter.core.metadata import AuthKind
+from omnidapter import Omnidapter
 
 omni = Omnidapter(
     credential_store=my_store,
     oauth_state_store=my_state_store,
 )
 
-# List calendars
 conn = await omni.connection("conn_123")
-calendars = await conn.calendar().list_calendars()
+cal = conn.calendar()
 
-# List events
-async for event in conn.calendar().list_events(calendar_id="primary"):
+# List calendars
+calendars = await cal.list_calendars()
+
+# Stream events
+async for event in cal.list_events("primary"):
     print(event.summary, event.start)
 
 # Create an event
-from omnidapter import CreateEventRequest
+from omnidapter.services.calendar.requests import CreateEventRequest
 from datetime import datetime, timezone
 
-event = await conn.calendar().create_event(CreateEventRequest(
+event = await cal.create_event(CreateEventRequest(
     calendar_id="primary",
     summary="Team sync",
     start=datetime(2026, 3, 15, 10, 0, tzinfo=timezone.utc),
@@ -39,52 +40,78 @@ event = await conn.calendar().create_event(CreateEventRequest(
 ))
 ```
 
-## Storing credentials
-
-```python
-from omnidapter import StoredCredential, OAuth2Credentials
-from omnidapter.core.metadata import AuthKind
-
-stored = StoredCredential(
-    provider_key="google",
-    auth_kind=AuthKind.OAUTH2,
-    credentials=OAuth2Credentials(
-        access_token="ya29...",
-        refresh_token="1//...",
-        expires_at=datetime(2026, 3, 15, 12, 0, tzinfo=timezone.utc),
-    ),
-)
-await omni.credential_store.save("conn_123", stored)
-```
-
 ## Providers
 
-| Key           | Auth          | Notes                                 |
-|---------------|---------------|---------------------------------------|
-| `google`      | OAuth 2.0     | Google Calendar                       |
-| `microsoft`   | OAuth 2.0     | Microsoft Graph / Outlook Calendar    |
-| `zoho`        | OAuth 2.0     | Zoho Calendar                         |
-| `apple`       | Basic (app-specific password) | iCloud Calendar via CalDAV |
+| Provider | Key | Auth | Notes |
+|---|---|---|---|
+| Google Calendar | `google` | OAuth 2.0 + PKCE | |
+| Microsoft / Outlook | `microsoft` | OAuth 2.0 + PKCE | |
+| Zoho Calendar | `zoho` | OAuth 2.0 | |
+| Apple / iCloud | `apple` | Basic (app-specific password) | Pre-configured CalDAV endpoint |
+| CalDAV | `caldav` | Basic | Not registered by default. Bring your own server URL. |
 
-### Apple / iCloud
+## Capabilities
+
+| Capability | Google | Microsoft | Zoho | Apple | CalDAV* |
+|---|:---:|:---:|:---:|:---:|:---:|
+| List calendars | ✓ | ✓ | ✓ | ✓ | ✓ |
+| List events | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Get event | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Create event | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Update event | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Delete event | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Free/busy availability | ✓ | ✓ | — | — | — |
+| Conference links | ✓ | ✓ | — | — | — |
+| Recurrence (RRULE) | ✓ | ✓ | — | ✓ | ✓ |
+| Attendees | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+*CalDAV requires manual registration via `omni.register_provider(CalDAVProvider())`.
+
+## OAuth flows
 
 ```python
-from omnidapter import StoredCredential, BasicCredentials
+# Step 1: Generate authorization URL
+result = await omni.oauth.begin(
+    provider="google",
+    connection_id=str(uuid.uuid4()),
+    redirect_uri="https://yourapp.com/oauth/google/callback",
+)
+# Redirect user to result.authorization_url
+
+# Step 2: Handle callback
+await omni.oauth.complete(
+    provider="google",
+    connection_id=connection_id,
+    code=request.query["code"],
+    state=request.query["state"],
+    redirect_uri="https://yourapp.com/oauth/google/callback",
+)
+# Credentials persisted automatically
+```
+
+Tokens are refreshed automatically before expiry. Set `auto_refresh=False` to disable.
+
+## Apple / iCloud
+
+No OAuth. Use an [app-specific password](https://support.apple.com/en-us/102654):
+
+```python
+from omnidapter.auth.models import BasicCredentials
 from omnidapter.core.metadata import AuthKind
+from omnidapter.stores.credentials import StoredCredential
 
 stored = StoredCredential(
     provider_key="apple",
     auth_kind=AuthKind.BASIC,
     credentials=BasicCredentials(
         username="user@icloud.com",
-        password="abcd-efgh-ijkl-mnop",  # app-specific password
+        password="abcd-efgh-ijkl-mnop",
     ),
 )
+await omni.credential_store.save_credentials("conn_123", stored)
 ```
 
-### Custom CalDAV server
-
-CalDAV is not registered by default. Register it manually for self-hosted servers (Nextcloud, Fastmail, Radicale, etc.):
+## CalDAV (self-hosted)
 
 ```python
 from omnidapter.providers.caldav.provider import CalDAVProvider
@@ -99,42 +126,30 @@ stored = StoredCredential(
 )
 ```
 
-## OAuth flows
+## Credential stores
+
+The default in-memory stores are for development only. For production, implement `CredentialStore` and `OAuthStateStore`:
 
 ```python
-# Start the OAuth flow
-url, state = await omni.oauth.authorization_url("google", redirect_uri="https://example.com/callback")
-
-# Complete the flow after redirect
-stored = await omni.oauth.exchange_code(
-    provider_key="google",
-    code=request.query["code"],
-    state=request.query["state"],
-    redirect_uri="https://example.com/callback",
-)
-await omni.credential_store.save("conn_123", stored)
-```
-
-Tokens are refreshed automatically before expiry. Set `auto_refresh=False` on `Omnidapter` to disable.
-
-## Custom credential stores
-
-Implement `CredentialStore` and `OAuthStateStore` to persist credentials in your database:
-
-```python
-from omnidapter import CredentialStore, StoredCredential
+from omnidapter.stores.credentials import CredentialStore, StoredCredential
 
 class MyCredentialStore(CredentialStore):
-    async def get_credentials(self, connection_id: str) -> StoredCredential | None:
-        ...
+    async def get_credentials(self, connection_id: str) -> StoredCredential | None: ...
+    async def save_credentials(self, connection_id: str, credentials: StoredCredential) -> None: ...
+    async def delete_credentials(self, connection_id: str) -> None: ...
 
-    async def save(self, connection_id: str, credential: StoredCredential) -> None:
-        ...
+omni = Omnidapter(credential_store=MyCredentialStore(), oauth_state_store=MyStateStore())
+```
 
-    async def delete(self, connection_id: str) -> None:
-        ...
+See [docs/credential-stores.md](docs/credential-stores.md) for a full guide including an encrypted SQLAlchemy implementation and a Redis OAuth state store.
 
-omni = Omnidapter(credential_store=MyCredentialStore())
+## Checking capability support
+
+```python
+from omnidapter.services.calendar.capabilities import CalendarCapability
+
+if cal.supports(CalendarCapability.GET_AVAILABILITY):
+    result = await cal.get_availability(request)
 ```
 
 ## Custom providers
@@ -147,6 +162,26 @@ class MyProvider(BaseProvider):
 
 omni.register_provider(MyProvider())
 ```
+
+## Documentation
+
+- [docs/providers.md](docs/providers.md) — OAuth app setup for each provider, FastAPI integration example, custom providers
+- [docs/calendar.md](docs/calendar.md) — Full calendar API reference: all methods, return models, error handling
+- [docs/credential-stores.md](docs/credential-stores.md) — Production stores: encryption, SQLAlchemy example, Redis OAuth state store
+
+## Roadmap
+
+**Webhooks / push notifications**
+Real-time change notifications via Google Calendar push channels, Microsoft Graph subscriptions, and polling fallback for providers without native push support.
+
+**Calendar-level CRUD**
+Create, rename, delete, and share calendars — not just events.
+
+**Common store implementations**
+Official packages for popular backends: `omnidapter-sqlalchemy`, `omnidapter-redis`, `omnidapter-django`.
+
+**New verticals**
+CRM (contacts, deals, pipelines), Email (read/send/thread), Tasks — using the same provider + connection model.
 
 ## License
 
