@@ -14,6 +14,8 @@ GOOGLE_USERINFO_ENDPOINT = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 class GoogleOAuthMixin(OAuthProviderMixin):
     provider_key = GOOGLE_PROVIDER_KEY
+    client_id_env_var = "GOOGLE_CLIENT_ID"
+    client_secret_env_var = "GOOGLE_CLIENT_SECRET"
     token_endpoint = GOOGLE_TOKEN_ENDPOINT
     authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
     default_scopes = [

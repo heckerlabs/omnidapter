@@ -2,6 +2,8 @@
 
 Each provider requires different credentials and configuration. This guide covers setup for all built-in providers and shows how to wire the OAuth flow into a web application.
 
+By default (`auto_register_by_env=True`), Omnidapter auto-registers OAuth providers only when their environment credentials are present. Apple auto-registration is opt-in via `OMNIDAPTER_ENABLE_APPLE=1`. You can always register providers manually (as shown below) to use constructor-based credentials.
+
 ---
 
 ## Google Calendar

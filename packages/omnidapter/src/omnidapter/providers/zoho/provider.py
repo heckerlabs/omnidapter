@@ -21,8 +21,10 @@ class ZohoProvider(ZohoOAuthMixin, BaseProvider):
         client_id: str | None = None,
         client_secret: str | None = None,
     ) -> None:
-        self._client_id = client_id or os.environ.get("ZOHO_CLIENT_ID", "")
-        self._client_secret = client_secret or os.environ.get("ZOHO_CLIENT_SECRET", "")
+        self._client_id = client_id if client_id is not None else os.environ.get("ZOHO_CLIENT_ID")
+        self._client_secret = (
+            client_secret if client_secret is not None else os.environ.get("ZOHO_CLIENT_SECRET")
+        )
 
     @property
     def metadata(self) -> ProviderMetadata:

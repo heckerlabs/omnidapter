@@ -22,6 +22,21 @@ class OAuthStateError(AuthError):
     """OAuth state validation failure (missing, expired, or tampered state)."""
 
 
+class ProviderNotConfiguredError(AuthError):
+    """Provider requires configuration before OAuth can be used."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        provider_key: str,
+        missing_fields: list[str],
+    ) -> None:
+        super().__init__(message)
+        self.provider_key = provider_key
+        self.missing_fields = missing_fields
+
+
 class TokenRefreshError(AuthError):
     """Token refresh attempt failed."""
 
