@@ -12,6 +12,7 @@ from omnidapter.core.connection import Connection
 from omnidapter.core.errors import ConnectionNotFoundError
 from omnidapter.core.metadata import AuthKind
 from omnidapter.core.omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter.stores.credentials import StoredCredential
 from omnidapter.testing.fakes.stores import InMemoryCredentialStore, InMemoryOAuthStateStore
 
@@ -107,7 +108,7 @@ class TestOmnidapter:
         omni = Omnidapter(
             credential_store=cred_store,
             oauth_state_store=state_store,
-            register_builtins=False,
+            registry=ProviderRegistry(),
             **kwargs,
         )
         return omni, cred_store, state_store
@@ -166,13 +167,7 @@ class TestOmnidapter:
         assert omni.list_providers() == []
 
     async def test_list_providers_with_builtins(self):
-        cred_store = InMemoryCredentialStore()
-        state_store = InMemoryOAuthStateStore()
-        omni = Omnidapter(
-            credential_store=cred_store,
-            oauth_state_store=state_store,
-            register_builtins=True,
-        )
+        omni = Omnidapter()
         providers = omni.list_providers()
         assert "google" in providers
         assert "microsoft" in providers

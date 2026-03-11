@@ -250,30 +250,3 @@ class TestOAuthHelperComplete:
         with pytest.raises(OAuthStateError, match="expired"):
             await helper.complete("p", "conn-1", "code", "state-old", "https://r")
 
-    async def test_sync_callback_called(self):
-        callback = MagicMock()
-        helper, state_store, _, registry = _make_helper()
-        helper._on_credentials_updated = callback
-        state_id = await self._setup_pending_state(state_store)
-
-        stored = _make_stored_credential("p")
-        mock_provider = MagicMock()
-        mock_provider.exchange_code_for_tokens = AsyncMock(return_value=stored)
-        registry.get.return_value = mock_provider
-
-        await helper.complete("p", "conn-1", "code-xyz", state_id, "https://app.example/cb")
-        callback.assert_called_once_with("conn-1", stored)
-
-    async def test_async_callback_called(self):
-        callback = AsyncMock()
-        helper, state_store, _, registry = _make_helper()
-        helper._on_credentials_updated = callback
-        state_id = await self._setup_pending_state(state_store)
-
-        stored = _make_stored_credential("p")
-        mock_provider = MagicMock()
-        mock_provider.exchange_code_for_tokens = AsyncMock(return_value=stored)
-        registry.get.return_value = mock_provider
-
-        await helper.complete("p", "conn-1", "code-xyz", state_id, "https://app.example/cb")
-        callback.assert_called_once_with("conn-1", stored)

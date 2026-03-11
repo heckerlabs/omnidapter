@@ -12,7 +12,6 @@ Example usage:
 """
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from omnidapter.auth.oauth import OAuthHelper
@@ -38,10 +37,9 @@ class Omnidapter:
         oauth_state_store: The app's OAuth state persistence implementation.
         auto_refresh: Whether to automatically refresh OAuth tokens on service calls.
         retry_policy: HTTP retry policy (default: RetryPolicy.default()).
-        on_credentials_updated: Optional callback invoked after credentials are persisted.
-            Signature: (connection_id: str, credentials: StoredCredential) -> None.
-            May be sync or async.
-        register_builtins: Whether to auto-register built-in providers (default: True).
+        registry: Provider registry to use. Defaults to a new registry with all
+            built-in providers registered. Pass an empty or custom registry to
+            control which providers are available.
     """
 
     def __init__(
@@ -51,31 +49,27 @@ class Omnidapter:
         *,
         auto_refresh: bool = True,
         retry_policy: RetryPolicy | None = None,
-        on_credentials_updated: Callable | None = None,
-        register_builtins: bool = True,
+        registry: ProviderRegistry | None = None,
     ) -> None:
         self._credential_store = credential_store or InMemoryCredentialStore()
         self._oauth_state_store = oauth_state_store or InMemoryOAuthStateStore()
         self._auto_refresh = auto_refresh
         self._retry_policy = retry_policy or RetryPolicy.default()
-        self._on_credentials_updated = on_credentials_updated
 
-        self._registry = ProviderRegistry()
-
-        if register_builtins:
-            self._registry.register_builtins()
+        if registry is None:
+            registry = ProviderRegistry()
+            registry.register_builtins()
+        self._registry = registry
 
         self._oauth = OAuthHelper(
             registry=self._registry,
             credential_store=self._credential_store,
             oauth_state_store=self._oauth_state_store,
-            on_credentials_updated=self._on_credentials_updated,
         )
 
         self._refresh_manager = TokenRefreshManager(
             registry=self._registry,
             credential_store=self._credential_store,
-            on_credentials_updated=self._on_credentials_updated,
         )
 
     @property
