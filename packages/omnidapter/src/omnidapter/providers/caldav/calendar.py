@@ -111,24 +111,9 @@ class CalDAVCalendarService(CalendarService):
         try:
             root = ET.fromstring(response.text)
             for resp in root.findall(".//{DAV:}response"):
-                href = resp.findtext("{DAV:}href", "")
-                is_calendar = resp.find(
-                    ".//{DAV:}resourcetype/{urn:ietf:params:xml:ns:caldav}calendar"
-                )
-                if is_calendar is None:
-                    continue
-                display_name = (
-                    resp.findtext(".//{DAV:}displayname", "")
-                    or href.rstrip("/").split("/")[-1]
-                )
-                description = resp.findtext(
-                    ".//{urn:ietf:params:xml:ns:caldav}calendar-description"
-                )
-                calendars.append(Calendar(
-                    calendar_id=href,
-                    summary=display_name,
-                    description=description,
-                ))
+                calendar = mappers.to_calendar(resp)
+                if calendar is not None:
+                    calendars.append(calendar)
         except ET.ParseError:
             pass
 

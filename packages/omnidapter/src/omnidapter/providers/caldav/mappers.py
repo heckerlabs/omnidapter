@@ -2,16 +2,19 @@
 Mappers between iCalendar (CalDAV) format and canonical types.
 
 CalDAV uses iCalendar text rather than JSON, so:
+  to_calendar(resp_element) -> Calendar | None  (from a DAV:response XML element)
   to_calendar_event(ical_text, calendar_id) -> CalendarEvent
   from_calendar_event(event) -> str  (VCALENDAR iCalendar text)
 """
 from __future__ import annotations
 
 import secrets
+import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
 
 from omnidapter.services.calendar.models import (
     Attendee,
+    Calendar,
     CalendarEvent,
     EventStatus,
     Recurrence,
@@ -48,6 +51,31 @@ _CANONICAL_STATUS_TO_ICAL = {v: k for k, v in _ICAL_STATUS.items()}
 # --------------------------------------------------------------------------- #
 # Public mappers                                                               #
 # --------------------------------------------------------------------------- #
+
+def to_calendar(resp: ET.Element) -> Calendar | None:
+    """Map a DAV:response element from a PROPFIND response to a canonical Calendar.
+
+    Returns None if the element is not a calendar resource.
+    """
+    is_calendar = resp.find(
+        ".//{DAV:}resourcetype/{urn:ietf:params:xml:ns:caldav}calendar"
+    )
+    if is_calendar is None:
+        return None
+    href = resp.findtext("{DAV:}href", "")
+    display_name = (
+        resp.findtext(".//{DAV:}displayname", "")
+        or href.rstrip("/").split("/")[-1]
+    )
+    description = resp.findtext(
+        ".//{urn:ietf:params:xml:ns:caldav}calendar-description"
+    )
+    return Calendar(
+        calendar_id=href,
+        summary=display_name,
+        description=description,
+    )
+
 
 def to_calendar_event(ical_text: str, calendar_id: str) -> CalendarEvent | None:
     """Parse a VEVENT from an iCalendar string into a canonical CalendarEvent.
