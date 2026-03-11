@@ -166,10 +166,3 @@ class AvailabilityResponse(BaseModel):
     busy_intervals: list[FreeBusyInterval] = []
     provider_data: dict[str, Any] | None = None
 
-
-class WatchSubscription(BaseModel):
-    """A webhook watch/push subscription for calendar changes."""
-    subscription_id: str
-    resource_id: str | None = None
-    expiration: datetime | None = None
-    provider_data: dict[str, Any] | None = None

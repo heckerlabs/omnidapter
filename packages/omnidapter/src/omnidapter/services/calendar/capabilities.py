@@ -15,8 +15,6 @@ class CalendarCapability(str, Enum):
     DELETE_EVENT = "delete_event"
     GET_EVENT = "get_event"
     LIST_EVENTS = "list_events"
-    CREATE_WATCH = "create_watch"
-    PARSE_WEBHOOK = "parse_webhook"
     CONFERENCE_LINKS = "conference_links"
     RECURRENCE = "recurrence"
     ATTENDEES = "attendees"

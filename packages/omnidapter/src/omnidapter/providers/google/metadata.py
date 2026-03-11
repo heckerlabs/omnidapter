@@ -50,8 +50,6 @@ GOOGLE_METADATA = ProviderMetadata(
             CalendarCapability.DELETE_EVENT,
             CalendarCapability.GET_EVENT,
             CalendarCapability.LIST_EVENTS,
-            CalendarCapability.CREATE_WATCH,
-            CalendarCapability.PARSE_WEBHOOK,
             CalendarCapability.CONFERENCE_LINKS,
             CalendarCapability.RECURRENCE,
             CalendarCapability.ATTENDEES,
