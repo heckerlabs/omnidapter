@@ -12,6 +12,8 @@ MS_TOKEN_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
 class MicrosoftOAuthMixin(OAuthProviderMixin):
     provider_key = MICROSOFT_PROVIDER_KEY
+    client_id_env_var = "MICROSOFT_CLIENT_ID"
+    client_secret_env_var = "MICROSOFT_CLIENT_SECRET"
     token_endpoint = MS_TOKEN_ENDPOINT
     authorization_endpoint = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
     default_scopes = ["Calendars.ReadWrite", "offline_access", "openid", "email"]

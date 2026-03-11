@@ -38,8 +38,9 @@ class Omnidapter:
         oauth_state_store: The app's OAuth state persistence implementation.
         auto_refresh: Whether to automatically refresh OAuth tokens on service calls.
         retry_policy: HTTP retry policy (default: RetryPolicy.default()).
-        registry: Provider registry to use. Defaults to a new registry with all
-            built-in providers registered. Pass an empty or custom registry to
+        registry: Provider registry to use. Defaults to a new registry with
+            built-in providers auto-registered (OAuth providers only when
+            configured via env vars). Pass an empty or custom registry to
             control which providers are available.
     """
 

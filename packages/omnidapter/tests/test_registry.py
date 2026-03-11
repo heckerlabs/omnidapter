@@ -4,6 +4,7 @@ Unit tests for omnidapter.core.registry.ProviderRegistry.
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -74,7 +75,14 @@ class TestProviderRegistry:
         assert reg.get("google") is p2
         assert len(reg.list_keys()) == 1
 
-    def test_register_builtins_registers_four_providers(self):
+    def test_register_builtins_registers_configured_providers(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+        monkeypatch.setenv("MICROSOFT_CLIENT_ID", "mid")
+        monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
+        monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
+        monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
+
         reg = ProviderRegistry()
         reg.register_builtins()
         keys = reg.list_keys()
@@ -84,7 +92,45 @@ class TestProviderRegistry:
         assert "apple" in keys
         assert "caldav" not in keys
 
-    def test_register_builtins_providers_have_metadata(self):
+    def test_register_builtins_skips_unconfigured_oauth_providers(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+
+        reg = ProviderRegistry()
+        reg.register_builtins()
+        keys = reg.list_keys()
+
+        assert "apple" in keys
+        assert "google" not in keys
+        assert "microsoft" not in keys
+        assert "zoho" not in keys
+
+    def test_register_builtins_warns_when_no_oauth_available(self, monkeypatch, caplog):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+
+        reg = ProviderRegistry()
+        with caplog.at_level(logging.WARNING, logger="omnidapter.registry"):
+            reg.register_builtins()
+
+        assert "No OAuth providers were auto-registered" in caplog.text
+
+    def test_register_builtins_providers_have_metadata(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+        monkeypatch.setenv("MICROSOFT_CLIENT_ID", "mid")
+        monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
+        monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
+        monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
+
         reg = ProviderRegistry()
         reg.register_builtins()
         for key in reg.list_keys():

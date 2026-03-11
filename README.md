@@ -50,6 +50,15 @@ event = await cal.create_event(CreateEventRequest(
 | Apple / iCloud | `apple` | Basic (app-specific password) | Pre-configured CalDAV endpoint |
 | CalDAV | `caldav` | Basic | Not registered by default. Bring your own server URL. |
 
+Built-in registration is environment-aware:
+- `apple` is always registered.
+- OAuth providers are auto-registered only when both env vars are present:
+  - Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+  - Microsoft: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`
+  - Zoho: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`
+
+You can always register providers manually if you prefer constructor-based config.
+
 ## Capabilities
 
 | Capability | Google | Microsoft | Zoho | Apple | CalDAV* |

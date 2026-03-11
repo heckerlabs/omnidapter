@@ -9,12 +9,12 @@ refresh-token HTTP logic, so provider subclasses contain no HTTP code at all.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
 from omnidapter.auth.models import OAuth2Credentials
-from omnidapter.core.errors import TokenRefreshError
+from omnidapter.core.errors import ProviderNotConfiguredError, TokenRefreshError
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers._base import OAuthConfig
 from omnidapter.stores.credentials import StoredCredential
@@ -33,6 +33,8 @@ class OAuthProviderMixin:
     Optional class attributes (with defaults):
         extra_auth_params: dict[str, str]  (default {})
         scope_separator: str               (default " ")
+        client_id_env_var: str | None      (default None)
+        client_secret_env_var: str | None  (default None)
 
     Instances must expose:
         self._client_id: str
@@ -46,19 +48,63 @@ class OAuthProviderMixin:
     supports_pkce: bool = False
     extra_auth_params: dict[str, str] = {}
     scope_separator: str = " "
+    client_id_env_var: str | None = None
+    client_secret_env_var: str | None = None
+    _client_id: str | None
+    _client_secret: str | None
 
     def get_oauth_config(self) -> OAuthConfig | None:
-        if not self._client_id:
-            return None
+        client_id, client_secret = self._oauth_client_credentials()
         return OAuthConfig(
-            client_id=self._client_id,
-            client_secret=self._client_secret,
+            client_id=client_id,
+            client_secret=client_secret,
             authorization_endpoint=self.authorization_endpoint,
             token_endpoint=self.token_endpoint,
             default_scopes=list(self.default_scopes),
             supports_pkce=self.supports_pkce,
             extra_auth_params=dict(self.extra_auth_params),
             scope_separator=self.scope_separator,
+        )
+
+    def _oauth_client_credentials(self) -> tuple[str, str]:
+        self._ensure_oauth_configured()
+        client_id = self._client_id
+        client_secret = self._client_secret
+        if client_id is None or client_secret is None:
+            # Defensive guard for type checkers; _ensure_oauth_configured handles this in practice.
+            missing = self._missing_configuration_fields()
+            raise ProviderNotConfiguredError(
+                f"Provider {self.provider_key!r} is missing OAuth configuration",
+                provider_key=self.provider_key,
+                missing_fields=missing,
+            )
+        return cast(str, client_id), cast(str, client_secret)
+
+    @staticmethod
+    def _is_missing(value: str | None) -> bool:
+        return value is None or not value.strip()
+
+    def _missing_configuration_fields(self) -> list[str]:
+        missing: list[str] = []
+        if self._is_missing(getattr(self, "_client_id", None)):
+            missing.append(self.client_id_env_var or "client_id")
+        if self._is_missing(getattr(self, "_client_secret", None)):
+            missing.append(self.client_secret_env_var or "client_secret")
+        return missing
+
+    def _ensure_oauth_configured(self) -> None:
+        missing = self._missing_configuration_fields()
+        if not missing:
+            return
+        missing_text = ", ".join(missing)
+        raise ProviderNotConfiguredError(
+            (
+                f"Provider {self.provider_key!r} supports OAuth2 but is not configured. "
+                f"Missing: {missing_text}. Set these env vars or pass client_id/client_secret "
+                f"to {self.__class__.__name__}(...)."
+            ),
+            provider_key=self.provider_key,
+            missing_fields=missing,
         )
 
     def _build_stored_credential(self, token_data: dict[str, Any]) -> StoredCredential:
@@ -95,12 +141,14 @@ class OAuthProviderMixin:
         redirect_uri: str,
         code_verifier: str | None = None,
     ) -> StoredCredential:
+        client_id, client_secret = self._oauth_client_credentials()
+
         data: dict[str, str] = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
-            "client_id": self._client_id,
-            "client_secret": self._client_secret,
+            "client_id": client_id,
+            "client_secret": client_secret,
         }
         if code_verifier:
             data["code_verifier"] = code_verifier
@@ -117,6 +165,8 @@ class OAuthProviderMixin:
         return self._build_stored_credential(response.json())
 
     async def refresh_token(self, stored: StoredCredential) -> StoredCredential:
+        client_id, client_secret = self._oauth_client_credentials()
+
         creds = stored.credentials
         if not isinstance(creds, OAuth2Credentials) or not creds.refresh_token:
             raise TokenRefreshError(
@@ -127,8 +177,8 @@ class OAuthProviderMixin:
         data = {
             "grant_type": "refresh_token",
             "refresh_token": creds.refresh_token,
-            "client_id": self._client_id,
-            "client_secret": self._client_secret,
+            "client_id": client_id,
+            "client_secret": client_secret,
         }
 
         async with httpx.AsyncClient() as client:
