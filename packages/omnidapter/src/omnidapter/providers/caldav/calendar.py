@@ -20,7 +20,6 @@ from omnidapter.services.calendar.models import (
     Calendar,
     CalendarEvent,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -192,25 +191,21 @@ class CalDAVCalendarService(CalendarService):
             )
         return event
 
-    async def list_events_page(
+    async def list_events(
         self,
         calendar_id: str,
         *,
-        page_token: str | None = None,
         time_min=None,
         time_max=None,
         page_size: int | None = None,
         extra: dict | None = None,
-    ) -> Page[CalendarEvent]:
+    ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         time_filter = ""
         if time_min and time_max:
             ts_min = mappers._format_ical_datetime(time_min)
             ts_max = mappers._format_ical_datetime(time_max)
             time_filter = f"""
-            <C:limit>
-              <C:nresults>50</C:nresults>
-            </C:limit>
             <C:time-range start="{ts_min}" end="{ts_max}"/>"""
 
         report_body = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -233,7 +228,6 @@ class CalDAVCalendarService(CalendarService):
             "REPORT", url, headers=headers, data=report_body.encode()
         )
 
-        events = []
         try:
             root = ET.fromstring(response.text)
             for resp in root.findall(".//{DAV:}response"):
@@ -243,8 +237,6 @@ class CalDAVCalendarService(CalendarService):
                 if cal_data:
                     event = mappers.to_calendar_event(cal_data, calendar_id)
                     if event:
-                        events.append(event)
+                        yield event
         except ET.ParseError:
             pass
-
-        return Page(items=events, next_page_token=None)

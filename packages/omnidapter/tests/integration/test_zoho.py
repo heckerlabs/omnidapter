@@ -197,9 +197,7 @@ async def test_pagination(zoho_service, zoho_calendar_id):
     Create PAGINATION_PAGE_SIZE + 2 events, verify all are returned when
     iterating with a page size smaller than the event count.
 
-    Note: Zoho's list_events_page does not return a next_page_token in the
-    current implementation, so this test verifies that all events are returned
-    in the time-bounded query rather than across multiple pages.
+    Zoho uses a time-bounded query, so all events are returned in a single fetch.
     """
     n = PAGINATION_PAGE_SIZE + 2
     now = datetime.now(timezone.utc).replace(microsecond=0)

@@ -15,7 +15,6 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
     WatchSubscription,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     CreateWatchRequest,
@@ -88,7 +87,7 @@ class CalendarService(ABC):
         """Retrieve a single event by ID."""
         ...
 
-    # Pagination: async iterator (default)
+    @abstractmethod
     def list_events(
         self,
         calendar_id: str,
@@ -98,39 +97,7 @@ class CalendarService(ABC):
         page_size: int | None = None,
         extra: dict | None = None,
     ) -> AsyncIterator[CalendarEvent]:
-        """Return an async iterator over all events.
-
-        The library manages page tokens internally.
-        """
-        from omnidapter.services.calendar.pagination import iter_pages
-
-        async def fetch_page(page_token):
-            return await self.list_events_page(
-                calendar_id=calendar_id,
-                page_token=page_token,
-                time_min=time_min,
-                time_max=time_max,
-                page_size=page_size,
-                extra=extra,
-            )
-
-        return iter_pages(fetch_page)
-
-    @abstractmethod
-    async def list_events_page(
-        self,
-        calendar_id: str,
-        *,
-        page_token: str | None = None,
-        time_min=None,
-        time_max=None,
-        page_size: int | None = None,
-        extra: dict | None = None,
-    ) -> Page[CalendarEvent]:
-        """Retrieve a single page of events.
-
-        For page-level control by the consumer.
-        """
+        """Return an async iterator over all events."""
         ...
 
     async def create_watch(

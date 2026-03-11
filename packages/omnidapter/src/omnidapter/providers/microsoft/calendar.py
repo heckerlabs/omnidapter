@@ -17,7 +17,6 @@ from omnidapter.services.calendar.models import (
     EventVisibility,
     FreeBusyInterval,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -180,37 +179,35 @@ class MicrosoftCalendarService(CalendarService):
         response = await self._http.request("GET", url, headers=self._auth_headers())
         return mappers.to_calendar_event(response.json(), calendar_id)
 
-    async def list_events_page(
+    async def list_events(
         self,
         calendar_id: str,
         *,
-        page_token: str | None = None,
         time_min=None,
         time_max=None,
         page_size: int | None = None,
         extra: dict | None = None,
-    ) -> Page[CalendarEvent]:
+    ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
-        if page_token:
-            url = page_token
-            params = None
-        else:
-            url = f"{MS_GRAPH_BASE}/me/calendars/{calendar_id}/events"
-            params: dict[str, Any] = {"$orderby": "start/dateTime"}
-            if time_min:
-                ts = time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
-                params["$filter"] = f"start/dateTime ge '{ts}'"
-            if page_size:
-                params["$top"] = str(page_size)
-            if extra:
-                params.update(extra)
+        url = f"{MS_GRAPH_BASE}/me/calendars/{calendar_id}/events"
+        params: dict[str, Any] = {"$orderby": "start/dateTime"}
+        if time_min:
+            ts = time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
+            params["$filter"] = f"start/dateTime ge '{ts}'"
+        if page_size:
+            params["$top"] = str(page_size)
+        if extra:
+            params.update(extra)
 
-        response = await self._http.request(
-            "GET", url, headers=self._auth_headers(), params=params
-        )
-        data = response.json()
-        events = [mappers.to_calendar_event(item, calendar_id) for item in data.get("value", [])]
-        return Page(items=events, next_page_token=data.get("@odata.nextLink"))
+        while url:
+            response = await self._http.request(
+                "GET", url, headers=self._auth_headers(), params=params
+            )
+            data = response.json()
+            for item in data.get("value", []):
+                yield mappers.to_calendar_event(item, calendar_id)
+            url = data.get("@odata.nextLink")
+            params = None
 
 
 def _parse_event_status(value: str | None) -> EventStatus:

@@ -19,7 +19,6 @@ from omnidapter.services.calendar.models import (
     FreeBusyInterval,
     WatchSubscription,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     CreateWatchRequest,
@@ -208,36 +207,40 @@ class GoogleCalendarService(CalendarService):
         response = await self._http.request("GET", url, headers=self._auth_headers())
         return mappers.to_calendar_event(response.json(), calendar_id)
 
-    async def list_events_page(
+    async def list_events(
         self,
         calendar_id: str,
         *,
-        page_token: str | None = None,
         time_min=None,
         time_max=None,
         page_size: int | None = None,
         extra: dict | None = None,
-    ) -> Page[CalendarEvent]:
+    ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         url = f"{GOOGLE_API_BASE}/calendars/{calendar_id}/events"
-        params: dict[str, Any] = {"singleEvents": "true", "orderBy": "startTime"}
-        if page_token:
-            params["pageToken"] = page_token
-        if time_min:
-            params["timeMin"] = time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
-        if time_max:
-            params["timeMax"] = time_max.isoformat() if hasattr(time_max, "isoformat") else time_max
-        if page_size:
-            params["maxResults"] = str(page_size)
-        if extra:
-            params.update(extra)
+        page_token = None
+        while True:
+            params: dict[str, Any] = {"singleEvents": "true", "orderBy": "startTime"}
+            if page_token:
+                params["pageToken"] = page_token
+            if time_min:
+                params["timeMin"] = time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
+            if time_max:
+                params["timeMax"] = time_max.isoformat() if hasattr(time_max, "isoformat") else time_max
+            if page_size:
+                params["maxResults"] = str(page_size)
+            if extra:
+                params.update(extra)
 
-        response = await self._http.request(
-            "GET", url, headers=self._auth_headers(), params=params
-        )
-        data = response.json()
-        events = [mappers.to_calendar_event(item, calendar_id) for item in data.get("items", [])]
-        return Page(items=events, next_page_token=data.get("nextPageToken"))
+            response = await self._http.request(
+                "GET", url, headers=self._auth_headers(), params=params
+            )
+            data = response.json()
+            for item in data.get("items", []):
+                yield mappers.to_calendar_event(item, calendar_id)
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
 
     async def _create_watch(self, request: CreateWatchRequest) -> WatchSubscription:
         import secrets
