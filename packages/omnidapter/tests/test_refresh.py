@@ -57,14 +57,12 @@ def _stored_basic(provider_key: str = "test_provider") -> StoredCredential:
 
 def _make_manager(
     credential_store: InMemoryCredentialStore | None = None,
-    on_credentials_updated=None,
 ) -> tuple[TokenRefreshManager, InMemoryCredentialStore, MagicMock]:
     store = credential_store or InMemoryCredentialStore()
     registry = MagicMock()
     mgr = TokenRefreshManager(
         registry=registry,
         credential_store=store,
-        on_credentials_updated=on_credentials_updated,
     )
     return mgr, store, registry
 
@@ -159,44 +157,3 @@ class TestEnsureFreshRefreshes:
         saved = await store.get_credentials("conn-1")
         assert saved is new_stored
 
-    async def test_sync_callback_called_after_refresh(self):
-        callback = MagicMock()
-        mgr, store, registry = _make_manager(on_credentials_updated=callback)
-        old_stored = _stored_oauth(expired=True)
-        store.seed("conn-1", old_stored)
-
-        new_stored = _stored_oauth(expired=False)
-        mock_provider = MagicMock()
-        mock_provider.refresh_token = AsyncMock(return_value=new_stored)
-        registry.get.return_value = mock_provider
-
-        await mgr.ensure_fresh("conn-1")
-        callback.assert_called_once_with("conn-1", new_stored)
-
-    async def test_async_callback_called_after_refresh(self):
-        callback = AsyncMock()
-        mgr, store, registry = _make_manager(on_credentials_updated=callback)
-        old_stored = _stored_oauth(expired=True)
-        store.seed("conn-1", old_stored)
-
-        new_stored = _stored_oauth(expired=False)
-        mock_provider = MagicMock()
-        mock_provider.refresh_token = AsyncMock(return_value=new_stored)
-        registry.get.return_value = mock_provider
-
-        await mgr.ensure_fresh("conn-1")
-        callback.assert_called_once_with("conn-1", new_stored)
-
-    async def test_no_callback_when_none(self):
-        """Ensure no error when on_credentials_updated is None."""
-        mgr, store, registry = _make_manager(on_credentials_updated=None)
-        old_stored = _stored_oauth(expired=True)
-        store.seed("conn-1", old_stored)
-
-        new_stored = _stored_oauth(expired=False)
-        mock_provider = MagicMock()
-        mock_provider.refresh_token = AsyncMock(return_value=new_stored)
-        registry.get.return_value = mock_provider
-
-        result = await mgr.ensure_fresh("conn-1")
-        assert result is new_stored

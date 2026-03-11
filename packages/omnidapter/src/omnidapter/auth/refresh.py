@@ -3,7 +3,7 @@ Automatic token refresh logic.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from omnidapter.core.logging import auth_logger
 
@@ -19,11 +19,9 @@ class TokenRefreshManager:
         self,
         registry: ProviderRegistry,
         credential_store: CredentialStore,
-        on_credentials_updated: Any = None,
     ) -> None:
         self._registry = registry
         self._credential_store = credential_store
-        self._on_credentials_updated = on_credentials_updated
 
     async def ensure_fresh(self, connection_id: str) -> StoredCredential:
         """Ensure credentials are fresh, refreshing if necessary.
@@ -64,13 +62,6 @@ class TokenRefreshManager:
 
         # Persist updated credentials
         await self._credential_store.save_credentials(connection_id, updated)
-
-        # Fire callback
-        if self._on_credentials_updated is not None:
-            import inspect
-            result = self._on_credentials_updated(connection_id, updated)
-            if inspect.isawaitable(result):
-                await result
 
         auth_logger.info(
             "Token refreshed successfully: connection_id=%r provider=%r",

@@ -54,12 +54,10 @@ class OAuthHelper:
         registry: ProviderRegistry,
         credential_store: CredentialStore,
         oauth_state_store: OAuthStateStore,
-        on_credentials_updated: Any = None,
     ) -> None:
         self._registry = registry
         self._credential_store = credential_store
         self._oauth_state_store = oauth_state_store
-        self._on_credentials_updated = on_credentials_updated
 
     async def begin(
         self,
@@ -176,13 +174,6 @@ class OAuthHelper:
 
         # Persist credentials
         await self._credential_store.save_credentials(connection_id, stored_credential)
-
-        # Fire callback
-        if self._on_credentials_updated is not None:
-            import inspect
-            result = self._on_credentials_updated(connection_id, stored_credential)
-            if inspect.isawaitable(result):
-                await result
 
         # Clean up state
         await self._oauth_state_store.delete_state(state)

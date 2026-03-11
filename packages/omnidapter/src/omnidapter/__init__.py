@@ -36,6 +36,7 @@ from omnidapter.core.errors import (
 )
 from omnidapter.core.metadata import AuthKind, ProviderMetadata, ServiceKind
 from omnidapter.core.omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.models import (
     Attendee,
@@ -87,6 +88,8 @@ __all__ = [
     "InMemoryOAuthStateStore",
     # Transport
     "RetryPolicy",
+    # Registry
+    "ProviderRegistry",
     # Metadata
     "AuthKind",
     "ServiceKind",
