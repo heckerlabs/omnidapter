@@ -14,10 +14,19 @@ from typing import Any, cast
 import httpx
 
 from omnidapter.auth.models import OAuth2Credentials
-from omnidapter.core.errors import ProviderNotConfiguredError, TokenRefreshError
+from omnidapter.core.errors import (
+    ProviderAPIError,
+    ProviderNotConfiguredError,
+    RateLimitError,
+    TokenRefreshError,
+    TransportError,
+)
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers._base import OAuthConfig
 from omnidapter.stores.credentials import StoredCredential
+from omnidapter.transport.client import OmnidapterHttpClient
+from omnidapter.transport.hooks import TransportHooks
+from omnidapter.transport.retry import RetryPolicy
 
 
 class OAuthProviderMixin:
@@ -52,6 +61,9 @@ class OAuthProviderMixin:
     client_secret_env_var: str | None = None
     _client_id: str | None
     _client_secret: str | None
+    _oauth_retry_policy: RetryPolicy | None = None
+    _oauth_hooks: TransportHooks | None = None
+    _oauth_http_client: httpx.AsyncClient | None = None
 
     def get_oauth_config(self) -> OAuthConfig | None:
         client_id, client_secret = self._oauth_client_credentials()
@@ -79,6 +91,26 @@ class OAuthProviderMixin:
                 missing_fields=missing,
             )
         return cast(str, client_id), cast(str, client_secret)
+
+    def configure_oauth_transport(
+        self,
+        *,
+        retry_policy: RetryPolicy | None = None,
+        hooks: TransportHooks | None = None,
+        http_client: httpx.AsyncClient | None = None,
+    ) -> None:
+        """Attach transport configuration for OAuth token calls."""
+        self._oauth_retry_policy = retry_policy
+        self._oauth_hooks = hooks
+        self._oauth_http_client = http_client
+
+    def _oauth_http(self) -> OmnidapterHttpClient:
+        return OmnidapterHttpClient(
+            provider_key=self.provider_key,
+            retry_policy=self._oauth_retry_policy,
+            hooks=self._oauth_hooks,
+            shared_client=self._oauth_http_client,
+        )
 
     @staticmethod
     def _is_missing(value: str | None) -> bool:
@@ -153,14 +185,14 @@ class OAuthProviderMixin:
         if code_verifier:
             data["code_verifier"] = code_verifier
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(self.token_endpoint, data=data)
-
-        if not response.is_success:
+        try:
+            response = await self._oauth_http().request("POST", self.token_endpoint, data=data)
+        except (ProviderAPIError, RateLimitError, TransportError) as exc:
             raise TokenRefreshError(
-                f"{self.provider_key} token exchange failed: {response.status_code} {response.text}",
+                f"{self.provider_key} token exchange failed: {exc}",
                 provider_key=self.provider_key,
-            )
+                cause=exc,
+            ) from exc
 
         return self._build_stored_credential(response.json())
 
@@ -181,14 +213,14 @@ class OAuthProviderMixin:
             "client_secret": client_secret,
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(self.token_endpoint, data=data)
-
-        if not response.is_success:
+        try:
+            response = await self._oauth_http().request("POST", self.token_endpoint, data=data)
+        except (ProviderAPIError, RateLimitError, TransportError) as exc:
             raise TokenRefreshError(
-                f"{self.provider_key} token refresh failed: {response.status_code} {response.text}",
+                f"{self.provider_key} token refresh failed: {exc}",
                 provider_key=self.provider_key,
-            )
+                cause=exc,
+            ) from exc
 
         token_data = response.json()
         if "refresh_token" not in token_data:

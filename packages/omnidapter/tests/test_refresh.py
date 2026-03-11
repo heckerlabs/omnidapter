@@ -59,12 +59,17 @@ def _stored_basic(provider_key: str = "test_provider") -> StoredCredential:
 
 def _make_manager(
     credential_store: InMemoryCredentialStore | None = None,
+    *,
+    retry_policy=None,
+    http_client=None,
 ) -> tuple[TokenRefreshManager, InMemoryCredentialStore, MagicMock]:
     store = credential_store or InMemoryCredentialStore()
     registry = MagicMock()
     mgr = TokenRefreshManager(
         registry=registry,
         credential_store=store,
+        retry_policy=retry_policy,
+        http_client=http_client,
     )
     return mgr, store, registry
 
@@ -163,3 +168,28 @@ class TestEnsureFreshRefreshes:
         # Persisted
         saved = await store.get_credentials("conn-1")
         assert saved is new_stored
+
+    async def test_refresh_configures_provider_transport(self):
+        from omnidapter.transport.retry import RetryPolicy
+
+        retry_policy = RetryPolicy.no_retry()
+        shared_client = MagicMock()
+        mgr, store, registry = _make_manager(
+            retry_policy=retry_policy,
+            http_client=shared_client,
+        )
+        old_stored = _stored_oauth(expired=True)
+        store.seed("conn-1", old_stored)
+
+        new_stored = _stored_oauth(expired=False)
+        mock_provider = MagicMock()
+        mock_provider.refresh_token = AsyncMock(return_value=new_stored)
+        registry.get.return_value = mock_provider
+
+        await mgr.ensure_fresh("conn-1")
+
+        mock_provider.configure_oauth_transport.assert_called_once_with(
+            retry_policy=retry_policy,
+            hooks=None,
+            http_client=shared_client,
+        )
