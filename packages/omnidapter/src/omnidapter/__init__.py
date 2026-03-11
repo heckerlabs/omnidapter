@@ -48,7 +48,6 @@ from omnidapter.services.calendar.models import (
     Organizer,
     Recurrence,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -107,7 +106,6 @@ __all__ = [
     "CreateEventRequest",
     "UpdateEventRequest",
     "GetAvailabilityRequest",
-    "Page",
     # Version
     "__version__",
 ]

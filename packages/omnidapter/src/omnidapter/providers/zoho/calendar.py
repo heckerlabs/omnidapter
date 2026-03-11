@@ -16,7 +16,6 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
     EventStatus,
 )
-from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -170,16 +169,15 @@ class ZohoCalendarService(CalendarService):
         events = data.get("events", [{}])
         return mappers.to_calendar_event(events[0] if events else {}, calendar_id)
 
-    async def list_events_page(
+    async def list_events(
         self,
         calendar_id: str,
         *,
-        page_token: str | None = None,
         time_min=None,
         time_max=None,
         page_size: int | None = None,
         extra: dict | None = None,
-    ) -> Page[CalendarEvent]:
+    ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         params: dict[str, Any] = {}
         if time_min:
@@ -190,8 +188,6 @@ class ZohoCalendarService(CalendarService):
             params["enddatetime"] = (
                 time_max.strftime("%Y%m%dT%H%M%SZ") if hasattr(time_max, "strftime") else time_max
             )
-        if page_token:
-            params["start"] = page_token
         if extra:
             params.update(extra)
 
@@ -202,5 +198,5 @@ class ZohoCalendarService(CalendarService):
             params=params,
         )
         data = response.json()
-        events = [mappers.to_calendar_event(e, calendar_id) for e in data.get("events", [])]
-        return Page(items=events, next_page_token=None)
+        for e in data.get("events", []):
+            yield mappers.to_calendar_event(e, calendar_id)

@@ -82,17 +82,6 @@ class CalendarProviderContract:
         with pytest.raises(UnsupportedCapabilityError):
             calendar_service._require_capability(unsupported[0])
 
-    @pytest.mark.asyncio
-    async def test_list_events_page_returns_page(self, calendar_service):
-        """list_events_page must return a Page object (if LIST_EVENTS is supported)."""
-        if not calendar_service.supports(CalendarCapability.LIST_EVENTS):
-            pytest.skip("LIST_EVENTS not supported")
-
-        # This test is overridden in real implementations with appropriate mocks.
-        # Here we just verify the interface is present.
-        assert hasattr(calendar_service, "list_events_page")
-        assert hasattr(calendar_service, "list_events")
-
     def test_provider_key_is_string(self, calendar_service):
         """_provider_key must return a non-empty string."""
         key = calendar_service._provider_key
