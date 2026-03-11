@@ -11,6 +11,8 @@ from omnidapter.core.metadata import AuthKind
 from omnidapter.stores.credentials import StoredCredential
 from omnidapter.stores.memory import (
     InMemoryCredentialStore as MemoryCredentialStore,
+)
+from omnidapter.stores.memory import (
     InMemoryOAuthStateStore as MemoryOAuthStateStore,
 )
 
