@@ -1,6 +1,7 @@
 """
 Calendar capability enumeration.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -8,6 +9,7 @@ from enum import Enum
 
 class CalendarCapability(str, Enum):
     """Capabilities that a calendar provider may or may not support."""
+
     LIST_CALENDARS = "list_calendars"
     GET_AVAILABILITY = "get_availability"
     CREATE_EVENT = "create_event"

@@ -1,6 +1,7 @@
 """
 Provider metadata models for introspection.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -11,12 +12,14 @@ from pydantic import BaseModel
 
 class ServiceKind(str, Enum):
     """Top-level service categories."""
+
     CALENDAR = "calendar"
     CRM = "crm"  # reserved for future
 
 
 class AuthKind(str, Enum):
     """Supported authentication kinds."""
+
     OAUTH2 = "oauth2"
     API_KEY = "api_key"
     BASIC = "basic"
@@ -24,6 +27,7 @@ class AuthKind(str, Enum):
 
 class OAuthScopeGroup(BaseModel):
     """A named group of OAuth scopes."""
+
     name: str
     description: str
     scopes: list[str]
@@ -31,6 +35,7 @@ class OAuthScopeGroup(BaseModel):
 
 class OAuthMetadata(BaseModel):
     """OAuth-specific metadata for a provider."""
+
     authorization_endpoint: str
     token_endpoint: str
     supports_pkce: bool = False
@@ -40,6 +45,7 @@ class OAuthMetadata(BaseModel):
 
 class ConnectionConfigField(BaseModel):
     """Describes a required/optional field for provider-specific connection config."""
+
     name: str
     description: str
     required: bool = True
@@ -48,6 +54,7 @@ class ConnectionConfigField(BaseModel):
 
 class ProviderMetadata(BaseModel):
     """Full provider metadata for introspection."""
+
     provider_key: str
     display_name: str
     services: list[ServiceKind]

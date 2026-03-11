@@ -3,6 +3,7 @@ Omnidapter exception hierarchy.
 
 All public exceptions are importable from `omnidapter.core.errors`.
 """
+
 from __future__ import annotations
 
 from datetime import datetime

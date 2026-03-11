@@ -1,6 +1,7 @@
 """
 CalDAV provider metadata.
 """
+
 from __future__ import annotations
 
 from omnidapter.core.metadata import (
@@ -19,16 +20,19 @@ CALDAV_METADATA = ProviderMetadata(
     services=[ServiceKind.CALENDAR],
     auth_kinds=[AuthKind.BASIC],
     capabilities={
-        ServiceKind.CALENDAR.value: [c.value for c in [
-            CalendarCapability.LIST_CALENDARS,
-            CalendarCapability.CREATE_EVENT,
-            CalendarCapability.UPDATE_EVENT,
-            CalendarCapability.DELETE_EVENT,
-            CalendarCapability.GET_EVENT,
-            CalendarCapability.LIST_EVENTS,
-            CalendarCapability.RECURRENCE,
-            CalendarCapability.ATTENDEES,
-        ]],
+        ServiceKind.CALENDAR.value: [
+            c.value
+            for c in [
+                CalendarCapability.LIST_CALENDARS,
+                CalendarCapability.CREATE_EVENT,
+                CalendarCapability.UPDATE_EVENT,
+                CalendarCapability.DELETE_EVENT,
+                CalendarCapability.GET_EVENT,
+                CalendarCapability.LIST_EVENTS,
+                CalendarCapability.RECURRENCE,
+                CalendarCapability.ATTENDEES,
+            ]
+        ],
     },
     connection_config_fields=[
         ConnectionConfigField(

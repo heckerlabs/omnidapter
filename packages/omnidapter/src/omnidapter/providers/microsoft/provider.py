@@ -1,6 +1,7 @@
 """
 Microsoft provider registration class.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,6 +36,7 @@ class MicrosoftProvider(MicrosoftOAuthMixin, BaseProvider):
         hooks: Any = None,
     ) -> Any:
         from omnidapter.providers.microsoft.calendar import MicrosoftCalendarService
+
         return MicrosoftCalendarService(
             connection_id=connection_id,
             stored_credential=stored_credential,

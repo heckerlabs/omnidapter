@@ -3,6 +3,7 @@ CalDAV calendar service implementation.
 
 Uses raw HTTP with CalDAV/WebDAV PROPFIND, REPORT, PUT, DELETE methods.
 """
+
 from __future__ import annotations
 
 import secrets
@@ -29,16 +30,18 @@ from omnidapter.stores.credentials import StoredCredential
 from omnidapter.transport.client import OmnidapterHttpClient
 from omnidapter.transport.retry import RetryPolicy
 
-_CALDAV_CAPABILITIES = frozenset({
-    CalendarCapability.LIST_CALENDARS,
-    CalendarCapability.CREATE_EVENT,
-    CalendarCapability.UPDATE_EVENT,
-    CalendarCapability.DELETE_EVENT,
-    CalendarCapability.GET_EVENT,
-    CalendarCapability.LIST_EVENTS,
-    CalendarCapability.RECURRENCE,
-    CalendarCapability.ATTENDEES,
-})
+_CALDAV_CAPABILITIES = frozenset(
+    {
+        CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.CREATE_EVENT,
+        CalendarCapability.UPDATE_EVENT,
+        CalendarCapability.DELETE_EVENT,
+        CalendarCapability.GET_EVENT,
+        CalendarCapability.LIST_EVENTS,
+        CalendarCapability.RECURRENCE,
+        CalendarCapability.ATTENDEES,
+    }
+)
 
 # CalDAV/WebDAV namespaces
 NS = {
@@ -152,18 +155,22 @@ class CalDAVCalendarService(CalendarService):
     async def update_event(self, request: UpdateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.UPDATE_EVENT)
         existing = await self.get_event(request.calendar_id, request.event_id)
-        updated = existing.model_copy(update={
-            k: v for k, v in {
-                "summary": request.summary,
-                "start": request.start,
-                "end": request.end,
-                "all_day": request.all_day,
-                "description": request.description,
-                "location": request.location,
-                "attendees": request.attendees,
-                "recurrence": request.recurrence,
-            }.items() if v is not None
-        })
+        updated = existing.model_copy(
+            update={
+                k: v
+                for k, v in {
+                    "summary": request.summary,
+                    "start": request.start,
+                    "end": request.end,
+                    "all_day": request.all_day,
+                    "description": request.description,
+                    "location": request.location,
+                    "attendees": request.attendees,
+                    "recurrence": request.recurrence,
+                }.items()
+                if v is not None
+            }
+        )
         ical = mappers.from_calendar_event(updated)
         url = f"{self._server_url}/{request.calendar_id.strip('/')}/{request.event_id}.ics"
         headers = {**self._auth_headers(), "Content-Type": "text/calendar; charset=utf-8"}
@@ -184,6 +191,7 @@ class CalDAVCalendarService(CalendarService):
         if event is None:
             from omnidapter.core.errors import ProviderAPIError
             from omnidapter.transport.correlation import new_correlation_id
+
             raise ProviderAPIError(
                 "Failed to parse CalDAV event",
                 provider_key="caldav",
@@ -231,9 +239,7 @@ class CalDAVCalendarService(CalendarService):
         try:
             root = ET.fromstring(response.text)
             for resp in root.findall(".//{DAV:}response"):
-                cal_data = resp.findtext(
-                    ".//{urn:ietf:params:xml:ns:caldav}calendar-data", ""
-                )
+                cal_data = resp.findtext(".//{urn:ietf:params:xml:ns:caldav}calendar-data", "")
                 if cal_data:
                     event = mappers.to_calendar_event(cal_data, calendar_id)
                     if event:

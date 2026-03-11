@@ -1,6 +1,7 @@
 """
 Microsoft Calendar (Graph API) service implementation.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -28,18 +29,20 @@ from omnidapter.transport.retry import RetryPolicy
 
 MS_GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
-_MS_CAPABILITIES = frozenset({
-    CalendarCapability.LIST_CALENDARS,
-    CalendarCapability.GET_AVAILABILITY,
-    CalendarCapability.CREATE_EVENT,
-    CalendarCapability.UPDATE_EVENT,
-    CalendarCapability.DELETE_EVENT,
-    CalendarCapability.GET_EVENT,
-    CalendarCapability.LIST_EVENTS,
-    CalendarCapability.CONFERENCE_LINKS,
-    CalendarCapability.RECURRENCE,
-    CalendarCapability.ATTENDEES,
-})
+_MS_CAPABILITIES = frozenset(
+    {
+        CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.GET_AVAILABILITY,
+        CalendarCapability.CREATE_EVENT,
+        CalendarCapability.UPDATE_EVENT,
+        CalendarCapability.DELETE_EVENT,
+        CalendarCapability.GET_EVENT,
+        CalendarCapability.LIST_EVENTS,
+        CalendarCapability.CONFERENCE_LINKS,
+        CalendarCapability.RECURRENCE,
+        CalendarCapability.ATTENDEES,
+    }
+)
 
 
 class MicrosoftCalendarService(CalendarService):
@@ -160,8 +163,10 @@ class MicrosoftCalendarService(CalendarService):
             body["end"] = mappers._format_ms_datetime(request.end, request.timezone)
         if request.attendees is not None:
             body["attendees"] = [
-                {"emailAddress": {"address": a.email, "name": a.display_name or ""},
-                 "type": "required"}
+                {
+                    "emailAddress": {"address": a.email, "name": a.display_name or ""},
+                    "type": "required",
+                }
                 for a in request.attendees
             ]
         body.update(request.extra)

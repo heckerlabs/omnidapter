@@ -9,6 +9,7 @@ variables. They are skipped by default and enabled by setting:
 Each provider also needs its own env vars; see the individual test modules
 for the full list.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -33,16 +34,21 @@ PAGINATION_PAGE_SIZE = 5
 # Marker / guard                                                               #
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture(autouse=True)
 def _require_integration_flag(request):
     """Skip any @pytest.mark.integration test unless OMNIDAPTER_INTEGRATION=1."""
-    if request.node.get_closest_marker("integration") and os.getenv("OMNIDAPTER_INTEGRATION") != "1":
+    if (
+        request.node.get_closest_marker("integration")
+        and os.getenv("OMNIDAPTER_INTEGRATION") != "1"
+    ):
         pytest.skip("Integration tests disabled. Set OMNIDAPTER_INTEGRATION=1 to run.")
 
 
 # --------------------------------------------------------------------------- #
 # Shared utilities                                                             #
 # --------------------------------------------------------------------------- #
+
 
 @pytest.fixture
 def retry_read():
@@ -56,6 +62,7 @@ def retry_read():
 
         fetched = await retry_read(lambda: svc.get_event(cal_id, event_id))
     """
+
     async def _retry(coro_fn, *, max_attempts: int = 3, delay: float = 1.0):
         last_exc: Exception | None = None
         for attempt in range(max_attempts):
@@ -74,6 +81,7 @@ def retry_read():
 # --------------------------------------------------------------------------- #
 # Credential helpers                                                           #
 # --------------------------------------------------------------------------- #
+
 
 def _require_env(*var_names: str) -> None:
     """Skip the test/fixture if any of the listed env vars are absent."""
@@ -115,9 +123,7 @@ async def google_stored():
     _require_env(*_GOOGLE_VARS)
     from omnidapter.providers.google.provider import GoogleProvider
 
-    stale = _stale_oauth2_stored(
-        "google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"])
     provider = GoogleProvider(
         client_id=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET"],
@@ -168,9 +174,7 @@ async def microsoft_stored():
     _require_env(*_MICROSOFT_VARS)
     from omnidapter.providers.microsoft.provider import MicrosoftProvider
 
-    stale = _stale_oauth2_stored(
-        "microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"])
     provider = MicrosoftProvider(
         client_id=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET"],
@@ -191,9 +195,7 @@ def microsoft_provider():
 
 @pytest.fixture(scope="module")
 def microsoft_service(microsoft_provider, microsoft_stored):
-    return microsoft_provider.get_calendar_service(
-        "integration-microsoft", microsoft_stored
-    )
+    return microsoft_provider.get_calendar_service("integration-microsoft", microsoft_stored)
 
 
 @pytest.fixture(scope="module")
@@ -222,9 +224,7 @@ async def zoho_stored():
     _require_env(*_ZOHO_VARS)
     from omnidapter.providers.zoho.provider import ZohoProvider
 
-    stale = _stale_oauth2_stored(
-        "zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"])
     provider = ZohoProvider(
         client_id=os.environ["OMNIDAPTER_TEST_ZOHO_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_ZOHO_CLIENT_SECRET"],

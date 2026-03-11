@@ -3,6 +3,7 @@ Abstract calendar service interface.
 
 All provider calendar implementations must implement this interface.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -41,6 +42,7 @@ class CalendarService(ABC):
         """Raise UnsupportedCapabilityError if capability is not supported."""
         if not self.supports(capability):
             from omnidapter.core.errors import UnsupportedCapabilityError
+
             raise UnsupportedCapabilityError(
                 f"Capability {capability.value!r} is not supported by this provider",
                 provider_key=self._provider_key,
@@ -59,9 +61,7 @@ class CalendarService(ABC):
         ...
 
     @abstractmethod
-    async def get_availability(
-        self, request: GetAvailabilityRequest
-    ) -> AvailabilityResponse:
+    async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
         """Query free/busy availability."""
         ...
 
@@ -97,4 +97,3 @@ class CalendarService(ABC):
     ) -> AsyncIterator[CalendarEvent]:
         """Return an async iterator over all events."""
         ...
-

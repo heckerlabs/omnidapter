@@ -17,6 +17,7 @@ points to localhost. For pre-release manual testing, point it at a real server
 
 CalDAV uses Basic auth, not OAuth, so there is no token-refresh test.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -39,6 +40,7 @@ pytestmark = pytest.mark.integration
 # Server discovery                                                             #
 # --------------------------------------------------------------------------- #
 
+
 async def test_caldav_discovery(caldav_service):
     """
     PROPFIND to the server URL discovers at least one calendar collection.
@@ -49,13 +51,14 @@ async def test_caldav_discovery(caldav_service):
     calendars = await caldav_service.list_calendars()
     assert len(calendars) >= 1
     for cal in calendars:
-        assert cal.calendar_id          # href path
+        assert cal.calendar_id  # href path
         assert isinstance(cal.summary, str)
 
 
 # --------------------------------------------------------------------------- #
 # CRUD round-trip                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_crud_round_trip(caldav_service, caldav_calendar_id, retry_read):
     """
@@ -131,6 +134,7 @@ async def test_crud_round_trip(caldav_service, caldav_calendar_id, retry_read):
 # Mapper fidelity (iCalendar parser)                                          #
 # --------------------------------------------------------------------------- #
 
+
 async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
     """
     Verify that the iCalendar VEVENT parser correctly maps all supported fields
@@ -154,9 +158,7 @@ async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
         created = await caldav_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: caldav_service.get_event(caldav_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: caldav_service.get_event(caldav_calendar_id, event_id))
 
         assert isinstance(fetched, CalendarEvent)
         assert fetched.event_id
@@ -169,9 +171,7 @@ async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
         assert fetched.ical_uid is not None
         # Attendees are included in the VCALENDAR and should round-trip.
         assert len(fetched.attendees) >= 1
-        assert any(
-            a.email == "integration-attendee@example.com" for a in fetched.attendees
-        )
+        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
         # raw_props in provider_data lets callers access unmapped iCal properties.
         assert fetched.provider_data is not None
         assert "raw_props" in fetched.provider_data
@@ -185,6 +185,7 @@ async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # All-day event                                                                #
 # --------------------------------------------------------------------------- #
+
 
 async def test_all_day_event(caldav_service, caldav_calendar_id, retry_read):
     """
@@ -204,9 +205,7 @@ async def test_all_day_event(caldav_service, caldav_calendar_id, retry_read):
         created = await caldav_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: caldav_service.get_event(caldav_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: caldav_service.get_event(caldav_calendar_id, event_id))
         assert fetched.all_day is True
         assert isinstance(fetched.start, date)
         assert not isinstance(fetched.start, datetime)
@@ -220,6 +219,7 @@ async def test_all_day_event(caldav_service, caldav_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Recurrence                                                                   #
 # --------------------------------------------------------------------------- #
+
 
 async def test_recurring_event(caldav_service, caldav_calendar_id, retry_read):
     """RRULE lines in the VCALENDAR are preserved in the Recurrence model."""
@@ -239,9 +239,7 @@ async def test_recurring_event(caldav_service, caldav_calendar_id, retry_read):
         created = await caldav_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: caldav_service.get_event(caldav_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: caldav_service.get_event(caldav_calendar_id, event_id))
         assert fetched.recurrence is not None
         assert any("RRULE" in rule for rule in fetched.recurrence.rules)
 
@@ -254,6 +252,7 @@ async def test_recurring_event(caldav_service, caldav_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Pagination (REPORT query)                                                    #
 # --------------------------------------------------------------------------- #
+
 
 async def test_pagination(caldav_service, caldav_calendar_id):
     """
@@ -289,9 +288,7 @@ async def test_pagination(caldav_service, caldav_calendar_id):
             if f"{EVENT_PREFIX} pagination-" in (event.summary or ""):
                 collected.append(event)
 
-        assert len(collected) >= n, (
-            f"Expected at least {n} test events, got {len(collected)}"
-        )
+        assert len(collected) >= n, f"Expected at least {n} test events, got {len(collected)}"
 
     finally:
         for uid in created_uids:

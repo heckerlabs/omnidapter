@@ -1,6 +1,7 @@
 """
 CalDAV provider registration class.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,6 +30,7 @@ class CalDAVProvider(BaseProvider):
         hooks: Any = None,
     ) -> Any:
         from omnidapter.providers.caldav.calendar import CalDAVCalendarService
+
         return CalDAVCalendarService(
             connection_id=connection_id,
             stored_credential=stored_credential,

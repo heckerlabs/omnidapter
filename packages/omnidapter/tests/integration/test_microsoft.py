@@ -13,6 +13,7 @@ Optional:
 Use a dedicated test Microsoft account. Tests create and delete events but never
 touch data they did not create.
 """
+
 from __future__ import annotations
 
 import os
@@ -40,15 +41,14 @@ pytestmark = pytest.mark.integration
 # Token refresh                                                                #
 # --------------------------------------------------------------------------- #
 
+
 async def test_token_refresh():
     """
     Expired access token + valid refresh token → fresh credentials that work.
     """
     from omnidapter.providers.microsoft.provider import MicrosoftProvider
 
-    stale = _stale_oauth2_stored(
-        "microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"])
     assert stale.credentials.is_expired()
 
     provider = MicrosoftProvider(
@@ -71,6 +71,7 @@ async def test_token_refresh():
 # Calendar discovery                                                           #
 # --------------------------------------------------------------------------- #
 
+
 async def test_list_calendars(microsoft_service):
     """list_calendars() returns at least one Calendar with required fields."""
     calendars = await microsoft_service.list_calendars()
@@ -83,6 +84,7 @@ async def test_list_calendars(microsoft_service):
 # --------------------------------------------------------------------------- #
 # CRUD round-trip                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_crud_round_trip(microsoft_service, microsoft_calendar_id, retry_read):
     """
@@ -143,9 +145,7 @@ async def test_crud_round_trip(microsoft_service, microsoft_calendar_id, retry_r
 
         with pytest.raises(ProviderAPIError):
             await retry_read(
-                lambda: microsoft_service.get_event(
-                    microsoft_calendar_id, created.event_id
-                ),
+                lambda: microsoft_service.get_event(microsoft_calendar_id, created.event_id),
                 max_attempts=1,
             )
 
@@ -158,6 +158,7 @@ async def test_crud_round_trip(microsoft_service, microsoft_calendar_id, retry_r
 # --------------------------------------------------------------------------- #
 # Mapper fidelity                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_read):
     """
@@ -214,6 +215,7 @@ async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_r
 # All-day event                                                                #
 # --------------------------------------------------------------------------- #
 
+
 async def test_all_day_event(microsoft_service, microsoft_calendar_id, retry_read):
     """All-day events use the isAllDay flag; verify mapper honours it."""
     today = datetime.now(timezone.utc).date()
@@ -245,6 +247,7 @@ async def test_all_day_event(microsoft_service, microsoft_calendar_id, retry_rea
 # --------------------------------------------------------------------------- #
 # Pagination                                                                   #
 # --------------------------------------------------------------------------- #
+
 
 async def test_pagination(microsoft_service, microsoft_calendar_id):
     """
@@ -290,6 +293,7 @@ async def test_pagination(microsoft_service, microsoft_calendar_id):
 # --------------------------------------------------------------------------- #
 # Availability (free/busy)                                                     #
 # --------------------------------------------------------------------------- #
+
 
 async def test_get_availability(microsoft_service, microsoft_calendar_id):
     """get_availability() returns a well-formed AvailabilityResponse."""

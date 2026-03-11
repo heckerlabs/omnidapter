@@ -4,6 +4,7 @@ Normalized calendar domain models.
 Common fields are first-class. Provider-specific or unmapped data goes into
 `provider_data` (typed as dict[str, Any] | None, not covered by semver guarantees).
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -37,6 +38,7 @@ class EventVisibility(str, Enum):
 
 class ConferenceEntryPoint(BaseModel):
     """A single entry point for a conference (e.g., video URL, phone dial-in)."""
+
     entry_point_type: str  # "video", "phone", "sip", "more"
     uri: str
     label: str | None = None
@@ -46,6 +48,7 @@ class ConferenceEntryPoint(BaseModel):
 
 class ConferenceData(BaseModel):
     """Conference/video call information attached to an event."""
+
     conference_id: str | None = None
     conference_solution_name: str | None = None
     entry_points: list[ConferenceEntryPoint] = []
@@ -55,12 +58,14 @@ class ConferenceData(BaseModel):
 
 class ReminderOverride(BaseModel):
     """A single reminder override for an event."""
+
     method: str  # "email", "popup", "sms"
     minutes_before: int
 
 
 class Reminder(BaseModel):
     """Reminder configuration for an event."""
+
     use_default: bool = False
     overrides: list[ReminderOverride] = []
 
@@ -70,6 +75,7 @@ class Recurrence(BaseModel):
 
     `rules` contains RRULE/EXRULE/RDATE/EXDATE strings (RFC 5545 format).
     """
+
     rules: list[str] = []
     recurring_event_id: str | None = None
     original_start_time: datetime | date | None = None
@@ -78,6 +84,7 @@ class Recurrence(BaseModel):
 
 class Attendee(BaseModel):
     """An event attendee."""
+
     email: str
     display_name: str | None = None
     status: AttendeeStatus = AttendeeStatus.NEEDS_ACTION
@@ -91,6 +98,7 @@ class Attendee(BaseModel):
 
 class Organizer(BaseModel):
     """Event organizer."""
+
     email: str
     display_name: str | None = None
     is_self: bool = False
@@ -99,6 +107,7 @@ class Organizer(BaseModel):
 
 class CalendarEvent(BaseModel):
     """A normalized calendar event."""
+
     event_id: str
     calendar_id: str
     summary: str | None = None
@@ -140,6 +149,7 @@ class CalendarEvent(BaseModel):
 
 class Calendar(BaseModel):
     """A normalized calendar."""
+
     calendar_id: str
     summary: str
     description: str | None = None
@@ -153,6 +163,7 @@ class Calendar(BaseModel):
 
 class FreeBusyInterval(BaseModel):
     """A busy time interval."""
+
     start: datetime
     end: datetime
     provider_data: dict[str, Any] | None = None
@@ -160,9 +171,9 @@ class FreeBusyInterval(BaseModel):
 
 class AvailabilityResponse(BaseModel):
     """Result of a free/busy availability query."""
+
     queried_calendars: list[str]
     time_min: datetime
     time_max: datetime
     busy_intervals: list[FreeBusyInterval] = []
     provider_data: dict[str, Any] | None = None
-

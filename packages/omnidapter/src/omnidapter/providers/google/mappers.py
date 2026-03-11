@@ -6,6 +6,7 @@ Public API:
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -28,6 +29,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Private helpers                                                              #
 # --------------------------------------------------------------------------- #
+
 
 def _parse_event_time(time_obj: dict) -> datetime | date:
     if "dateTime" in time_obj:
@@ -76,6 +78,7 @@ _CANONICAL_VISIBILITY_TO_GOOGLE = {v: k for k, v in _GOOGLE_VISIBILITY.items()}
 # --------------------------------------------------------------------------- #
 # Public mappers                                                               #
 # --------------------------------------------------------------------------- #
+
 
 def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
     """Map a raw Google Calendar API event dict to a canonical CalendarEvent."""
@@ -156,12 +159,30 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         with contextlib.suppress(Exception):
             updated_at = datetime.fromisoformat(raw["updated"].replace("Z", "+00:00"))
 
-    _MAPPED_KEYS = frozenset({
-        "id", "summary", "description", "location", "status", "visibility",
-        "start", "end", "organizer", "attendees", "recurrence",
-        "recurringEventId", "originalStartTime", "conferenceData",
-        "created", "updated", "htmlLink", "iCalUID", "etag", "sequence",
-    })
+    _MAPPED_KEYS = frozenset(
+        {
+            "id",
+            "summary",
+            "description",
+            "location",
+            "status",
+            "visibility",
+            "start",
+            "end",
+            "organizer",
+            "attendees",
+            "recurrence",
+            "recurringEventId",
+            "originalStartTime",
+            "conferenceData",
+            "created",
+            "updated",
+            "htmlLink",
+            "iCalUID",
+            "etag",
+            "sequence",
+        }
+    )
     return CalendarEvent(
         event_id=raw["id"],
         calendar_id=calendar_id,
@@ -169,7 +190,9 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         description=raw.get("description"),
         location=raw.get("location"),
         status=_GOOGLE_STATUS.get(raw.get("status", "confirmed"), EventStatus.CONFIRMED),
-        visibility=_GOOGLE_VISIBILITY.get(raw.get("visibility", "default"), EventVisibility.DEFAULT),
+        visibility=_GOOGLE_VISIBILITY.get(
+            raw.get("visibility", "default"), EventVisibility.DEFAULT
+        ),
         start=start,
         end=end,
         all_day=all_day,
@@ -218,10 +241,18 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
 
 def to_calendar(raw: dict) -> Calendar:
     """Map a raw Google CalendarListEntry to a canonical Calendar."""
-    _MAPPED_KEYS = frozenset({
-        "id", "summary", "description", "timeZone",
-        "primary", "accessRole", "backgroundColor", "foregroundColor",
-    })
+    _MAPPED_KEYS = frozenset(
+        {
+            "id",
+            "summary",
+            "description",
+            "timeZone",
+            "primary",
+            "accessRole",
+            "backgroundColor",
+            "foregroundColor",
+        }
+    )
     return Calendar(
         calendar_id=raw["id"],
         summary=raw.get("summary", ""),

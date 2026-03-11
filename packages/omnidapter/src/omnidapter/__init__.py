@@ -15,6 +15,7 @@ Quick start:
     async for event in calendar.list_events(calendar_id="primary"):
         print(event.summary)
 """
+
 from omnidapter.auth.models import (
     ApiKeyCredentials,
     BaseCredentials,

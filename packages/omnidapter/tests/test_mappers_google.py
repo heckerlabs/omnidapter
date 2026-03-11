@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.providers.google.mappers.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -19,6 +20,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _make_raw(overrides: dict | None = None) -> dict:
     base = {
@@ -49,6 +51,7 @@ def _make_event(**kwargs) -> CalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar_event                                                            #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendarEvent:
     def test_basic_fields(self):
@@ -86,17 +89,21 @@ class TestToCalendarEvent:
         assert event.all_day is False
 
     def test_all_day_event_parses_date(self):
-        raw = _make_raw({
-            "start": {"date": "2024-06-15"},
-            "end": {"date": "2024-06-16"},
-        })
+        raw = _make_raw(
+            {
+                "start": {"date": "2024-06-15"},
+                "end": {"date": "2024-06-16"},
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert isinstance(event.start, date)
         assert not isinstance(event.start, datetime)
         assert event.all_day is True
 
     def test_organizer_mapped(self):
-        raw = _make_raw({"organizer": {"email": "boss@example.com", "displayName": "Boss", "self": True}})
+        raw = _make_raw(
+            {"organizer": {"email": "boss@example.com", "displayName": "Boss", "self": True}}
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.organizer is not None
         assert event.organizer.email == "boss@example.com"
@@ -104,10 +111,14 @@ class TestToCalendarEvent:
         assert event.organizer.is_self is True
 
     def test_attendees_mapped(self):
-        raw = _make_raw({"attendees": [
-            {"email": "a@x.com", "displayName": "A", "responseStatus": "accepted"},
-            {"email": "b@x.com", "responseStatus": "declined"},
-        ]})
+        raw = _make_raw(
+            {
+                "attendees": [
+                    {"email": "a@x.com", "displayName": "A", "responseStatus": "accepted"},
+                    {"email": "b@x.com", "responseStatus": "declined"},
+                ]
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert len(event.attendees) == 2
         assert event.attendees[0].email == "a@x.com"
@@ -132,13 +143,17 @@ class TestToCalendarEvent:
         assert event.recurrence.recurring_event_id == "parent-123"
 
     def test_conference_data_mapped(self):
-        raw = _make_raw({"conferenceData": {
-            "conferenceId": "conf-1",
-            "conferenceSolution": {"name": "Google Meet"},
-            "entryPoints": [
-                {"entryPointType": "video", "uri": "https://meet.google.com/abc"},
-            ],
-        }})
+        raw = _make_raw(
+            {
+                "conferenceData": {
+                    "conferenceId": "conf-1",
+                    "conferenceSolution": {"name": "Google Meet"},
+                    "entryPoints": [
+                        {"entryPointType": "video", "uri": "https://meet.google.com/abc"},
+                    ],
+                }
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.conference_data is not None
         assert event.conference_data.conference_id == "conf-1"
@@ -146,10 +161,12 @@ class TestToCalendarEvent:
         assert event.conference_data.join_url == "https://meet.google.com/abc"
 
     def test_created_updated_timestamps(self):
-        raw = _make_raw({
-            "created": "2024-01-01T00:00:00Z",
-            "updated": "2024-06-01T12:00:00Z",
-        })
+        raw = _make_raw(
+            {
+                "created": "2024-01-01T00:00:00Z",
+                "updated": "2024-06-01T12:00:00Z",
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.created_at is not None
         assert event.updated_at is not None
@@ -177,6 +194,7 @@ class TestToCalendarEvent:
 # --------------------------------------------------------------------------- #
 # from_calendar_event                                                          #
 # --------------------------------------------------------------------------- #
+
 
 class TestFromCalendarEvent:
     def test_basic_fields(self):
@@ -225,9 +243,11 @@ class TestFromCalendarEvent:
         assert "status" not in body
 
     def test_attendees_mapped(self):
-        event = _make_event(attendees=[
-            Attendee(email="a@x.com", display_name="A", optional=True),
-        ])
+        event = _make_event(
+            attendees=[
+                Attendee(email="a@x.com", display_name="A", optional=True),
+            ]
+        )
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["email"] == "a@x.com"
         assert body["attendees"][0]["optional"] is True
@@ -247,6 +267,7 @@ class TestFromCalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar                                                                  #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendar:
     def test_basic_fields(self):

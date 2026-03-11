@@ -1,6 +1,7 @@
 """
 Unit tests for the error hierarchy.
 """
+
 from datetime import datetime, timezone
 
 from omnidapter.core.errors import (

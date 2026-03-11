@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.auth.refresh.TokenRefreshManager.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -17,6 +18,7 @@ from omnidapter.testing.fakes.stores import InMemoryCredentialStore
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _stored_oauth(
     expired: bool = False,
@@ -71,6 +73,7 @@ def _make_manager(
 # ensure_fresh — missing connection                                            #
 # --------------------------------------------------------------------------- #
 
+
 class TestEnsureFreshMissing:
     async def test_raises_connection_not_found(self):
         mgr, _, _ = _make_manager()
@@ -81,6 +84,7 @@ class TestEnsureFreshMissing:
 # --------------------------------------------------------------------------- #
 # ensure_fresh — non-OAuth credentials                                        #
 # --------------------------------------------------------------------------- #
+
 
 class TestEnsureFreshNonOAuth:
     async def test_api_key_returned_unchanged(self):
@@ -102,6 +106,7 @@ class TestEnsureFreshNonOAuth:
 # ensure_fresh — OAuth2, token not expired                                    #
 # --------------------------------------------------------------------------- #
 
+
 class TestEnsureFreshNotExpired:
     async def test_fresh_token_returned_without_refresh(self):
         mgr, store, registry = _make_manager()
@@ -115,6 +120,7 @@ class TestEnsureFreshNotExpired:
 # --------------------------------------------------------------------------- #
 # ensure_fresh — OAuth2, expired but not refreshable                          #
 # --------------------------------------------------------------------------- #
+
 
 class TestEnsureFreshExpiredNoRefreshToken:
     async def test_expired_no_refresh_token_returned_as_is(self):
@@ -130,6 +136,7 @@ class TestEnsureFreshExpiredNoRefreshToken:
 # --------------------------------------------------------------------------- #
 # ensure_fresh — OAuth2, expired and refreshable                              #
 # --------------------------------------------------------------------------- #
+
 
 class TestEnsureFreshRefreshes:
     async def test_token_refreshed_and_persisted(self):
@@ -156,4 +163,3 @@ class TestEnsureFreshRefreshes:
         # Persisted
         saved = await store.get_credentials("conn-1")
         assert saved is new_stored
-

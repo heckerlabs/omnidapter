@@ -1,6 +1,7 @@
 """
 Automatic token refresh logic.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -35,6 +36,7 @@ class TokenRefreshManager:
         stored = await self._credential_store.get_credentials(connection_id)
         if stored is None:
             from omnidapter.core.errors import ConnectionNotFoundError
+
             raise ConnectionNotFoundError(connection_id)
 
         # Only refresh OAuth2 credentials
@@ -65,7 +67,8 @@ class TokenRefreshManager:
 
         auth_logger.info(
             "Token refreshed successfully: connection_id=%r provider=%r",
-            connection_id, stored.provider_key,
+            connection_id,
+            stored.provider_key,
         )
 
         return updated

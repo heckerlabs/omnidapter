@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.auth.oauth.OAuthHelper and helpers.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,7 @@ from omnidapter.testing.fakes.stores import InMemoryCredentialStore, InMemoryOAu
 # --------------------------------------------------------------------------- #
 # _generate_pkce_pair                                                          #
 # --------------------------------------------------------------------------- #
+
 
 class TestGeneratePkcePair:
     def test_returns_two_strings(self):
@@ -48,8 +50,10 @@ class TestGeneratePkcePair:
 # OAuthHelper.begin                                                            #
 # --------------------------------------------------------------------------- #
 
+
 def _make_helper(supports_pkce: bool = False):
     from omnidapter.providers._base import OAuthConfig
+
     oauth_config = OAuthConfig(
         client_id="client-id",
         client_secret="client-secret",
@@ -107,7 +111,9 @@ class TestOAuthHelperBegin:
 
     async def test_custom_scopes_override_defaults(self):
         helper, _, _, _ = _make_helper()
-        result = await helper.begin("p", "conn-1", "https://app.example/cb", scopes=["custom.scope"])
+        result = await helper.begin(
+            "p", "conn-1", "https://app.example/cb", scopes=["custom.scope"]
+        )
         assert "custom.scope" in result.authorization_url
         assert "calendar.read" not in result.authorization_url
 
@@ -146,7 +152,9 @@ class TestOAuthHelperBegin:
     async def test_extra_params_appended(self):
         helper, _, _, _ = _make_helper()
         result = await helper.begin(
-            "p", "conn-1", "https://app.example/cb",
+            "p",
+            "conn-1",
+            "https://app.example/cb",
             extra_params={"prompt": "consent"},
         )
         assert "prompt=consent" in result.authorization_url
@@ -156,9 +164,11 @@ class TestOAuthHelperBegin:
 # OAuthHelper.complete                                                         #
 # --------------------------------------------------------------------------- #
 
+
 def _make_stored_credential(provider_key: str = "p") -> StoredCredential:
     from omnidapter.auth.models import OAuth2Credentials
     from omnidapter.core.metadata import AuthKind
+
     return StoredCredential(
         provider_key=provider_key,
         auth_kind=AuthKind.OAUTH2,
@@ -187,7 +197,9 @@ class TestOAuthHelperComplete:
         mock_provider.exchange_code_for_tokens = AsyncMock(return_value=stored)
         registry.get.return_value = mock_provider
 
-        result = await helper.complete("p", "conn-1", "code-xyz", state_id, "https://app.example/cb")
+        result = await helper.complete(
+            "p", "conn-1", "code-xyz", state_id, "https://app.example/cb"
+        )
         assert result is stored
 
     async def test_credentials_persisted_after_complete(self):
@@ -246,7 +258,8 @@ class TestOAuthHelperComplete:
             redirect_uri="https://r",
             expires_at=datetime(2000, 1, 1, tzinfo=timezone.utc),  # already expired
         )
-        await state_store.save_state("state-old", pending.model_dump(mode="json"), pending.expires_at)
+        await state_store.save_state(
+            "state-old", pending.model_dump(mode="json"), pending.expires_at
+        )
         with pytest.raises(OAuthStateError, match="expired"):
             await helper.complete("p", "conn-1", "code", "state-old", "https://r")
-

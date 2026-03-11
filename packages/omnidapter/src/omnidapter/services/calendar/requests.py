@@ -1,6 +1,7 @@
 """
 Request models for calendar service write operations.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -19,6 +20,7 @@ from omnidapter.services.calendar.models import (
 
 class CreateEventRequest(BaseModel):
     """Request model for creating a calendar event."""
+
     calendar_id: str
     summary: str
     start: datetime | date
@@ -38,6 +40,7 @@ class CreateEventRequest(BaseModel):
 
 class UpdateEventRequest(BaseModel):
     """Request model for updating a calendar event."""
+
     calendar_id: str
     event_id: str
     summary: str | None = None
@@ -58,8 +61,8 @@ class UpdateEventRequest(BaseModel):
 
 class GetAvailabilityRequest(BaseModel):
     """Request model for querying free/busy availability."""
+
     calendar_ids: list[str]
     time_min: datetime
     time_max: datetime
     timezone: str | None = None
-

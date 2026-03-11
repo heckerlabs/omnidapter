@@ -6,6 +6,7 @@ Public API:
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -22,6 +23,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Private helpers                                                              #
 # --------------------------------------------------------------------------- #
+
 
 def _parse_zoho_datetime(dt_str: str | None) -> datetime | None:
     if not dt_str:
@@ -47,6 +49,7 @@ def _format_zoho_datetime(dt: datetime | date) -> str:
 # Public mappers                                                               #
 # --------------------------------------------------------------------------- #
 
+
 def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
     """Map a raw Zoho Calendar event dict to a canonical CalendarEvent."""
     date_and_time = raw.get("dateandtime", {})
@@ -62,10 +65,18 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         for att in raw.get("attendees", [])
     ]
 
-    _MAPPED_KEYS = frozenset({
-        "uid", "id", "title", "description", "location",
-        "dateandtime", "attendees", "isallday",
-    })
+    _MAPPED_KEYS = frozenset(
+        {
+            "uid",
+            "id",
+            "title",
+            "description",
+            "location",
+            "dateandtime",
+            "attendees",
+            "isallday",
+        }
+    )
     return CalendarEvent(
         event_id=raw.get("uid", raw.get("id", "")),
         calendar_id=calendar_id,
@@ -97,8 +108,7 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
         body["location"] = event.location
     if event.attendees:
         body["attendees"] = [
-            {"email": a.email, "name": a.display_name or a.email}
-            for a in event.attendees
+            {"email": a.email, "name": a.display_name or a.email} for a in event.attendees
         ]
     return body
 

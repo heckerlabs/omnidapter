@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.providers.caldav.mappers.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -17,31 +18,35 @@ from omnidapter.services.calendar.models import (
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
 
-_SIMPLE_ICAL = "\r\n".join([
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "BEGIN:VEVENT",
-    "UID:test-uid-123",
-    "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-    "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-    "SUMMARY:Hello World",
-    "DESCRIPTION:A test event",
-    "LOCATION:Somewhere",
-    "END:VEVENT",
-    "END:VCALENDAR",
-])
+_SIMPLE_ICAL = "\r\n".join(
+    [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        "UID:test-uid-123",
+        "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+        "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+        "SUMMARY:Hello World",
+        "DESCRIPTION:A test event",
+        "LOCATION:Somewhere",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+)
 
-_ALL_DAY_ICAL = "\r\n".join([
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "BEGIN:VEVENT",
-    "UID:all-day-uid",
-    "DTSTART;VALUE=DATE:20240615",
-    "DTEND;VALUE=DATE:20240616",
-    "SUMMARY:All Day",
-    "END:VEVENT",
-    "END:VCALENDAR",
-])
+_ALL_DAY_ICAL = "\r\n".join(
+    [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        "UID:all-day-uid",
+        "DTSTART;VALUE=DATE:20240615",
+        "DTEND;VALUE=DATE:20240616",
+        "SUMMARY:All Day",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+)
 
 
 def _make_event(**kwargs) -> CalendarEvent:
@@ -59,6 +64,7 @@ def _make_event(**kwargs) -> CalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar_event                                                            #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendarEvent:
     def test_basic_fields(self):
@@ -94,61 +100,69 @@ class TestToCalendarEvent:
         assert event.ical_uid == "test-uid-123"
 
     def test_uid_generated_when_missing(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "SUMMARY:No UID",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "SUMMARY:No UID",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         assert event.event_id  # generated uid is non-empty
 
     def test_status_confirmed(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "UID:x",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "STATUS:CONFIRMED",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "UID:x",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "STATUS:CONFIRMED",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         assert event.status == EventStatus.CONFIRMED
 
     def test_status_cancelled(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "UID:x",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "STATUS:CANCELLED",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "UID:x",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "STATUS:CANCELLED",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         assert event.status == EventStatus.CANCELLED
 
     def test_attendees_parsed(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "UID:x",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "ATTENDEE;CN=Alice:mailto:alice@example.com",
-            "ATTENDEE;CN=Bob:mailto:bob@example.com",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "UID:x",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "ATTENDEE;CN=Alice:mailto:alice@example.com",
+                "ATTENDEE;CN=Bob:mailto:bob@example.com",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         emails = {a.email for a in event.attendees}
@@ -156,16 +170,18 @@ class TestToCalendarEvent:
         assert "bob@example.com" in emails
 
     def test_rrule_captured(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "UID:x",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "RRULE:FREQ=WEEKLY;COUNT=4",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "UID:x",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "RRULE:FREQ=WEEKLY;COUNT=4",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         assert event.recurrence is not None
@@ -178,17 +194,19 @@ class TestToCalendarEvent:
         assert "raw_props" in event.provider_data
 
     def test_created_last_modified_timestamps(self):
-        ical = "\r\n".join([
-            "BEGIN:VCALENDAR",
-            "BEGIN:VEVENT",
-            "UID:x",
-            "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
-            "DTEND;VALUE=DATE-TIME:20240615T110000Z",
-            "CREATED:20240101T000000Z",
-            "LAST-MODIFIED:20240601T120000Z",
-            "END:VEVENT",
-            "END:VCALENDAR",
-        ])
+        ical = "\r\n".join(
+            [
+                "BEGIN:VCALENDAR",
+                "BEGIN:VEVENT",
+                "UID:x",
+                "DTSTART;VALUE=DATE-TIME:20240615T100000Z",
+                "DTEND;VALUE=DATE-TIME:20240615T110000Z",
+                "CREATED:20240101T000000Z",
+                "LAST-MODIFIED:20240601T120000Z",
+                "END:VEVENT",
+                "END:VCALENDAR",
+            ]
+        )
         event = mappers.to_calendar_event(ical, "c")
         assert event is not None
         assert event.created_at is not None
@@ -198,6 +216,7 @@ class TestToCalendarEvent:
 # --------------------------------------------------------------------------- #
 # from_calendar_event                                                          #
 # --------------------------------------------------------------------------- #
+
 
 class TestFromCalendarEvent:
     def test_returns_string(self):
@@ -246,10 +265,12 @@ class TestFromCalendarEvent:
         assert "DATE-TIME" not in result
 
     def test_attendees_in_output(self):
-        event = _make_event(attendees=[
-            Attendee(email="alice@example.com", display_name="Alice"),
-            Attendee(email="bob@example.com"),
-        ])
+        event = _make_event(
+            attendees=[
+                Attendee(email="alice@example.com", display_name="Alice"),
+                Attendee(email="bob@example.com"),
+            ]
+        )
         result = mappers.from_calendar_event(event)
         assert "mailto:alice@example.com" in result
         assert "CN=Alice" in result
