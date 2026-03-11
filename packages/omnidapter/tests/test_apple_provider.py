@@ -8,11 +8,14 @@ is "apple" — all without the caller supplying a server_url config field.
 
 from __future__ import annotations
 
+import pytest
 from omnidapter.auth.models import BasicCredentials
+from omnidapter.core.errors import InvalidCredentialFormatError
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers.apple.calendar import ICLOUD_CALDAV_URL, AppleCalendarService
 from omnidapter.providers.apple.metadata import APPLE_METADATA
 from omnidapter.providers.apple.provider import AppleProvider
+from omnidapter.providers.caldav.calendar import CalDAVCalendarService
 from omnidapter.providers.caldav.server_hints import CalDAVServerHint
 from omnidapter.stores.credentials import StoredCredential
 
@@ -84,3 +87,45 @@ class TestAppleProvider:
         stored = _apple_stored()
         svc = provider.get_calendar_service("conn-1", stored)
         assert svc._stored is stored
+
+
+# --------------------------------------------------------------------------- #
+# CalDAVCalendarService server_url validation                                  #
+# --------------------------------------------------------------------------- #
+
+
+def _caldav_stored(server_url: str | None = None) -> StoredCredential:
+    config = {"server_url": server_url} if server_url is not None else None
+    return StoredCredential(
+        provider_key="caldav",
+        auth_kind=AuthKind.BASIC,
+        credentials=BasicCredentials(username="u", password="p"),
+        provider_config=config,
+    )
+
+
+class TestCalDAVServerUrlValidation:
+    def test_missing_server_url_raises(self):
+        with pytest.raises(InvalidCredentialFormatError, match="server_url"):
+            CalDAVCalendarService("conn-1", _caldav_stored())
+
+    def test_empty_server_url_raises(self):
+        with pytest.raises(InvalidCredentialFormatError, match="server_url"):
+            CalDAVCalendarService("conn-1", _caldav_stored(server_url=""))
+
+    def test_valid_server_url_accepted(self):
+        svc = CalDAVCalendarService(
+            "conn-1", _caldav_stored(server_url="https://caldav.example.com")
+        )
+        assert svc._server_url == "https://caldav.example.com"
+
+    def test_trailing_slash_stripped(self):
+        svc = CalDAVCalendarService(
+            "conn-1", _caldav_stored(server_url="https://caldav.example.com/")
+        )
+        assert not svc._server_url.endswith("/")
+
+    def test_apple_subclass_does_not_require_server_url(self):
+        """AppleCalendarService hardcodes iCloud URL; no server_url in provider_config needed."""
+        svc = AppleCalendarService("conn-1", _apple_stored())
+        assert svc._server_url == ICLOUD_CALDAV_URL

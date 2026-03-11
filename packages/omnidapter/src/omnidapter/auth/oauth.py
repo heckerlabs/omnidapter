@@ -93,7 +93,11 @@ class OAuthHelper:
         # Scopes
         effective_scopes = scopes or oauth_config.default_scopes
         if effective_scopes:
-            params["scope"] = " ".join(effective_scopes)
+            params["scope"] = oauth_config.scope_separator.join(effective_scopes)
+
+        # Provider-defined extra params (e.g. access_type=offline for Google)
+        if oauth_config.extra_auth_params:
+            params.update(oauth_config.extra_auth_params)
 
         # PKCE
         if oauth_config.supports_pkce:
@@ -101,6 +105,7 @@ class OAuthHelper:
             params["code_challenge"] = code_challenge
             params["code_challenge_method"] = "S256"
 
+        # Caller overrides last so they can always override provider defaults
         if extra_params:
             params.update(extra_params)
 

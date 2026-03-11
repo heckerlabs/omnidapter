@@ -58,6 +58,7 @@ class OAuthProviderMixin:
             default_scopes=list(self.default_scopes),
             supports_pkce=self.supports_pkce,
             extra_auth_params=dict(self.extra_auth_params),
+            scope_separator=self.scope_separator,
         )
 
     def _build_stored_credential(self, token_data: dict[str, Any]) -> StoredCredential:
