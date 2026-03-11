@@ -2,6 +2,8 @@
 
 Each provider requires different credentials and configuration. This guide covers setup for all built-in providers and shows how to wire the OAuth flow into a web application.
 
+By default, Omnidapter auto-registers OAuth providers only when their environment credentials are present. You can always register providers manually (as shown below) to use constructor-based credentials.
+
 ---
 
 ## Google Calendar
