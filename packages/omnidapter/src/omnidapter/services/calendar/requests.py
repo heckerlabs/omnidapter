@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from omnidapter.services.calendar.models import (
     Attendee,
     ConferenceData,
+    EventStatus,
     Recurrence,
     Reminder,
 )
@@ -31,7 +32,7 @@ class CreateEventRequest(BaseModel):
     conference_data: ConferenceData | None = None
     reminders: Reminder | None = None
     visibility: str | None = None
-    status: str | None = None
+    status: EventStatus | None = None
     extra: dict[str, Any] = {}  # Provider-specific extra fields
 
 
@@ -51,7 +52,7 @@ class UpdateEventRequest(BaseModel):
     conference_data: ConferenceData | None = None
     reminders: Reminder | None = None
     visibility: str | None = None
-    status: str | None = None
+    status: EventStatus | None = None
     extra: dict[str, Any] = {}  # Provider-specific extra fields
 
 
