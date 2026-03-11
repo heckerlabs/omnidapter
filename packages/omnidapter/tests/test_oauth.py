@@ -307,6 +307,36 @@ class TestOAuthHelperComplete:
         await helper.complete("p", "conn-1", "code-xyz", state_id, "https://app.example/cb")
         assert await state_store.load_state(state_id) is None
 
+    async def test_complete_configures_provider_transport(self):
+        from omnidapter.transport.retry import RetryPolicy
+
+        retry_policy = RetryPolicy.no_retry()
+        shared_client = MagicMock()
+        registry = MagicMock()
+        state_store = InMemoryOAuthStateStore()
+        cred_store = InMemoryCredentialStore()
+        helper = OAuthHelper(
+            registry=registry,
+            credential_store=cred_store,
+            oauth_state_store=state_store,
+            retry_policy=retry_policy,
+            http_client=shared_client,
+        )
+        state_id = await self._setup_pending_state(state_store)
+
+        stored = _make_stored_credential("p")
+        mock_provider = MagicMock()
+        mock_provider.exchange_code_for_tokens = AsyncMock(return_value=stored)
+        registry.get.return_value = mock_provider
+
+        await helper.complete("p", "conn-1", "code-xyz", state_id, "https://app.example/cb")
+
+        mock_provider.configure_oauth_transport.assert_called_once_with(
+            retry_policy=retry_policy,
+            hooks=None,
+            http_client=shared_client,
+        )
+
     async def test_missing_state_raises_oauth_state_error(self):
         helper, _, _, _ = _make_helper()
         with pytest.raises(OAuthStateError, match="not found"):

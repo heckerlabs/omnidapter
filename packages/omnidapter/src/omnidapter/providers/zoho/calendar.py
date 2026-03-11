@@ -67,8 +67,17 @@ class ZohoCalendarService(CalendarService):
     def _provider_key(self) -> str:
         return "zoho"
 
-    def _auth_headers(self) -> dict[str, str]:
-        creds = self._stored.credentials
+    async def _resolve_stored_credential(self) -> StoredCredential:
+        resolver = getattr(self, "_credential_resolver", None)
+        if resolver is None:
+            return self._stored
+
+        latest = await resolver(self._connection_id)
+        self._stored = latest
+        return latest
+
+    async def _auth_headers(self) -> dict[str, str]:
+        creds = (await self._resolve_stored_credential()).credentials
         if isinstance(creds, OAuth2Credentials):
             return {"Authorization": f"Zoho-oauthtoken {creds.access_token}"}
         return {}
@@ -76,7 +85,7 @@ class ZohoCalendarService(CalendarService):
     async def list_calendars(self) -> list[Calendar]:
         self._require_capability(CalendarCapability.LIST_CALENDARS)
         response = await self._http.request(
-            "GET", f"{ZOHO_API_BASE}/calendars", headers=self._auth_headers()
+            "GET", f"{ZOHO_API_BASE}/calendars", headers=await self._auth_headers()
         )
         data = response.json()
         return [mappers.to_calendar(cal) for cal in data.get("calendars", [])]
@@ -109,7 +118,7 @@ class ZohoCalendarService(CalendarService):
         response = await self._http.request(
             "POST",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events",
-            headers=self._auth_headers(),
+            headers=await self._auth_headers(),
             json={"eventdata": _json.dumps(body)},
         )
         data = response.json()
@@ -140,7 +149,7 @@ class ZohoCalendarService(CalendarService):
         response = await self._http.request(
             "PUT",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events/{request.event_id}",
-            headers=self._auth_headers(),
+            headers=await self._auth_headers(),
             json={"eventdata": _json.dumps(body)},
         )
         data = response.json()
@@ -158,7 +167,7 @@ class ZohoCalendarService(CalendarService):
         await self._http.request(
             "DELETE",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events/{event_id}",
-            headers=self._auth_headers(),
+            headers=await self._auth_headers(),
         )
 
     async def get_event(self, calendar_id: str, event_id: str) -> CalendarEvent:
@@ -166,7 +175,7 @@ class ZohoCalendarService(CalendarService):
         response = await self._http.request(
             "GET",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events/{event_id}",
-            headers=self._auth_headers(),
+            headers=await self._auth_headers(),
         )
         data = response.json()
         events = data.get("events", [{}])
@@ -197,7 +206,7 @@ class ZohoCalendarService(CalendarService):
         response = await self._http.request(
             "GET",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events",
-            headers=self._auth_headers(),
+            headers=await self._auth_headers(),
             params=params,
         )
         data = response.json()

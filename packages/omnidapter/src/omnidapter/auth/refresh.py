@@ -9,8 +9,12 @@ from typing import TYPE_CHECKING
 from omnidapter.core.logging import auth_logger
 
 if TYPE_CHECKING:
+    import httpx
+
     from omnidapter.core.registry import ProviderRegistry
     from omnidapter.stores.credentials import CredentialStore, StoredCredential
+    from omnidapter.transport.hooks import TransportHooks
+    from omnidapter.transport.retry import RetryPolicy
 
 
 class TokenRefreshManager:
@@ -20,9 +24,24 @@ class TokenRefreshManager:
         self,
         registry: ProviderRegistry,
         credential_store: CredentialStore,
+        retry_policy: RetryPolicy | None = None,
+        hooks: TransportHooks | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._registry = registry
         self._credential_store = credential_store
+        self._retry_policy = retry_policy
+        self._hooks = hooks
+        self._http_client = http_client
+
+    def _configure_provider_transport(self, provider_impl: object) -> None:
+        configure = getattr(provider_impl, "configure_oauth_transport", None)
+        if callable(configure):
+            configure(
+                retry_policy=self._retry_policy,
+                hooks=self._hooks,
+                http_client=self._http_client,
+            )
 
     async def ensure_fresh(self, connection_id: str) -> StoredCredential:
         """Ensure credentials are fresh, refreshing if necessary.
@@ -60,6 +79,7 @@ class TokenRefreshManager:
         auth_logger.info("Refreshing token: connection_id=%r", connection_id)
 
         provider_impl = self._registry.get(stored.provider_key)
+        self._configure_provider_transport(provider_impl)
         updated = await provider_impl.refresh_token(stored)
 
         # Persist updated credentials

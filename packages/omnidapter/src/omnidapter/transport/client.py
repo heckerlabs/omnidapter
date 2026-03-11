@@ -76,12 +76,14 @@ class OmnidapterHttpClient:
         hooks: TransportHooks | None = None,
         base_url: str = "",
         default_headers: dict[str, str] | None = None,
+        shared_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._provider_key = provider_key
         self._retry_policy = retry_policy or RetryPolicy.default()
         self._hooks = hooks or TransportHooks()
         self._base_url = base_url
         self._default_headers = default_headers or {}
+        self._shared_client = shared_client
 
     def _build_client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(
@@ -90,6 +92,210 @@ class OmnidapterHttpClient:
             timeout=httpx.Timeout(30.0),
             follow_redirects=True,
         )
+
+    def set_shared_client(self, client: httpx.AsyncClient) -> None:
+        """Attach an externally managed AsyncClient for request reuse."""
+        self._shared_client = client
+
+    @staticmethod
+    def _is_absolute_url(url: str) -> bool:
+        return url.startswith("http://") or url.startswith("https://")
+
+    def _resolve_url(self, url: str) -> str:
+        if not self._base_url or self._is_absolute_url(url):
+            return url
+        return f"{self._base_url.rstrip('/')}/{url.lstrip('/')}"
+
+    async def _request_with_client(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        method: str,
+        url: str,
+        headers: dict[str, str],
+        params: dict[str, Any] | None,
+        json: Any,
+        data: Any,
+        correlation_id: str,
+    ) -> httpx.Response:
+        policy = self._retry_policy
+        last_exception: Exception | None = None
+
+        for attempt in range(policy.max_retries + 1):
+            start = time.monotonic()
+
+            # Fire request hook
+            await self._hooks.fire_request(
+                RequestHookContext(
+                    method=method,
+                    url=url,
+                    headers={
+                        k: v
+                        for k, v in headers.items()
+                        if k.lower() not in ("authorization", "x-api-key")
+                    },
+                    correlation_id=correlation_id,
+                    provider_key=self._provider_key,
+                )
+            )
+
+            transport_logger.debug(
+                "Outbound request: method=%s url=%s correlation_id=%s provider=%s attempt=%d",
+                method,
+                url,
+                correlation_id,
+                self._provider_key,
+                attempt,
+            )
+
+            try:
+                response = await client.request(
+                    method,
+                    url,
+                    headers=headers,
+                    params=params,
+                    json=json,
+                    data=data,
+                )
+            except httpx.TransportError as exc:
+                last_exception = TransportError(
+                    f"Network error: {exc}",
+                    cause=exc,
+                )
+                transport_logger.warning(
+                    "Transport error: correlation_id=%s attempt=%d error=%s",
+                    correlation_id,
+                    attempt,
+                    exc,
+                )
+                if policy.retry_on_network_error and attempt < policy.max_retries:
+                    backoff = policy.get_backoff(attempt)
+                    transport_logger.warning("Retrying in %.2fs...", backoff)
+                    await asyncio.sleep(backoff)
+                    continue
+                raise last_exception from exc
+
+            elapsed = (time.monotonic() - start) * 1000
+
+            # Fire response hook
+            await self._hooks.fire_response(
+                ResponseHookContext(
+                    method=method,
+                    url=url,
+                    status_code=response.status_code,
+                    correlation_id=correlation_id,
+                    provider_key=self._provider_key,
+                    elapsed_ms=elapsed,
+                )
+            )
+
+            transport_logger.debug(
+                "Response: status=%d correlation_id=%s elapsed_ms=%.1f",
+                response.status_code,
+                correlation_id,
+                elapsed,
+            )
+
+            # Success
+            if response.is_success:
+                return response
+
+            # Rate limit
+            if response.status_code == 429:
+                retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+                rate_limit_remaining_str = response.headers.get("X-RateLimit-Remaining")
+                rate_limit_remaining = (
+                    int(rate_limit_remaining_str) if rate_limit_remaining_str is not None else None
+                )
+                rate_limit_reset = _parse_rate_limit_reset(
+                    response.headers.get("X-RateLimit-Reset")
+                )
+                provider_request_id = response.headers.get("X-Request-ID") or response.headers.get(
+                    "Request-Id"
+                )
+                transport_logger.warning(
+                    "Rate limited: provider=%s retry_after=%s correlation_id=%s",
+                    self._provider_key,
+                    retry_after,
+                    correlation_id,
+                )
+
+                if attempt < policy.max_retries:
+                    backoff = (
+                        retry_after if retry_after is not None else policy.get_backoff(attempt)
+                    )
+                    await asyncio.sleep(backoff)
+                    last_exception = RateLimitError(
+                        f"Rate limited by {self._provider_key}",
+                        provider_key=self._provider_key,
+                        status_code=429,
+                        response_body=response.text[:4096],
+                        provider_request_id=provider_request_id,
+                        correlation_id=correlation_id,
+                        retry_after=retry_after,
+                        rate_limit_remaining=rate_limit_remaining,
+                        rate_limit_reset=rate_limit_reset,
+                    )
+                    continue
+                raise RateLimitError(
+                    f"Rate limited by {self._provider_key}",
+                    provider_key=self._provider_key,
+                    status_code=429,
+                    response_body=response.text[:4096],
+                    provider_request_id=provider_request_id,
+                    correlation_id=correlation_id,
+                    retry_after=retry_after,
+                    rate_limit_remaining=rate_limit_remaining,
+                    rate_limit_reset=rate_limit_reset,
+                )
+
+            # Retryable 5xx
+            if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
+                transport_logger.warning(
+                    "Retryable error: status=%d correlation_id=%s attempt=%d",
+                    response.status_code,
+                    correlation_id,
+                    attempt,
+                )
+                backoff = policy.get_backoff(attempt)
+                await asyncio.sleep(backoff)
+                last_exception = ProviderAPIError(
+                    f"Provider error: {response.status_code}",
+                    provider_key=self._provider_key,
+                    status_code=response.status_code,
+                    response_body=response.text[:4096],
+                    provider_request_id=(
+                        response.headers.get("X-Request-ID") or response.headers.get("Request-Id")
+                    ),
+                    correlation_id=correlation_id,
+                )
+                continue
+
+            # Non-retried error
+            provider_request_id = response.headers.get("X-Request-ID") or response.headers.get(
+                "Request-Id"
+            )
+
+            transport_logger.error(
+                "Provider API error: status=%d provider=%s correlation_id=%s",
+                response.status_code,
+                self._provider_key,
+                correlation_id,
+            )
+
+            raise ProviderAPIError(
+                f"Provider {self._provider_key!r} returned {response.status_code}",
+                provider_key=self._provider_key,
+                status_code=response.status_code,
+                response_body=response.text[:4096],
+                provider_request_id=provider_request_id,
+                correlation_id=correlation_id,
+            )
+
+        # Should not reach here, but handle exhausted retries
+        if last_exception is not None:
+            raise last_exception
+        raise TransportError("Request failed after retries")  # pragma: no cover
 
     async def request(
         self,
@@ -124,187 +330,28 @@ class OmnidapterHttpClient:
         corr_id = correlation_id or new_correlation_id()
         merged_headers = {**self._default_headers, **(headers or {})}
         merged_headers["X-Correlation-ID"] = corr_id
+        resolved_url = self._resolve_url(url)
 
-        policy = self._retry_policy
-        last_exception: Exception | None = None
+        if self._shared_client is not None:
+            return await self._request_with_client(
+                self._shared_client,
+                method=method,
+                url=resolved_url,
+                headers=merged_headers,
+                params=params,
+                json=json,
+                data=data,
+                correlation_id=corr_id,
+            )
 
         async with self._build_client() as client:
-            for attempt in range(policy.max_retries + 1):
-                start = time.monotonic()
-
-                # Fire request hook
-                await self._hooks.fire_request(
-                    RequestHookContext(
-                        method=method,
-                        url=url,
-                        headers={
-                            k: v
-                            for k, v in merged_headers.items()
-                            if k.lower() not in ("authorization", "x-api-key")
-                        },
-                        correlation_id=corr_id,
-                        provider_key=self._provider_key,
-                    )
-                )
-
-                transport_logger.debug(
-                    "Outbound request: method=%s url=%s correlation_id=%s provider=%s attempt=%d",
-                    method,
-                    url,
-                    corr_id,
-                    self._provider_key,
-                    attempt,
-                )
-
-                try:
-                    response = await client.request(
-                        method,
-                        url,
-                        headers=merged_headers,
-                        params=params,
-                        json=json,
-                        data=data,
-                    )
-                except httpx.TransportError as exc:
-                    elapsed = (time.monotonic() - start) * 1000
-                    last_exception = TransportError(
-                        f"Network error: {exc}",
-                        cause=exc,
-                    )
-                    transport_logger.warning(
-                        "Transport error: correlation_id=%s attempt=%d error=%s",
-                        corr_id,
-                        attempt,
-                        exc,
-                    )
-                    if policy.retry_on_network_error and attempt < policy.max_retries:
-                        backoff = policy.get_backoff(attempt)
-                        transport_logger.warning("Retrying in %.2fs...", backoff)
-                        await asyncio.sleep(backoff)
-                        continue
-                    raise last_exception from exc
-
-                elapsed = (time.monotonic() - start) * 1000
-
-                # Fire response hook
-                await self._hooks.fire_response(
-                    ResponseHookContext(
-                        method=method,
-                        url=url,
-                        status_code=response.status_code,
-                        correlation_id=corr_id,
-                        provider_key=self._provider_key,
-                        elapsed_ms=elapsed,
-                    )
-                )
-
-                transport_logger.debug(
-                    "Response: status=%d correlation_id=%s elapsed_ms=%.1f",
-                    response.status_code,
-                    corr_id,
-                    elapsed,
-                )
-
-                # Success
-                if response.is_success:
-                    return response
-
-                # Rate limit
-                if response.status_code == 429:
-                    retry_after = _parse_retry_after(response.headers.get("Retry-After"))
-                    rate_limit_remaining_str = response.headers.get("X-RateLimit-Remaining")
-                    rate_limit_remaining = (
-                        int(rate_limit_remaining_str)
-                        if rate_limit_remaining_str is not None
-                        else None
-                    )
-                    rate_limit_reset = _parse_rate_limit_reset(
-                        response.headers.get("X-RateLimit-Reset")
-                    )
-                    provider_request_id = response.headers.get(
-                        "X-Request-ID"
-                    ) or response.headers.get("Request-Id")
-                    transport_logger.warning(
-                        "Rate limited: provider=%s retry_after=%s correlation_id=%s",
-                        self._provider_key,
-                        retry_after,
-                        corr_id,
-                    )
-
-                    if attempt < policy.max_retries:
-                        backoff = (
-                            retry_after if retry_after is not None else policy.get_backoff(attempt)
-                        )
-                        await asyncio.sleep(backoff)
-                        last_exception = RateLimitError(
-                            f"Rate limited by {self._provider_key}",
-                            provider_key=self._provider_key,
-                            status_code=429,
-                            response_body=response.text[:4096],
-                            provider_request_id=provider_request_id,
-                            correlation_id=corr_id,
-                            retry_after=retry_after,
-                            rate_limit_remaining=rate_limit_remaining,
-                            rate_limit_reset=rate_limit_reset,
-                        )
-                        continue
-                    raise RateLimitError(
-                        f"Rate limited by {self._provider_key}",
-                        provider_key=self._provider_key,
-                        status_code=429,
-                        response_body=response.text[:4096],
-                        provider_request_id=provider_request_id,
-                        correlation_id=corr_id,
-                        retry_after=retry_after,
-                        rate_limit_remaining=rate_limit_remaining,
-                        rate_limit_reset=rate_limit_reset,
-                    )
-
-                # Retryable 5xx
-                if response.status_code in policy.retry_on_status and attempt < policy.max_retries:
-                    transport_logger.warning(
-                        "Retryable error: status=%d correlation_id=%s attempt=%d",
-                        response.status_code,
-                        corr_id,
-                        attempt,
-                    )
-                    backoff = policy.get_backoff(attempt)
-                    await asyncio.sleep(backoff)
-                    last_exception = ProviderAPIError(
-                        f"Provider error: {response.status_code}",
-                        provider_key=self._provider_key,
-                        status_code=response.status_code,
-                        response_body=response.text[:4096],
-                        provider_request_id=(
-                            response.headers.get("X-Request-ID")
-                            or response.headers.get("Request-Id")
-                        ),
-                        correlation_id=corr_id,
-                    )
-                    continue
-
-                # Non-retried error
-                provider_request_id = response.headers.get("X-Request-ID") or response.headers.get(
-                    "Request-Id"
-                )
-
-                transport_logger.error(
-                    "Provider API error: status=%d provider=%s correlation_id=%s",
-                    response.status_code,
-                    self._provider_key,
-                    corr_id,
-                )
-
-                raise ProviderAPIError(
-                    f"Provider {self._provider_key!r} returned {response.status_code}",
-                    provider_key=self._provider_key,
-                    status_code=response.status_code,
-                    response_body=response.text[:4096],
-                    provider_request_id=provider_request_id,
-                    correlation_id=corr_id,
-                )
-
-        # Should not reach here, but handle exhausted retries
-        if last_exception is not None:
-            raise last_exception
-        raise TransportError("Request failed after retries")  # pragma: no cover
+            return await self._request_with_client(
+                client,
+                method=method,
+                url=resolved_url,
+                headers=merged_headers,
+                params=params,
+                json=json,
+                data=data,
+                correlation_id=corr_id,
+            )

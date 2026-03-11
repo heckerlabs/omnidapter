@@ -12,6 +12,8 @@ ZOHO_TOKEN_ENDPOINT = "https://accounts.zoho.com/oauth/v2/token"
 
 class ZohoOAuthMixin(OAuthProviderMixin):
     provider_key = ZOHO_PROVIDER_KEY
+    client_id_env_var = "ZOHO_CLIENT_ID"
+    client_secret_env_var = "ZOHO_CLIENT_SECRET"
     token_endpoint = ZOHO_TOKEN_ENDPOINT
     authorization_endpoint = "https://accounts.zoho.com/oauth/v2/auth"
     default_scopes = ["ZohoCalendar.calendar.ALL", "ZohoCalendar.event.ALL"]

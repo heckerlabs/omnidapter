@@ -10,6 +10,7 @@ from omnidapter.core.errors import (
     OAuthStateError,
     OmnidapterError,
     ProviderAPIError,
+    ProviderNotConfiguredError,
     RateLimitError,
     ScopeInsufficientError,
     TokenRefreshError,
@@ -30,6 +31,7 @@ class TestErrorHierarchy:
     def test_auth_error_hierarchy(self):
         assert issubclass(OAuthStateError, AuthError)
         assert issubclass(TokenRefreshError, AuthError)
+        assert issubclass(ProviderNotConfiguredError, AuthError)
         assert issubclass(ScopeInsufficientError, AuthError)
 
     def test_rate_limit_error_hierarchy(self):
@@ -85,6 +87,15 @@ class TestErrorHierarchy:
         err = TokenRefreshError("Refresh failed", provider_key="google", cause=cause)
         assert err.provider_key == "google"
         assert err.cause is cause
+
+    def test_provider_not_configured_error(self):
+        err = ProviderNotConfiguredError(
+            "Provider not configured",
+            provider_key="google",
+            missing_fields=["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        )
+        assert err.provider_key == "google"
+        assert err.missing_fields == ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]
 
     def test_unsupported_capability_error(self):
         err = UnsupportedCapabilityError(
