@@ -14,11 +14,11 @@ from omnidapter.services.calendar.requests import UpdateEventRequest
 from omnidapter.stores.credentials import StoredCredential
 
 
-def _google_stored() -> StoredCredential:
+def _google_stored(access_token: str = "test-token") -> StoredCredential:
     return StoredCredential(
         provider_key="google",
         auth_kind=AuthKind.OAUTH2,
-        credentials=OAuth2Credentials(access_token="test-token"),
+        credentials=OAuth2Credentials(access_token=access_token),
     )
 
 
@@ -78,3 +78,17 @@ class TestUpdateEventStatusSerialization:
         _, kwargs = mock_request.call_args
         body = kwargs["json"]
         assert "status" not in body
+
+
+class TestAuthHeadersRefresh:
+    async def test_auth_headers_use_latest_resolved_credentials(self):
+        svc = GoogleCalendarService("conn-1", _google_stored("old-token"))
+        refreshed = _google_stored("new-token")
+        resolver = AsyncMock(return_value=refreshed)
+        svc._credential_resolver = resolver
+
+        headers = await svc._auth_headers()
+
+        resolver.assert_awaited_once_with("conn-1")
+        assert headers["Authorization"] == "Bearer new-token"
+        assert svc._stored is refreshed

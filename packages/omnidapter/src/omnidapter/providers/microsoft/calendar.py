@@ -71,8 +71,17 @@ class MicrosoftCalendarService(CalendarService):
     def _provider_key(self) -> str:
         return "microsoft"
 
-    def _auth_headers(self) -> dict[str, str]:
-        creds = self._stored.credentials
+    async def _resolve_stored_credential(self) -> StoredCredential:
+        resolver = getattr(self, "_credential_resolver", None)
+        if resolver is None:
+            return self._stored
+
+        latest = await resolver(self._connection_id)
+        self._stored = latest
+        return latest
+
+    async def _auth_headers(self) -> dict[str, str]:
+        creds = (await self._resolve_stored_credential()).credentials
         if isinstance(creds, OAuth2Credentials):
             return {
                 "Authorization": f"Bearer {creds.access_token}",
@@ -85,7 +94,7 @@ class MicrosoftCalendarService(CalendarService):
         url = f"{MS_GRAPH_BASE}/me/calendars"
         all_calendars = []
         while url:
-            response = await self._http.request("GET", url, headers=self._auth_headers())
+            response = await self._http.request("GET", url, headers=await self._auth_headers())
             data = response.json()
             for item in data.get("value", []):
                 all_calendars.append(mappers.to_calendar(item))
@@ -101,7 +110,9 @@ class MicrosoftCalendarService(CalendarService):
             "endTime": {"dateTime": request.time_max.isoformat(), "timeZone": "UTC"},
             "availabilityViewInterval": 30,
         }
-        response = await self._http.request("POST", url, headers=self._auth_headers(), json=body)
+        response = await self._http.request(
+            "POST", url, headers=await self._auth_headers(), json=body
+        )
         data = response.json()
 
         busy_intervals = []
@@ -144,7 +155,9 @@ class MicrosoftCalendarService(CalendarService):
         body.update(request.extra)
 
         url = f"{MS_GRAPH_BASE}/me/calendars/{request.calendar_id}/events"
-        response = await self._http.request("POST", url, headers=self._auth_headers(), json=body)
+        response = await self._http.request(
+            "POST", url, headers=await self._auth_headers(), json=body
+        )
         return mappers.to_calendar_event(response.json(), request.calendar_id)
 
     async def update_event(self, request: UpdateEventRequest) -> CalendarEvent:
@@ -170,18 +183,20 @@ class MicrosoftCalendarService(CalendarService):
                 for a in request.attendees
             ]
         body.update(request.extra)
-        response = await self._http.request("PATCH", url, headers=self._auth_headers(), json=body)
+        response = await self._http.request(
+            "PATCH", url, headers=await self._auth_headers(), json=body
+        )
         return mappers.to_calendar_event(response.json(), request.calendar_id)
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         self._require_capability(CalendarCapability.DELETE_EVENT)
         url = f"{MS_GRAPH_BASE}/me/calendars/{calendar_id}/events/{event_id}"
-        await self._http.request("DELETE", url, headers=self._auth_headers())
+        await self._http.request("DELETE", url, headers=await self._auth_headers())
 
     async def get_event(self, calendar_id: str, event_id: str) -> CalendarEvent:
         self._require_capability(CalendarCapability.GET_EVENT)
         url = f"{MS_GRAPH_BASE}/me/calendars/{calendar_id}/events/{event_id}"
-        response = await self._http.request("GET", url, headers=self._auth_headers())
+        response = await self._http.request("GET", url, headers=await self._auth_headers())
         return mappers.to_calendar_event(response.json(), calendar_id)
 
     async def list_events(
@@ -204,15 +219,17 @@ class MicrosoftCalendarService(CalendarService):
         if extra:
             params.update(extra)
 
+        next_params: dict[str, Any] | None = params
+
         while url:
             response = await self._http.request(
-                "GET", url, headers=self._auth_headers(), params=params
+                "GET", url, headers=await self._auth_headers(), params=next_params
             )
             data = response.json()
             for item in data.get("value", []):
                 yield mappers.to_calendar_event(item, calendar_id)
             url = data.get("@odata.nextLink")
-            params = None
+            next_params = None
 
 
 def _parse_event_status(value: str | None) -> EventStatus:
