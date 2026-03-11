@@ -71,7 +71,7 @@ class TestProviderRegistry:
         assert reg.get("google") is p2
         assert len(reg.list_keys()) == 1
 
-    def test_register_builtins_registers_four_providers(self):
+    def test_register_builtins_registers_five_providers(self):
         reg = ProviderRegistry()
         reg.register_builtins()
         keys = reg.list_keys()
@@ -79,6 +79,7 @@ class TestProviderRegistry:
         assert "microsoft" in keys
         assert "caldav" in keys
         assert "zoho" in keys
+        assert "apple" in keys
 
     def test_register_builtins_providers_have_metadata(self):
         reg = ProviderRegistry()
