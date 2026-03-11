@@ -14,6 +14,7 @@ from omnidapter.services.calendar.models import (
     AvailabilityResponse,
     Calendar,
     CalendarEvent,
+    EventStatus,
 )
 from omnidapter.services.calendar.pagination import Page
 from omnidapter.services.calendar.requests import (
@@ -112,7 +113,12 @@ class ZohoCalendarService(CalendarService):
         data = response.json()
         events = data.get("events", [])
         raw = events[0] if events else body
-        return mappers.to_calendar_event(raw, request.calendar_id)
+        result = mappers.to_calendar_event(raw, request.calendar_id)
+        if request.status is not None and request.status != EventStatus.CONFIRMED:
+            pd = dict(result.provider_data or {})
+            pd["status"] = request.status.value
+            result = result.model_copy(update={"provider_data": pd})
+        return result
 
     async def update_event(self, request: UpdateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.UPDATE_EVENT)
@@ -138,7 +144,12 @@ class ZohoCalendarService(CalendarService):
         data = response.json()
         events = data.get("events", [])
         raw = events[0] if events else body
-        return mappers.to_calendar_event(raw, request.calendar_id)
+        result = mappers.to_calendar_event(raw, request.calendar_id)
+        if request.status is not None and request.status != EventStatus.CONFIRMED:
+            pd = dict(result.provider_data or {})
+            pd["status"] = request.status.value
+            result = result.model_copy(update={"provider_data": pd})
+        return result
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         self._require_capability(CalendarCapability.DELETE_EVENT)

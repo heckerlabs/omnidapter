@@ -43,6 +43,7 @@ from omnidapter.services.calendar.models import (
     Calendar,
     CalendarEvent,
     ConferenceData,
+    EventStatus,
     Organizer,
     Recurrence,
 )
@@ -93,6 +94,7 @@ __all__ = [
     # Calendar
     "CalendarCapability",
     "CalendarEvent",
+    "EventStatus",
     "Calendar",
     "AvailabilityResponse",
     "Attendee",
