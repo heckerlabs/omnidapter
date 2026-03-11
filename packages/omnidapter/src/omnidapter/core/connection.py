@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from omnidapter.core.metadata import ServiceKind
+
 if TYPE_CHECKING:
     from omnidapter.core.registry import ProviderRegistry
     from omnidapter.services.calendar.interface import CalendarService
@@ -51,12 +53,26 @@ class Connection:
     def stored_credential(self) -> StoredCredential:
         return self._stored
 
+    def supports(self, service: ServiceKind) -> bool:
+        """Return True if the provider for this connection supports the given service."""
+        provider = self._registry.get(self._stored.provider_key)
+        return service in provider.metadata.services
+
     def calendar(self) -> CalendarService:
         """Return the calendar service for this connection.
 
         Raises:
-            KeyError: If the provider is not registered.
+            UnsupportedCapabilityError: If the provider does not support calendars.
+            Use ``conn.supports(ServiceKind.CALENDAR)`` to check first.
         """
+        if not self.supports(ServiceKind.CALENDAR):
+            from omnidapter.core.errors import UnsupportedCapabilityError
+            raise UnsupportedCapabilityError(
+                f"Provider {self._stored.provider_key!r} does not support calendars. "
+                "Check conn.supports(ServiceKind.CALENDAR) before calling conn.calendar().",
+                provider_key=self._stored.provider_key,
+                capability=ServiceKind.CALENDAR,
+            )
         provider = self._registry.get(self._stored.provider_key)
         return provider.get_calendar_service(
             connection_id=self._connection_id,
