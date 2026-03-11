@@ -158,7 +158,6 @@ class OmnidapterHttpClient:
                     data=data,
                 )
             except httpx.TransportError as exc:
-                elapsed = (time.monotonic() - start) * 1000
                 last_exception = TransportError(
                     f"Network error: {exc}",
                     cause=exc,
