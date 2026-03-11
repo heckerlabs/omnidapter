@@ -1,6 +1,7 @@
 """
 Unit tests for auth models.
 """
+
 from datetime import datetime, timedelta, timezone
 
 from omnidapter.auth.models import ApiKeyCredentials, BasicCredentials, OAuth2Credentials

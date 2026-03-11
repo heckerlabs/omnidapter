@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.providers.zoho.mappers.
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -15,6 +16,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _make_raw(overrides: dict | None = None) -> dict:
     base = {
@@ -46,6 +48,7 @@ def _make_event(**kwargs) -> CalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar_event                                                            #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendarEvent:
     def test_basic_fields(self):
@@ -83,10 +86,14 @@ class TestToCalendarEvent:
         assert event.all_day is True
 
     def test_attendees_mapped(self):
-        raw = _make_raw({"attendees": [
-            {"email": "a@x.com", "name": "Alice"},
-            {"email": "b@x.com"},
-        ]})
+        raw = _make_raw(
+            {
+                "attendees": [
+                    {"email": "a@x.com", "name": "Alice"},
+                    {"email": "b@x.com"},
+                ]
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert len(event.attendees) == 2
         assert event.attendees[0].email == "a@x.com"
@@ -122,6 +129,7 @@ class TestToCalendarEvent:
 # from_calendar_event                                                          #
 # --------------------------------------------------------------------------- #
 
+
 class TestFromCalendarEvent:
     def test_basic_fields(self):
         event = _make_event()
@@ -153,10 +161,12 @@ class TestFromCalendarEvent:
         assert body["location"] == "l"
 
     def test_attendees_mapped(self):
-        event = _make_event(attendees=[
-            Attendee(email="a@x.com", display_name="Alice"),
-            Attendee(email="b@x.com"),
-        ])
+        event = _make_event(
+            attendees=[
+                Attendee(email="a@x.com", display_name="Alice"),
+                Attendee(email="b@x.com"),
+            ]
+        )
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["email"] == "a@x.com"
         assert body["attendees"][0]["name"] == "Alice"
@@ -166,6 +176,7 @@ class TestFromCalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar                                                                  #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendar:
     def test_basic_fields(self):

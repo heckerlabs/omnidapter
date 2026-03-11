@@ -13,6 +13,7 @@ Optional:
 Use a dedicated test Google account. Tests create and delete events but never
 touch data they did not create.
 """
+
 from __future__ import annotations
 
 import os
@@ -41,6 +42,7 @@ pytestmark = pytest.mark.integration
 # Token refresh                                                                #
 # --------------------------------------------------------------------------- #
 
+
 async def test_token_refresh():
     """
     Expired access token + valid refresh token → fresh credentials that work.
@@ -49,9 +51,7 @@ async def test_token_refresh():
     """
     from omnidapter.providers.google.provider import GoogleProvider
 
-    stale = _stale_oauth2_stored(
-        "google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"])
     assert stale.credentials.is_expired(), "Fixture must start with an expired token"
 
     provider = GoogleProvider(
@@ -75,6 +75,7 @@ async def test_token_refresh():
 # Calendar discovery                                                           #
 # --------------------------------------------------------------------------- #
 
+
 async def test_list_calendars(google_service):
     """list_calendars() returns at least one Calendar with required fields."""
     calendars = await google_service.list_calendars()
@@ -87,6 +88,7 @@ async def test_list_calendars(google_service):
 # --------------------------------------------------------------------------- #
 # CRUD round-trip                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_crud_round_trip(google_service, google_calendar_id, retry_read):
     """
@@ -162,6 +164,7 @@ async def test_crud_round_trip(google_service, google_calendar_id, retry_read):
 # Mapper fidelity                                                              #
 # --------------------------------------------------------------------------- #
 
+
 async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
     """
     Verify that the Google → CalendarEvent mapper correctly handles real
@@ -187,9 +190,7 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         created = await google_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: google_service.get_event(google_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: google_service.get_event(google_calendar_id, event_id))
 
         assert isinstance(fetched, CalendarEvent)
         assert fetched.event_id
@@ -210,9 +211,7 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         assert fetched.sequence is not None
         # Attendees round-trip
         assert len(fetched.attendees) >= 1
-        assert any(
-            a.email == "integration-attendee@example.com" for a in fetched.attendees
-        )
+        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
 
     finally:
         if event_id:
@@ -223,6 +222,7 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # All-day event mapper                                                         #
 # --------------------------------------------------------------------------- #
+
 
 async def test_all_day_event(google_service, google_calendar_id, retry_read):
     """All-day events use date (not datetime) in start/end; verify mapper handles this."""
@@ -240,9 +240,7 @@ async def test_all_day_event(google_service, google_calendar_id, retry_read):
         created = await google_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: google_service.get_event(google_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: google_service.get_event(google_calendar_id, event_id))
         assert fetched.all_day is True
         assert isinstance(fetched.start, date)
         assert not isinstance(fetched.start, datetime)
@@ -256,6 +254,7 @@ async def test_all_day_event(google_service, google_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Pagination                                                                   #
 # --------------------------------------------------------------------------- #
+
 
 async def test_pagination(google_service, google_calendar_id):
     """
@@ -302,6 +301,7 @@ async def test_pagination(google_service, google_calendar_id):
 # Availability (free/busy)                                                     #
 # --------------------------------------------------------------------------- #
 
+
 async def test_get_availability(google_service, google_calendar_id):
     """get_availability() returns a well-formed AvailabilityResponse."""
     now = datetime.now(timezone.utc)
@@ -326,6 +326,7 @@ async def test_get_availability(google_service, google_calendar_id):
 # Recurrence                                                                   #
 # --------------------------------------------------------------------------- #
 
+
 async def test_recurring_event(google_service, google_calendar_id, retry_read):
     """Create a recurring event and verify recurrence rules survive the mapper."""
     now = datetime.now(timezone.utc).replace(microsecond=0)
@@ -343,9 +344,7 @@ async def test_recurring_event(google_service, google_calendar_id, retry_read):
         created = await google_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: google_service.get_event(google_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: google_service.get_event(google_calendar_id, event_id))
         assert fetched.recurrence is not None
         assert any("RRULE" in rule for rule in fetched.recurrence.rules)
 

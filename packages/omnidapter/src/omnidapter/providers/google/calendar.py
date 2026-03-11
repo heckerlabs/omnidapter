@@ -1,6 +1,7 @@
 """
 Google Calendar service implementation.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -28,18 +29,20 @@ from omnidapter.transport.client import OmnidapterHttpClient
 from omnidapter.transport.retry import RetryPolicy
 
 GOOGLE_API_BASE = "https://www.googleapis.com/calendar/v3"
-_GOOGLE_CAPABILITIES = frozenset({
-    CalendarCapability.LIST_CALENDARS,
-    CalendarCapability.GET_AVAILABILITY,
-    CalendarCapability.CREATE_EVENT,
-    CalendarCapability.UPDATE_EVENT,
-    CalendarCapability.DELETE_EVENT,
-    CalendarCapability.GET_EVENT,
-    CalendarCapability.LIST_EVENTS,
-    CalendarCapability.CONFERENCE_LINKS,
-    CalendarCapability.RECURRENCE,
-    CalendarCapability.ATTENDEES,
-})
+_GOOGLE_CAPABILITIES = frozenset(
+    {
+        CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.GET_AVAILABILITY,
+        CalendarCapability.CREATE_EVENT,
+        CalendarCapability.UPDATE_EVENT,
+        CalendarCapability.DELETE_EVENT,
+        CalendarCapability.GET_EVENT,
+        CalendarCapability.LIST_EVENTS,
+        CalendarCapability.CONFERENCE_LINKS,
+        CalendarCapability.RECURRENCE,
+        CalendarCapability.ATTENDEES,
+    }
+)
 
 
 class GoogleCalendarService(CalendarService):
@@ -94,9 +97,7 @@ class GoogleCalendarService(CalendarService):
                 break
         return all_calendars
 
-    async def get_availability(
-        self, request: GetAvailabilityRequest
-    ) -> AvailabilityResponse:
+    async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
         self._require_capability(CalendarCapability.GET_AVAILABILITY)
         url = f"{GOOGLE_API_BASE}/freeBusy"
         body = {
@@ -107,19 +108,19 @@ class GoogleCalendarService(CalendarService):
         if request.timezone:
             body["timeZone"] = request.timezone
 
-        response = await self._http.request(
-            "POST", url, headers=self._auth_headers(), json=body
-        )
+        response = await self._http.request("POST", url, headers=self._auth_headers(), json=body)
         data = response.json()
 
         busy_intervals = []
         for cal_id in request.calendar_ids:
             cal_busy = data.get("calendars", {}).get(cal_id, {})
             for interval in cal_busy.get("busy", []):
-                busy_intervals.append(FreeBusyInterval(
-                    start=datetime.fromisoformat(interval["start"].replace("Z", "+00:00")),
-                    end=datetime.fromisoformat(interval["end"].replace("Z", "+00:00")),
-                ))
+                busy_intervals.append(
+                    FreeBusyInterval(
+                        start=datetime.fromisoformat(interval["start"].replace("Z", "+00:00")),
+                        end=datetime.fromisoformat(interval["end"].replace("Z", "+00:00")),
+                    )
+                )
 
         return AvailabilityResponse(
             queried_calendars=request.calendar_ids,
@@ -187,9 +188,7 @@ class GoogleCalendarService(CalendarService):
         body.update(request.extra)
 
         url = f"{GOOGLE_API_BASE}/calendars/{request.calendar_id}/events/{request.event_id}"
-        response = await self._http.request(
-            "PATCH", url, headers=self._auth_headers(), json=body
-        )
+        response = await self._http.request("PATCH", url, headers=self._auth_headers(), json=body)
         return mappers.to_calendar_event(response.json(), request.calendar_id)
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
@@ -220,9 +219,13 @@ class GoogleCalendarService(CalendarService):
             if page_token:
                 params["pageToken"] = page_token
             if time_min:
-                params["timeMin"] = time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
+                params["timeMin"] = (
+                    time_min.isoformat() if hasattr(time_min, "isoformat") else time_min
+                )
             if time_max:
-                params["timeMax"] = time_max.isoformat() if hasattr(time_max, "isoformat") else time_max
+                params["timeMax"] = (
+                    time_max.isoformat() if hasattr(time_max, "isoformat") else time_max
+                )
             if page_size:
                 params["maxResults"] = str(page_size)
             if extra:
@@ -237,7 +240,6 @@ class GoogleCalendarService(CalendarService):
             page_token = data.get("nextPageToken")
             if not page_token:
                 break
-
 
 
 def _parse_event_status(value: str | None) -> EventStatus:

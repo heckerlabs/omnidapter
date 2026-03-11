@@ -5,6 +5,7 @@ Verifies Apple-specific behaviour: the iCloud server URL is injected
 automatically, the server hint is set to ICLOUD, and the provider key
 is "apple" — all without the caller supplying a server_url config field.
 """
+
 from __future__ import annotations
 
 from omnidapter.auth.models import BasicCredentials

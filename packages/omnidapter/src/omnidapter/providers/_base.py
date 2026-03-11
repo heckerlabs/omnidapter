@@ -10,6 +10,7 @@ them through unchanged.
 
 See :mod:`omnidapter.stores.credentials` for a full explanation.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

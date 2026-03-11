@@ -1,6 +1,7 @@
 """
 Retry policy and backoff configuration.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ class RetryPolicy:
         retry_on_network_error: Whether to retry on network-level failures.
         jitter: Whether to add random jitter to backoff.
     """
+
     max_retries: int = 3
     backoff_base: float = 1.0
     backoff_max: float = 60.0
@@ -44,7 +46,8 @@ class RetryPolicy:
     def get_backoff(self, attempt: int) -> float:
         """Compute backoff seconds for a given attempt number (0-indexed)."""
         import random
-        delay = min(self.backoff_base * (2 ** attempt), self.backoff_max)
+
+        delay = min(self.backoff_base * (2**attempt), self.backoff_max)
         if self.jitter:
-            delay *= (0.5 + random.random() * 0.5)
+            delay *= 0.5 + random.random() * 0.5
         return delay

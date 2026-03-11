@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.core.connection.Connection and omnidapter.core.omnidapter.Omnidapter.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -19,6 +20,7 @@ from omnidapter.testing.fakes.stores import InMemoryCredentialStore, InMemoryOAu
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _stored_apikey(provider_key: str = "google") -> StoredCredential:
     return StoredCredential(
@@ -62,6 +64,7 @@ def _mock_registry(provider_key: str = "google") -> MagicMock:
 # Connection                                                                   #
 # --------------------------------------------------------------------------- #
 
+
 class TestConnection:
     def test_properties(self):
         stored = _stored_apikey("google")
@@ -87,6 +90,7 @@ class TestConnection:
 
     def test_calendar_passes_retry_policy(self):
         from omnidapter.transport.retry import RetryPolicy
+
         stored = _stored_apikey()
         registry = _mock_registry()
         policy = RetryPolicy.no_retry()
@@ -104,8 +108,11 @@ class TestConnection:
 # Omnidapter                                                                   #
 # --------------------------------------------------------------------------- #
 
+
 class TestOmnidapter:
-    def _omni(self, **kwargs) -> tuple[Omnidapter, InMemoryCredentialStore, InMemoryOAuthStateStore]:
+    def _omni(
+        self, **kwargs
+    ) -> tuple[Omnidapter, InMemoryCredentialStore, InMemoryOAuthStateStore]:
         cred_store = InMemoryCredentialStore()
         state_store = InMemoryOAuthStateStore()
         omni = Omnidapter(
@@ -174,8 +181,9 @@ class TestOmnidapter:
         providers = omni.list_providers()
         assert "google" in providers
         assert "microsoft" in providers
-        assert "caldav" in providers
         assert "zoho" in providers
+        assert "apple" in providers
+        assert "caldav" not in providers
 
     async def test_oauth_property_accessible(self):
         omni, _, _ = self._omni()

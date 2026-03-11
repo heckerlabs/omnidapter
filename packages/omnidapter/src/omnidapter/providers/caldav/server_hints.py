@@ -4,6 +4,7 @@ Known CalDAV server quirks and detection.
 The CalDAV protocol has many implementations with varying behaviors.
 This module provides detection logic for known servers with specific quirks.
 """
+
 from __future__ import annotations
 
 from enum import Enum
@@ -11,8 +12,9 @@ from enum import Enum
 
 class CalDAVServerHint(str, Enum):
     """Known CalDAV server implementations with special handling."""
+
     GENERIC = "generic"
-    GOOGLE = "google"       # Google's CalDAV endpoint (legacy)
+    GOOGLE = "google"  # Google's CalDAV endpoint (legacy)
     ICLOUD = "icloud"
     FASTMAIL = "fastmail"
     NEXTCLOUD = "nextcloud"
@@ -47,7 +49,9 @@ def detect_server_hint(server_url: str) -> CalDAVServerHint:
     return CalDAVServerHint.GENERIC
 
 
-def get_principal_url_template(server_hint: CalDAVServerHint, server_url: str, username: str) -> str:
+def get_principal_url_template(
+    server_hint: CalDAVServerHint, server_url: str, username: str
+) -> str:
     """Return the best-guess principal URL for a given server hint."""
     base = server_url.rstrip("/")
 

@@ -5,6 +5,7 @@ Providers subclass OAuthProviderMixin and declare their fixed values as class
 attributes.  The mixin supplies the standard authorization-code exchange and
 refresh-token HTTP logic, so provider subclasses contain no HTTP code at all.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -66,7 +67,9 @@ class OAuthProviderMixin:
             expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=int(expires_in))
 
         scopes_str = token_data.get("scope", "")
-        granted_scopes = [s for s in scopes_str.split(self.scope_separator) if s] if scopes_str else None
+        granted_scopes = (
+            [s for s in scopes_str.split(self.scope_separator) if s] if scopes_str else None
+        )
 
         creds = OAuth2Credentials(
             access_token=token_data["access_token"],
@@ -141,8 +144,10 @@ class OAuthProviderMixin:
             token_data["refresh_token"] = creds.refresh_token
 
         updated = self._build_stored_credential(token_data)
-        return updated.model_copy(update={
-            "granted_scopes": stored.granted_scopes,
-            "provider_account_id": stored.provider_account_id,
-            "provider_config": stored.provider_config,
-        })
+        return updated.model_copy(
+            update={
+                "granted_scopes": stored.granted_scopes,
+                "provider_account_id": stored.provider_account_id,
+                "provider_config": stored.provider_config,
+            }
+        )

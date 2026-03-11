@@ -1,6 +1,7 @@
 """
 Provider registry — registration, lookup, and plugin architecture.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

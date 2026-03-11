@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.providers.microsoft.mappers.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _make_raw(overrides: dict | None = None) -> dict:
     base = {
@@ -48,12 +50,15 @@ def _make_event(**kwargs) -> CalendarEvent:
 # to_calendar_event                                                            #
 # --------------------------------------------------------------------------- #
 
+
 class TestToCalendarEvent:
     def test_basic_fields(self):
-        raw = _make_raw({
-            "body": {"content": "hello"},
-            "location": {"displayName": "Mars"},
-        })
+        raw = _make_raw(
+            {
+                "body": {"content": "hello"},
+                "location": {"displayName": "Mars"},
+            }
+        )
         event = mappers.to_calendar_event(raw, "cal-1")
         assert event.event_id == "evt-ms-1"
         assert event.calendar_id == "cal-1"
@@ -67,15 +72,23 @@ class TestToCalendarEvent:
         assert event.all_day is False
 
     def test_datetime_utc_timezone(self):
-        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "UTC"},
-                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "UTC"}})
+        raw = _make_raw(
+            {
+                "start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "UTC"},
+                "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "UTC"},
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.start.tzinfo is not None
         assert event.start.utcoffset().total_seconds() == 0
 
     def test_datetime_iana_timezone(self):
-        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "America/New_York"},
-                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "America/New_York"}})
+        raw = _make_raw(
+            {
+                "start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "America/New_York"},
+                "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "America/New_York"},
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.start.tzinfo == ZoneInfo("America/New_York")
         # A 10:00 Eastern datetime is not 10:00 UTC
@@ -83,8 +96,12 @@ class TestToCalendarEvent:
         assert event.start.utcoffset().total_seconds() != 0
 
     def test_datetime_unknown_windows_tz_falls_back_to_utc(self):
-        raw = _make_raw({"start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "Eastern Standard Time"},
-                          "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "Eastern Standard Time"}})
+        raw = _make_raw(
+            {
+                "start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "Eastern Standard Time"},
+                "end": {"dateTime": "2024-06-15T11:00:00", "timeZone": "Eastern Standard Time"},
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.start.tzinfo == timezone.utc
 
@@ -110,19 +127,36 @@ class TestToCalendarEvent:
         assert event.organizer.display_name == "Boss"
 
     def test_attendees_mapped(self):
-        raw = _make_raw({"attendees": [
-            {"emailAddress": {"address": "a@x.com", "name": "A"}, "status": {"response": "accepted"}},
-            {"emailAddress": {"address": "b@x.com", "name": "B"}, "status": {"response": "declined"}},
-        ]})
+        raw = _make_raw(
+            {
+                "attendees": [
+                    {
+                        "emailAddress": {"address": "a@x.com", "name": "A"},
+                        "status": {"response": "accepted"},
+                    },
+                    {
+                        "emailAddress": {"address": "b@x.com", "name": "B"},
+                        "status": {"response": "declined"},
+                    },
+                ]
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert len(event.attendees) == 2
         assert event.attendees[0].status == AttendeeStatus.ACCEPTED
         assert event.attendees[1].status == AttendeeStatus.DECLINED
 
     def test_attendee_not_responded(self):
-        raw = _make_raw({"attendees": [
-            {"emailAddress": {"address": "x@y.com"}, "status": {"response": "notResponded"}},
-        ]})
+        raw = _make_raw(
+            {
+                "attendees": [
+                    {
+                        "emailAddress": {"address": "x@y.com"},
+                        "status": {"response": "notResponded"},
+                    },
+                ]
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.attendees[0].status == AttendeeStatus.NEEDS_ACTION
 
@@ -134,25 +168,29 @@ class TestToCalendarEvent:
         assert event.recurrence.provider_data == rrule
 
     def test_online_meeting_mapped_to_conference(self):
-        raw = _make_raw({"onlineMeeting": {"joinUrl": "https://teams.microsoft.com/l/meetup-join/abc"}})
+        raw = _make_raw(
+            {"onlineMeeting": {"joinUrl": "https://teams.microsoft.com/l/meetup-join/abc"}}
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.conference_data is not None
         assert event.conference_data.join_url == "https://teams.microsoft.com/l/meetup-join/abc"
 
     def test_created_updated_timestamps(self):
-        raw = _make_raw({
-            "createdDateTime": "2024-01-01T00:00:00Z",
-            "lastModifiedDateTime": "2024-06-01T12:00:00Z",
-        })
+        raw = _make_raw(
+            {
+                "createdDateTime": "2024-01-01T00:00:00Z",
+                "lastModifiedDateTime": "2024-06-01T12:00:00Z",
+            }
+        )
         event = mappers.to_calendar_event(raw, "c")
         assert event.created_at is not None
         assert event.updated_at is not None
 
     def test_ical_uid_and_etag(self):
-        raw = _make_raw({"iCalUId": "uid-123", "@odata.etag": "W/\"tag\""})
+        raw = _make_raw({"iCalUId": "uid-123", "@odata.etag": 'W/"tag"'})
         event = mappers.to_calendar_event(raw, "c")
         assert event.ical_uid == "uid-123"
-        assert event.etag == "W/\"tag\""
+        assert event.etag == 'W/"tag"'
 
     def test_extra_keys_in_provider_data(self):
         raw = _make_raw({"sensitivity": "normal"})
@@ -169,6 +207,7 @@ class TestToCalendarEvent:
 # --------------------------------------------------------------------------- #
 # from_calendar_event                                                          #
 # --------------------------------------------------------------------------- #
+
 
 class TestFromCalendarEvent:
     def test_basic_fields(self):
@@ -197,9 +236,11 @@ class TestFromCalendarEvent:
         assert body["showAs"] == "tentative"
 
     def test_attendees_mapped(self):
-        event = _make_event(attendees=[
-            Attendee(email="a@x.com", display_name="A"),
-        ])
+        event = _make_event(
+            attendees=[
+                Attendee(email="a@x.com", display_name="A"),
+            ]
+        )
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["emailAddress"]["address"] == "a@x.com"
         assert body["attendees"][0]["type"] == "required"
@@ -208,6 +249,7 @@ class TestFromCalendarEvent:
 # --------------------------------------------------------------------------- #
 # to_calendar                                                                  #
 # --------------------------------------------------------------------------- #
+
 
 class TestToCalendar:
     def test_basic_fields(self):

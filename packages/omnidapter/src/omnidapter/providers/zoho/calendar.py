@@ -1,6 +1,7 @@
 """
 Zoho Calendar service implementation.
 """
+
 from __future__ import annotations
 
 import json as _json
@@ -27,15 +28,17 @@ from omnidapter.transport.retry import RetryPolicy
 
 ZOHO_API_BASE = "https://calendar.zoho.com/api/v1"
 
-_ZOHO_CAPABILITIES = frozenset({
-    CalendarCapability.LIST_CALENDARS,
-    CalendarCapability.CREATE_EVENT,
-    CalendarCapability.UPDATE_EVENT,
-    CalendarCapability.DELETE_EVENT,
-    CalendarCapability.GET_EVENT,
-    CalendarCapability.LIST_EVENTS,
-    CalendarCapability.ATTENDEES,
-})
+_ZOHO_CAPABILITIES = frozenset(
+    {
+        CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.CREATE_EVENT,
+        CalendarCapability.UPDATE_EVENT,
+        CalendarCapability.DELETE_EVENT,
+        CalendarCapability.GET_EVENT,
+        CalendarCapability.LIST_EVENTS,
+        CalendarCapability.ATTENDEES,
+    }
+)
 
 
 class ZohoCalendarService(CalendarService):

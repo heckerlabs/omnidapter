@@ -20,6 +20,7 @@ The consuming app is responsible for:
     ``provider.get_calendar_service()``, and
     ``provider.exchange_code_for_tokens()``.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

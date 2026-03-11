@@ -3,6 +3,7 @@ Connection represents authorization to a provider account.
 
 Services are accessed from a connection.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -67,6 +68,7 @@ class Connection:
         """
         if not self.supports(ServiceKind.CALENDAR):
             from omnidapter.core.errors import UnsupportedCapabilityError
+
             raise UnsupportedCapabilityError(
                 f"Provider {self._stored.provider_key!r} does not support calendars. "
                 "Check conn.supports(ServiceKind.CALENDAR) before calling conn.calendar().",

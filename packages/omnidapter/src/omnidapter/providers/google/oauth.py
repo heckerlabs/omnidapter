@@ -1,6 +1,7 @@
 """
 Google OAuth2 configuration.
 """
+
 from __future__ import annotations
 
 from omnidapter.providers._oauth import OAuthProviderMixin

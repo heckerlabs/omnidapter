@@ -4,6 +4,7 @@ Apple Calendar service — iCloud CalDAV with a fixed server URL.
 Users provide only their Apple ID and an app-specific password; the
 iCloud CalDAV endpoint is pre-configured.
 """
+
 from __future__ import annotations
 
 from typing import Any

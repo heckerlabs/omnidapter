@@ -3,6 +3,7 @@ Transport hooks for logging, tracing, metrics, and request/response inspection.
 
 Hooks are optional and leave room for future middleware extensions.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -13,6 +14,7 @@ from typing import Any
 @dataclass
 class RequestHookContext:
     """Context passed to request hooks."""
+
     method: str
     url: str
     headers: dict[str, str]
@@ -24,6 +26,7 @@ class RequestHookContext:
 @dataclass
 class ResponseHookContext:
     """Context passed to response hooks."""
+
     method: str
     url: str
     status_code: int
@@ -51,6 +54,7 @@ class TransportHooks:
 
     async def fire_request(self, ctx: RequestHookContext) -> None:
         import inspect
+
         for hook in self.on_request:
             result = hook(ctx)
             if inspect.isawaitable(result):
@@ -58,6 +62,7 @@ class TransportHooks:
 
     async def fire_response(self, ctx: ResponseHookContext) -> None:
         import inspect
+
         for hook in self.on_response:
             result = hook(ctx)
             if inspect.isawaitable(result):

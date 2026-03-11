@@ -2,6 +2,7 @@
 In-memory store implementations for testing — extends the real implementations
 with test helpers like seed().
 """
+
 from __future__ import annotations
 
 from omnidapter.stores.credentials import StoredCredential

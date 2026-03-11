@@ -1,6 +1,7 @@
 """
 Microsoft Calendar (Graph API) provider metadata.
 """
+
 from __future__ import annotations
 
 from omnidapter.core.metadata import (
@@ -43,17 +44,20 @@ MICROSOFT_METADATA = ProviderMetadata(
         ],
     ),
     capabilities={
-        ServiceKind.CALENDAR.value: [c.value for c in [
-            CalendarCapability.LIST_CALENDARS,
-            CalendarCapability.GET_AVAILABILITY,
-            CalendarCapability.CREATE_EVENT,
-            CalendarCapability.UPDATE_EVENT,
-            CalendarCapability.DELETE_EVENT,
-            CalendarCapability.GET_EVENT,
-            CalendarCapability.LIST_EVENTS,
-            CalendarCapability.CONFERENCE_LINKS,
-            CalendarCapability.RECURRENCE,
-            CalendarCapability.ATTENDEES,
-        ]],
+        ServiceKind.CALENDAR.value: [
+            c.value
+            for c in [
+                CalendarCapability.LIST_CALENDARS,
+                CalendarCapability.GET_AVAILABILITY,
+                CalendarCapability.CREATE_EVENT,
+                CalendarCapability.UPDATE_EVENT,
+                CalendarCapability.DELETE_EVENT,
+                CalendarCapability.GET_EVENT,
+                CalendarCapability.LIST_EVENTS,
+                CalendarCapability.CONFERENCE_LINKS,
+                CalendarCapability.RECURRENCE,
+                CalendarCapability.ATTENDEES,
+            ]
+        ],
     },
 )

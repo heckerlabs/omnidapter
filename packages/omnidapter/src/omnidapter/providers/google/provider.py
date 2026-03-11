@@ -1,6 +1,7 @@
 """
 Google provider registration class.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,6 +36,7 @@ class GoogleProvider(GoogleOAuthMixin, BaseProvider):
         hooks: Any = None,
     ) -> Any:
         from omnidapter.providers.google.calendar import GoogleCalendarService
+
         return GoogleCalendarService(
             connection_id=connection_id,
             stored_credential=stored_credential,

@@ -10,6 +10,7 @@ Example usage:
     calendar = conn.calendar()
     await calendar.list_calendars()
 """
+
 from __future__ import annotations
 
 from typing import Any

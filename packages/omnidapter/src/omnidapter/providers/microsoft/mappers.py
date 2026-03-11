@@ -6,6 +6,7 @@ Public API:
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -29,6 +30,7 @@ from omnidapter.services.calendar.models import (
 # --------------------------------------------------------------------------- #
 # Private helpers                                                              #
 # --------------------------------------------------------------------------- #
+
 
 def _parse_ms_datetime(obj: dict | None) -> datetime | None:
     if not obj:
@@ -85,6 +87,7 @@ _MS_ATTENDEE_STATUS = {
 # Public mappers                                                               #
 # --------------------------------------------------------------------------- #
 
+
 def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
     """Map a raw Microsoft Graph event dict to a canonical CalendarEvent."""
     start_obj = raw.get("start", {})
@@ -122,33 +125,45 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
     if online_meeting and online_meeting.get("joinUrl"):
         conference_data = ConferenceData(
             join_url=online_meeting["joinUrl"],
-            entry_points=[ConferenceEntryPoint(
-                entry_point_type="video",
-                uri=online_meeting["joinUrl"],
-            )],
+            entry_points=[
+                ConferenceEntryPoint(
+                    entry_point_type="video",
+                    uri=online_meeting["joinUrl"],
+                )
+            ],
             provider_data=online_meeting,
         )
 
     created_at = None
     if raw.get("createdDateTime"):
         with contextlib.suppress(Exception):
-            created_at = datetime.fromisoformat(
-                raw["createdDateTime"].replace("Z", "+00:00")
-            )
+            created_at = datetime.fromisoformat(raw["createdDateTime"].replace("Z", "+00:00"))
 
     updated_at = None
     if raw.get("lastModifiedDateTime"):
         with contextlib.suppress(Exception):
-            updated_at = datetime.fromisoformat(
-                raw["lastModifiedDateTime"].replace("Z", "+00:00")
-            )
+            updated_at = datetime.fromisoformat(raw["lastModifiedDateTime"].replace("Z", "+00:00"))
 
-    _MAPPED_KEYS = frozenset({
-        "id", "subject", "body", "location", "showAs",
-        "start", "end", "isAllDay", "organizer", "attendees",
-        "recurrence", "onlineMeeting", "createdDateTime",
-        "lastModifiedDateTime", "webLink", "iCalUId",
-    })
+    _MAPPED_KEYS = frozenset(
+        {
+            "id",
+            "subject",
+            "body",
+            "location",
+            "showAs",
+            "start",
+            "end",
+            "isAllDay",
+            "organizer",
+            "attendees",
+            "recurrence",
+            "onlineMeeting",
+            "createdDateTime",
+            "lastModifiedDateTime",
+            "webLink",
+            "iCalUId",
+        }
+    )
     return CalendarEvent(
         event_id=raw["id"],
         calendar_id=calendar_id,
@@ -201,10 +216,17 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
 
 def to_calendar(raw: dict) -> Calendar:
     """Map a raw Microsoft Graph calendar object to a canonical Calendar."""
-    _MAPPED_KEYS = frozenset({
-        "id", "name", "description", "timeZone",
-        "isDefaultCalendar", "canEdit", "hexColor",
-    })
+    _MAPPED_KEYS = frozenset(
+        {
+            "id",
+            "name",
+            "description",
+            "timeZone",
+            "isDefaultCalendar",
+            "canEdit",
+            "hexColor",
+        }
+    )
     return Calendar(
         calendar_id=raw["id"],
         summary=raw.get("name", ""),

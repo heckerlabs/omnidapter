@@ -1,6 +1,7 @@
 """
 Correlation ID generation and management for request tracing.
 """
+
 from __future__ import annotations
 
 import uuid

@@ -1,6 +1,7 @@
 """
 Microsoft OAuth2 (Azure AD) configuration.
 """
+
 from __future__ import annotations
 
 from omnidapter.providers._oauth import OAuthProviderMixin

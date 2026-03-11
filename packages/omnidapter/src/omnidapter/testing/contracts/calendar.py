@@ -14,6 +14,7 @@ Usage:
         def calendar_service(self) -> CalendarService:
             return MyProviderCalendarService(...)
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -35,9 +36,7 @@ class CalendarProviderContract:
     @pytest.fixture
     def calendar_service(self) -> CalendarService:
         """Return the CalendarService under test."""
-        raise NotImplementedError(
-            "Subclasses must implement the calendar_service fixture"
-        )
+        raise NotImplementedError("Subclasses must implement the calendar_service fixture")
 
     def test_capabilities_is_frozenset(self, calendar_service):
         """Capabilities must be a frozenset."""
@@ -70,11 +69,15 @@ class CalendarProviderContract:
         from omnidapter.core.errors import UnsupportedCapabilityError
 
         unsupported = [
-            cap for cap in CalendarCapability
+            cap
+            for cap in CalendarCapability
             if not calendar_service.supports(cap)
-            and cap not in (CalendarCapability.BATCH_CREATE,
-                             CalendarCapability.BATCH_UPDATE,
-                             CalendarCapability.BATCH_DELETE)
+            and cap
+            not in (
+                CalendarCapability.BATCH_CREATE,
+                CalendarCapability.BATCH_UPDATE,
+                CalendarCapability.BATCH_DELETE,
+            )
         ]
         if not unsupported:
             pytest.skip("Provider supports all standard capabilities")

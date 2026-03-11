@@ -1,6 +1,7 @@
 """
 Zoho provider registration class.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,6 +36,7 @@ class ZohoProvider(ZohoOAuthMixin, BaseProvider):
         hooks: Any = None,
     ) -> Any:
         from omnidapter.providers.zoho.calendar import ZohoCalendarService
+
         return ZohoCalendarService(
             connection_id=connection_id,
             stored_credential=stored_credential,

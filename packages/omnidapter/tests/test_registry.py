@@ -1,6 +1,7 @@
 """
 Unit tests for omnidapter.core.registry.ProviderRegistry.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -11,6 +12,7 @@ from omnidapter.core.registry import ProviderRegistry
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
 # --------------------------------------------------------------------------- #
+
 
 def _mock_provider(key: str, display_name: str = "Test Provider") -> MagicMock:
     meta = MagicMock()
@@ -24,6 +26,7 @@ def _mock_provider(key: str, display_name: str = "Test Provider") -> MagicMock:
 # --------------------------------------------------------------------------- #
 # Tests                                                                        #
 # --------------------------------------------------------------------------- #
+
 
 class TestProviderRegistry:
     def test_register_and_get(self):
@@ -71,15 +74,15 @@ class TestProviderRegistry:
         assert reg.get("google") is p2
         assert len(reg.list_keys()) == 1
 
-    def test_register_builtins_registers_five_providers(self):
+    def test_register_builtins_registers_four_providers(self):
         reg = ProviderRegistry()
         reg.register_builtins()
         keys = reg.list_keys()
         assert "google" in keys
         assert "microsoft" in keys
-        assert "caldav" in keys
         assert "zoho" in keys
         assert "apple" in keys
+        assert "caldav" not in keys
 
     def test_register_builtins_providers_have_metadata(self):
         reg = ProviderRegistry()

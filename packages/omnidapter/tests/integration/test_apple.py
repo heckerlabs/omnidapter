@@ -15,6 +15,7 @@ password generated at appleid.apple.com, not the account password.
 
 Apple Calendar uses Basic auth, not OAuth, so there is no token-refresh test.
 """
+
 from __future__ import annotations
 
 from contextlib import suppress
@@ -37,6 +38,7 @@ pytestmark = pytest.mark.integration
 # Server discovery                                                             #
 # --------------------------------------------------------------------------- #
 
+
 async def test_apple_discovery(apple_service):
     """
     PROPFIND to caldav.icloud.com discovers at least one calendar collection.
@@ -54,6 +56,7 @@ async def test_apple_discovery(apple_service):
 # --------------------------------------------------------------------------- #
 # CRUD round-trip                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_crud_round_trip(apple_service, apple_calendar_id, retry_read):
     """Create → read → update → delete with field-level assertions at each step."""
@@ -120,6 +123,7 @@ async def test_crud_round_trip(apple_service, apple_calendar_id, retry_read):
 # Mapper fidelity                                                              #
 # --------------------------------------------------------------------------- #
 
+
 async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
     """Verify that all supported iCalendar fields round-trip through iCloud."""
     now = datetime.now(timezone.utc).replace(microsecond=0)
@@ -140,9 +144,7 @@ async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
         created = await apple_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: apple_service.get_event(apple_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: apple_service.get_event(apple_calendar_id, event_id))
 
         assert isinstance(fetched, CalendarEvent)
         assert fetched.event_id
@@ -168,6 +170,7 @@ async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
 # All-day event                                                                #
 # --------------------------------------------------------------------------- #
 
+
 async def test_all_day_event(apple_service, apple_calendar_id, retry_read):
     """iCalendar DATE (not DATE-TIME) properties map to Python date objects."""
     today = datetime.now(timezone.utc).date()
@@ -184,9 +187,7 @@ async def test_all_day_event(apple_service, apple_calendar_id, retry_read):
         created = await apple_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: apple_service.get_event(apple_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: apple_service.get_event(apple_calendar_id, event_id))
         assert fetched.all_day is True
         assert isinstance(fetched.start, date)
         assert not isinstance(fetched.start, datetime)
@@ -200,6 +201,7 @@ async def test_all_day_event(apple_service, apple_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Recurrence                                                                   #
 # --------------------------------------------------------------------------- #
+
 
 async def test_recurring_event(apple_service, apple_calendar_id, retry_read):
     """RRULE lines in the VCALENDAR are preserved in the Recurrence model."""
@@ -219,9 +221,7 @@ async def test_recurring_event(apple_service, apple_calendar_id, retry_read):
         created = await apple_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: apple_service.get_event(apple_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: apple_service.get_event(apple_calendar_id, event_id))
         assert fetched.recurrence is not None
         assert any("RRULE" in rule for rule in fetched.recurrence.rules)
 
@@ -234,6 +234,7 @@ async def test_recurring_event(apple_service, apple_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Pagination (REPORT query)                                                    #
 # --------------------------------------------------------------------------- #
+
 
 async def test_pagination(apple_service, apple_calendar_id):
     """
@@ -268,9 +269,7 @@ async def test_pagination(apple_service, apple_calendar_id):
             if f"{EVENT_PREFIX} pagination-" in (event.summary or ""):
                 collected.append(event)
 
-        assert len(collected) >= n, (
-            f"Expected at least {n} test events, got {len(collected)}"
-        )
+        assert len(collected) >= n, f"Expected at least {n} test events, got {len(collected)}"
 
     finally:
         for uid in created_uids:

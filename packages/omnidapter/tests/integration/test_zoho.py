@@ -19,6 +19,7 @@ Notes on Zoho limitations:
   - The Zoho API wraps events in {"events": [...]} envelopes; the mapper
     must handle both create/update responses and get/list responses.
 """
+
 from __future__ import annotations
 
 import os
@@ -38,15 +39,14 @@ pytestmark = pytest.mark.integration
 # Token refresh                                                                #
 # --------------------------------------------------------------------------- #
 
+
 async def test_token_refresh():
     """
     Expired access token + valid refresh token → fresh credentials that work.
     """
     from omnidapter.providers.zoho.provider import ZohoProvider
 
-    stale = _stale_oauth2_stored(
-        "zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"]
-    )
+    stale = _stale_oauth2_stored("zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"])
     assert stale.credentials.is_expired()
 
     provider = ZohoProvider(
@@ -69,6 +69,7 @@ async def test_token_refresh():
 # Calendar discovery                                                           #
 # --------------------------------------------------------------------------- #
 
+
 async def test_list_calendars(zoho_service):
     """list_calendars() returns at least one Calendar with required fields."""
     calendars = await zoho_service.list_calendars()
@@ -81,6 +82,7 @@ async def test_list_calendars(zoho_service):
 # --------------------------------------------------------------------------- #
 # CRUD round-trip                                                              #
 # --------------------------------------------------------------------------- #
+
 
 async def test_crud_round_trip(zoho_service, zoho_calendar_id, retry_read):
     """
@@ -151,6 +153,7 @@ async def test_crud_round_trip(zoho_service, zoho_calendar_id, retry_read):
 # Mapper fidelity                                                              #
 # --------------------------------------------------------------------------- #
 
+
 async def test_mapper_fidelity(zoho_service, zoho_calendar_id, retry_read):
     """
     Verify that the Zoho → CalendarEvent mapper handles real API response
@@ -171,9 +174,7 @@ async def test_mapper_fidelity(zoho_service, zoho_calendar_id, retry_read):
         created = await zoho_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: zoho_service.get_event(zoho_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: zoho_service.get_event(zoho_calendar_id, event_id))
 
         assert isinstance(fetched, CalendarEvent)
         assert fetched.event_id
@@ -191,6 +192,7 @@ async def test_mapper_fidelity(zoho_service, zoho_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 # Pagination                                                                   #
 # --------------------------------------------------------------------------- #
+
 
 async def test_pagination(zoho_service, zoho_calendar_id):
     """
@@ -223,9 +225,7 @@ async def test_pagination(zoho_service, zoho_calendar_id):
             if f"{EVENT_PREFIX} pagination-" in (event.summary or ""):
                 collected.append(event)
 
-        assert len(collected) >= n, (
-            f"Expected at least {n} test events, got {len(collected)}"
-        )
+        assert len(collected) >= n, f"Expected at least {n} test events, got {len(collected)}"
 
     finally:
         for eid in created_ids:
@@ -236,6 +236,7 @@ async def test_pagination(zoho_service, zoho_calendar_id):
 # --------------------------------------------------------------------------- #
 # Attendees                                                                    #
 # --------------------------------------------------------------------------- #
+
 
 async def test_attendees(zoho_service, zoho_calendar_id, retry_read):
     """Attendees added to a create request survive the Zoho mapper round-trip."""
@@ -257,13 +258,9 @@ async def test_attendees(zoho_service, zoho_calendar_id, retry_read):
         created = await zoho_service.create_event(req)
         event_id = created.event_id
 
-        fetched = await retry_read(
-            lambda: zoho_service.get_event(zoho_calendar_id, event_id)
-        )
+        fetched = await retry_read(lambda: zoho_service.get_event(zoho_calendar_id, event_id))
         assert len(fetched.attendees) >= 1
-        assert any(
-            a.email == "integration-attendee@example.com" for a in fetched.attendees
-        )
+        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
 
     finally:
         if event_id:

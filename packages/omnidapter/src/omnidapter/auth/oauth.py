@@ -1,6 +1,7 @@
 """
 OAuth 2.0 flow helpers — begin and complete flows.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 
 class OAuthBeginResult(BaseModel):
     """Result of beginning an OAuth flow."""
+
     authorization_url: str
     state: str
     connection_id: str
@@ -29,6 +31,7 @@ class OAuthBeginResult(BaseModel):
 
 class OAuthPendingState(BaseModel):
     """Payload stored in the OAuthStateStore during a pending OAuth flow."""
+
     connection_id: str
     provider: str
     redirect_uri: str
@@ -39,10 +42,11 @@ class OAuthPendingState(BaseModel):
 def _generate_pkce_pair() -> tuple[str, str]:
     """Generate a PKCE code_verifier and code_challenge pair (S256 method)."""
     import base64
+
     verifier = secrets.token_urlsafe(64)
-    challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(verifier.encode()).digest()
-    ).rstrip(b"=").decode()
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    )
     return verifier, challenge
 
 
@@ -101,9 +105,7 @@ class OAuthHelper:
             params.update(extra_params)
 
         authorization_url = (
-            oauth_config.authorization_endpoint
-            + "?"
-            + urllib.parse.urlencode(params)
+            oauth_config.authorization_endpoint + "?" + urllib.parse.urlencode(params)
         )
 
         pending = OAuthPendingState(
@@ -122,7 +124,9 @@ class OAuthHelper:
 
         auth_logger.info(
             "OAuth begin: provider=%r connection_id=%r state=%r",
-            provider, connection_id, state_id,
+            provider,
+            connection_id,
+            state_id,
         )
 
         return OAuthBeginResult(
@@ -180,7 +184,8 @@ class OAuthHelper:
 
         auth_logger.info(
             "OAuth complete: provider=%r connection_id=%r",
-            provider, connection_id,
+            provider,
+            connection_id,
         )
 
         return stored_credential

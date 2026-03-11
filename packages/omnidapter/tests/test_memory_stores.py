@@ -2,6 +2,7 @@
 Tests for the real in-memory store implementations in omnidapter.stores.memory,
 including their use as Omnidapter defaults.
 """
+
 from datetime import datetime, timedelta, timezone
 
 import pytest

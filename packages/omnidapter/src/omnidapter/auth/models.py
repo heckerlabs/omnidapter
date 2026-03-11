@@ -6,6 +6,7 @@ Every concrete credential type must inherit from :class:`BaseCredentials` so tha
 calling code can use ``isinstance(creds, BaseCredentials)`` to distinguish a
 credential envelope's payload from arbitrary dicts.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -41,9 +42,7 @@ class OAuth2Credentials(BaseCredentials):
         """Return True if the access token is expired (or within *buffer_seconds* of expiry)."""
         if self.expires_at is None:
             return False
-        return datetime.now(tz=timezone.utc) >= self.expires_at - timedelta(
-            seconds=buffer_seconds
-        )
+        return datetime.now(tz=timezone.utc) >= self.expires_at - timedelta(seconds=buffer_seconds)
 
     def is_refreshable(self) -> bool:
         """Return True if a refresh_token is available."""

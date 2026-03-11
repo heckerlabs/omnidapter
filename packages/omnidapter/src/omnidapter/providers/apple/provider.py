@@ -1,6 +1,7 @@
 """
 Apple Calendar provider registration class.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,6 +30,7 @@ class AppleProvider(BaseProvider):
         hooks: Any = None,
     ) -> Any:
         from omnidapter.providers.apple.calendar import AppleCalendarService
+
         return AppleCalendarService(
             connection_id=connection_id,
             stored_credential=stored_credential,
