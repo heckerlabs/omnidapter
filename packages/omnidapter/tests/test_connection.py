@@ -217,14 +217,29 @@ class TestOmnidapter:
         monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
+        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
 
         omni = Omnidapter()
         providers = omni.list_providers()
         assert "google" in providers
         assert "microsoft" in providers
         assert "zoho" in providers
-        assert "apple" in providers
+        assert "apple" not in providers
         assert "caldav" not in providers
+
+    async def test_list_providers_registers_apple_when_enabled(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+        monkeypatch.setenv("OMNIDAPTER_ENABLE_APPLE", "1")
+
+        omni = Omnidapter()
+        providers = omni.list_providers()
+
+        assert providers == ["apple"]
 
     async def test_list_providers_with_unconfigured_oauth(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
@@ -233,13 +248,32 @@ class TestOmnidapter:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
 
         omni = Omnidapter()
         providers = omni.list_providers()
-        assert "apple" in providers
+        assert "apple" not in providers
         assert "google" not in providers
         assert "microsoft" not in providers
         assert "zoho" not in providers
+        assert providers == []
+
+    async def test_list_providers_with_auto_register_disabled(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+
+        omni = Omnidapter(auto_register_by_env=False)
+        providers = omni.list_providers()
+
+        assert "google" in providers
+        assert "microsoft" in providers
+        assert "zoho" in providers
+        assert "apple" in providers
 
     async def test_oauth_property_accessible(self):
         omni, _, _ = self._omni()

@@ -40,6 +40,11 @@ class Omnidapter:
         credential_store: The app's credential persistence implementation.
         oauth_state_store: The app's OAuth state persistence implementation.
         auto_refresh: Whether to automatically refresh OAuth tokens on service calls.
+        auto_register_by_env: Whether built-in providers are auto-registered
+            based on environment configuration (default: True). When True,
+            OAuth providers are registered only when configured via env vars,
+            and Apple is registered only when OMNIDAPTER_ENABLE_APPLE is set.
+            When False, all built-in providers are registered.
         retry_policy: HTTP retry policy (default: RetryPolicy.default()).
         http_client: Optional shared ``httpx.AsyncClient`` instance. When provided,
             Omnidapter reuses this client for provider API requests and OAuth token
@@ -56,6 +61,7 @@ class Omnidapter:
         oauth_state_store: OAuthStateStore | None = None,
         *,
         auto_refresh: bool = True,
+        auto_register_by_env: bool = True,
         retry_policy: RetryPolicy | None = None,
         http_client: httpx.AsyncClient | None = None,
         registry: ProviderRegistry | None = None,
@@ -68,7 +74,7 @@ class Omnidapter:
 
         if registry is None:
             registry = ProviderRegistry()
-            registry.register_builtins()
+            registry.register_builtins(auto_register_by_env=auto_register_by_env)
         self._registry = registry
 
         self._oauth = OAuthHelper(
