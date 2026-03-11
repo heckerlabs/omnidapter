@@ -175,7 +175,7 @@ class GoogleCalendarService(CalendarService):
         if request.end is not None:
             body["end"] = mappers._format_event_time(request.end, request.all_day or False)
         if request.status is not None:
-            body["status"] = request.status
+            body["status"] = request.status.value
         if request.visibility is not None:
             body["visibility"] = request.visibility
         if request.attendees is not None:
