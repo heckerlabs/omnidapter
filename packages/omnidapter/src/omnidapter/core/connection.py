@@ -6,11 +6,14 @@ Services are accessed from a connection.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 from omnidapter.core.metadata import ServiceKind
 
 if TYPE_CHECKING:
+    import httpx
+
     from omnidapter.core.registry import ProviderRegistry
     from omnidapter.services.calendar.interface import CalendarService
     from omnidapter.stores.credentials import StoredCredential
@@ -35,12 +38,16 @@ class Connection:
         registry: ProviderRegistry,
         retry_policy: RetryPolicy | None = None,
         hooks: TransportHooks | None = None,
+        credential_resolver: Callable[[str], Awaitable[StoredCredential]] | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._connection_id = connection_id
         self._stored = stored_credential
         self._registry = registry
         self._retry_policy = retry_policy
         self._hooks = hooks
+        self._credential_resolver = credential_resolver
+        self._http_client = http_client
 
     @property
     def connection_id(self) -> str:
@@ -59,6 +66,20 @@ class Connection:
         provider = self._registry.get(self._stored.provider_key)
         return service in provider.metadata.services
 
+    def _configure_service_runtime(self, service: CalendarService) -> CalendarService:
+        service_runtime: Any = service
+
+        if self._credential_resolver is not None:
+            service_runtime._credential_resolver = self._credential_resolver
+
+        if self._http_client is not None:
+            transport = getattr(service_runtime, "_http", None)
+            set_shared_client = getattr(transport, "set_shared_client", None)
+            if callable(set_shared_client):
+                set_shared_client(self._http_client)
+
+        return service
+
     def calendar(self) -> CalendarService:
         """Return the calendar service for this connection.
 
@@ -76,9 +97,10 @@ class Connection:
                 capability=ServiceKind.CALENDAR,
             )
         provider = self._registry.get(self._stored.provider_key)
-        return provider.get_calendar_service(
+        service = provider.get_calendar_service(
             connection_id=self._connection_id,
             stored_credential=self._stored,
             retry_policy=self._retry_policy,
             hooks=self._hooks,
         )
+        return self._configure_service_runtime(service)

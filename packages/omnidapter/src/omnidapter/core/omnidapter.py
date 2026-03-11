@@ -13,7 +13,7 @@ Example usage:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from omnidapter.auth.oauth import OAuthHelper
 from omnidapter.auth.refresh import TokenRefreshManager
@@ -27,6 +27,9 @@ from omnidapter.stores.memory import InMemoryCredentialStore, InMemoryOAuthState
 from omnidapter.stores.oauth_state import OAuthStateStore
 from omnidapter.transport.retry import RetryPolicy
 
+if TYPE_CHECKING:
+    import httpx
+
 logger = get_logger("omnidapter")
 
 
@@ -38,6 +41,9 @@ class Omnidapter:
         oauth_state_store: The app's OAuth state persistence implementation.
         auto_refresh: Whether to automatically refresh OAuth tokens on service calls.
         retry_policy: HTTP retry policy (default: RetryPolicy.default()).
+        http_client: Optional shared ``httpx.AsyncClient`` instance. When provided,
+            Omnidapter reuses this client for provider API requests and OAuth token
+            exchange/refresh calls. Caller owns the client lifecycle.
         registry: Provider registry to use. Defaults to a new registry with
             built-in providers auto-registered (OAuth providers only when
             configured via env vars). Pass an empty or custom registry to
@@ -51,12 +57,14 @@ class Omnidapter:
         *,
         auto_refresh: bool = True,
         retry_policy: RetryPolicy | None = None,
+        http_client: httpx.AsyncClient | None = None,
         registry: ProviderRegistry | None = None,
     ) -> None:
         self._credential_store = credential_store or InMemoryCredentialStore()
         self._oauth_state_store = oauth_state_store or InMemoryOAuthStateStore()
         self._auto_refresh = auto_refresh
         self._retry_policy = retry_policy or RetryPolicy.default()
+        self._http_client = http_client
 
         if registry is None:
             registry = ProviderRegistry()
@@ -67,11 +75,15 @@ class Omnidapter:
             registry=self._registry,
             credential_store=self._credential_store,
             oauth_state_store=self._oauth_state_store,
+            retry_policy=self._retry_policy,
+            http_client=self._http_client,
         )
 
         self._refresh_manager = TokenRefreshManager(
             registry=self._registry,
             credential_store=self._credential_store,
+            retry_policy=self._retry_policy,
+            http_client=self._http_client,
         )
 
     @property
@@ -112,6 +124,10 @@ class Omnidapter:
             stored_credential=stored,
             registry=self._registry,
             retry_policy=self._retry_policy,
+            credential_resolver=(
+                self._refresh_manager.ensure_fresh if self._auto_refresh else None
+            ),
+            http_client=self._http_client,
         )
 
     def register_provider(self, provider: Any) -> None:

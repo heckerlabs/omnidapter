@@ -5,8 +5,9 @@ Unit tests for omnidapter.core.connection.Connection and omnidapter.core.omnidap
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 from omnidapter.auth.models import ApiKeyCredentials, OAuth2Credentials
 from omnidapter.core.connection import Connection
@@ -14,6 +15,7 @@ from omnidapter.core.errors import ConnectionNotFoundError
 from omnidapter.core.metadata import AuthKind
 from omnidapter.core.omnidapter import Omnidapter
 from omnidapter.core.registry import ProviderRegistry
+from omnidapter.providers.google.provider import GoogleProvider
 from omnidapter.stores.credentials import StoredCredential
 from omnidapter.testing.fakes.stores import InMemoryCredentialStore, InMemoryOAuthStateStore
 
@@ -102,6 +104,38 @@ class TestConnection:
             retry_policy=policy,
             hooks=None,
         )
+
+    def test_calendar_attaches_credential_resolver(self):
+        stored = _stored_oauth("google", expired=False)
+        registry = _mock_registry()
+        resolver = AsyncMock(return_value=stored)
+
+        conn = Connection(
+            "conn-1",
+            stored,
+            registry,
+            credential_resolver=resolver,
+        )
+
+        svc = conn.calendar()
+        assert svc._credential_resolver is resolver
+
+    def test_calendar_attaches_shared_http_client(self):
+        stored = _stored_apikey("google")
+        registry = _mock_registry()
+        service = registry.get.return_value.get_calendar_service.return_value
+        service._http = MagicMock()
+        shared_client = MagicMock()
+
+        conn = Connection(
+            "conn-1",
+            stored,
+            registry,
+            http_client=shared_client,
+        )
+
+        conn.calendar()
+        service._http.set_shared_client.assert_called_once_with(shared_client)
 
 
 # --------------------------------------------------------------------------- #
@@ -210,6 +244,28 @@ class TestOmnidapter:
     async def test_oauth_property_accessible(self):
         omni, _, _ = self._omni()
         assert omni.oauth is not None
+
+    async def test_connection_passes_shared_http_client_to_service(self):
+        cred_store = InMemoryCredentialStore()
+        state_store = InMemoryOAuthStateStore()
+        shared_client = httpx.AsyncClient()
+        try:
+            omni = Omnidapter(
+                credential_store=cred_store,
+                oauth_state_store=state_store,
+                registry=ProviderRegistry(),
+                http_client=shared_client,
+            )
+            omni.register_provider(GoogleProvider(client_id="cid", client_secret="csecret"))
+            cred_store.seed("conn-1", _stored_oauth("google", expired=False))
+
+            conn = await omni.connection("conn-1")
+            svc = conn.calendar()
+
+            assert svc._http._shared_client is shared_client
+            assert getattr(svc, "_credential_resolver", None) is not None
+        finally:
+            await shared_client.aclose()
 
     async def test_registry_property_accessible(self):
         omni, _, _ = self._omni()
