@@ -19,8 +19,10 @@ from omnidapter.services.calendar.models import (
     EventStatus,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 from omnidapter.stores.credentials import StoredCredential
@@ -32,6 +34,10 @@ ZOHO_API_BASE = "https://calendar.zoho.com/api/v1"
 _ZOHO_CAPABILITIES = frozenset(
     {
         CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.GET_CALENDAR,
+        CalendarCapability.CREATE_CALENDAR,
+        CalendarCapability.UPDATE_CALENDAR,
+        CalendarCapability.DELETE_CALENDAR,
         CalendarCapability.CREATE_EVENT,
         CalendarCapability.UPDATE_EVENT,
         CalendarCapability.DELETE_EVENT,
@@ -124,6 +130,50 @@ class ZohoCalendarService(CalendarService):
         )
         data = response.json()
         return [mappers.to_calendar(cal) for cal in data.get("calendars", [])]
+
+    async def get_calendar(self, calendar_id: str) -> Calendar:
+        self._require_capability(CalendarCapability.GET_CALENDAR)
+        response = await self._http.request(
+            "GET", f"{ZOHO_API_BASE}/calendars/{calendar_id}", headers=await self._auth_headers()
+        )
+        data = response.json()
+        calendars = data.get("calendars", [])
+        raw = calendars[0] if calendars else {"uid": calendar_id}
+        return mappers.to_calendar(raw)
+
+    async def create_calendar(self, request: CreateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.CREATE_CALENDAR)
+        body = mappers.from_create_calendar_request(request)
+        response = await self._http.request(
+            "POST",
+            f"{ZOHO_API_BASE}/calendars",
+            headers=await self._auth_headers(),
+            params={"calendarData": _json.dumps(body)},
+        )
+        data = response.json()
+        calendars = data.get("calendars", [])
+        raw = calendars[0] if calendars else body
+        return mappers.to_calendar(raw)
+
+    async def update_calendar(self, request: UpdateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.UPDATE_CALENDAR)
+        body = mappers.from_update_calendar_request(request)
+        response = await self._http.request(
+            "PUT",
+            f"{ZOHO_API_BASE}/calendars/{request.calendar_id}",
+            headers=await self._auth_headers(),
+            params={"calendarData": _json.dumps(body)},
+        )
+        data = response.json()
+        calendars = data.get("calendars", [])
+        raw = calendars[0] if calendars else {"uid": request.calendar_id, **body}
+        return mappers.to_calendar(raw)
+
+    async def delete_calendar(self, calendar_id: str) -> None:
+        self._require_capability(CalendarCapability.DELETE_CALENDAR)
+        await self._http.request(
+            "DELETE", f"{ZOHO_API_BASE}/calendars/{calendar_id}", headers=await self._auth_headers()
+        )
 
     async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
         self._require_capability(CalendarCapability.GET_AVAILABILITY)

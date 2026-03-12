@@ -10,7 +10,12 @@ from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers.zoho.calendar import ZohoCalendarService
 from omnidapter.services.calendar.models import EventStatus
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    CreateEventRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 from omnidapter.stores.credentials import StoredCredential
 
 
@@ -168,3 +173,49 @@ class TestListEvents:
         ]
 
         assert [event.event_id for event in events] == ["evt-in"]
+
+
+class TestCalendarCrud:
+    async def test_create_calendar_posts_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "calendars": [
+                {
+                    "uid": "cal-2",
+                    "name": "Team",
+                    "timezone": "UTC",
+                }
+            ]
+        }
+
+        created = await svc.create_calendar(
+            CreateCalendarRequest(summary="Team", timezone="UTC", extra={"isprivate": True})
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "POST"
+        assert call.args[1].endswith("/calendars")
+        assert "calendarData" in call.kwargs["params"]
+        assert created.calendar_id == "cal-2"
+
+    async def test_update_calendar_puts_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "calendars": [
+                {
+                    "uid": "cal-2",
+                    "name": "Renamed",
+                    "timezone": "UTC",
+                }
+            ]
+        }
+
+        updated = await svc.update_calendar(
+            UpdateCalendarRequest(calendar_id="cal-2", summary="Renamed")
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "PUT"
+        assert call.args[1].endswith("/calendars/cal-2")
+        assert "calendarData" in call.kwargs["params"]
+        assert updated.summary == "Renamed"

@@ -11,6 +11,10 @@ class CalendarCapability(str, Enum):
     """Capabilities that a calendar provider may or may not support."""
 
     LIST_CALENDARS = "list_calendars"
+    GET_CALENDAR = "get_calendar"
+    CREATE_CALENDAR = "create_calendar"
+    UPDATE_CALENDAR = "update_calendar"
+    DELETE_CALENDAR = "delete_calendar"
     GET_AVAILABILITY = "get_availability"
     CREATE_EVENT = "create_event"
     UPDATE_EVENT = "update_event"

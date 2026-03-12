@@ -39,6 +39,10 @@ Capabilities by provider:
 | Capability | Google | Microsoft | Zoho | Apple | CalDAV* |
 |---|:---:|:---:|:---:|:---:|:---:|
 | `list_calendars` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `get_calendar` | ✓ | ✓ | ✓ | ✓ | ✓** |
+| `create_calendar` | ✓ | ✓ | ✓ | ✓ | ✓** |
+| `update_calendar` | ✓ | ✓ | ✓ | ✓ | ✓** |
+| `delete_calendar` | ✓ | ✓ | ✓ | ✓ | ✓** |
 | `list_events` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `get_event` | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `create_event` | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -50,6 +54,8 @@ Capabilities by provider:
 | `attendees` | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 *CalDAV requires manual registration. See [providers.md](providers.md).
+
+Footnote `**`: CalDAV calendar collection CRUD is server-dependent. Some servers reject `MKCALENDAR`/`MKCOL` (for example, Zoho's CalDAV sync endpoint), so top-level calendar create/delete may fail even when event CRUD is available.
 
 ---
 
@@ -69,6 +75,64 @@ for calendar in calendars:
     print(calendar.description)     # str | None
     print(calendar.background_color)  # str | None  e.g. "#4285F4"
 ```
+
+---
+
+## `get_calendar`
+
+Returns one calendar by ID.
+
+```python
+calendar = await cal.get_calendar(calendar_id="primary")
+
+print(calendar.calendar_id)
+print(calendar.summary)
+```
+
+---
+
+## `create_calendar`
+
+```python
+from omnidapter.services.calendar.requests import CreateCalendarRequest
+
+created = await cal.create_calendar(CreateCalendarRequest(
+    summary="Team Ops",
+    description="Operations schedule",
+    timezone="America/New_York",
+    background_color="#2E7D32",
+))
+
+print(created.calendar_id)
+```
+
+Use `extra` for provider-specific calendar fields.
+
+---
+
+## `update_calendar`
+
+Only provided fields are updated.
+
+```python
+from omnidapter.services.calendar.requests import UpdateCalendarRequest
+
+updated = await cal.update_calendar(UpdateCalendarRequest(
+    calendar_id="abc123",
+    summary="Team Ops (Renamed)",
+    background_color="#1E88E5",
+))
+```
+
+---
+
+## `delete_calendar`
+
+```python
+await cal.delete_calendar(calendar_id="abc123")
+```
+
+Returns `None`.
 
 ---
 
