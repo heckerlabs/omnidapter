@@ -107,7 +107,8 @@ class CalDAVCalendarService(CalendarService):
         if cid.startswith("http://") or cid.startswith("https://"):
             return cid.rstrip("/")
         if cid.startswith("/"):
-            return f"{self._server_url}{cid}".rstrip("/")
+            parsed_base = urlparse(self._server_url)
+            return f"{parsed_base.scheme}://{parsed_base.netloc}{cid}".rstrip("/")
         return f"{self._server_url}/{cid.strip('/')}"
 
     async def _propfind(self, url: str, body: str, *, depth: str) -> ET.Element:
