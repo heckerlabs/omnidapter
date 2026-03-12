@@ -25,6 +25,8 @@ from omnidapter.services.calendar.models import (
     EventVisibility,
     Organizer,
     Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 
 # --------------------------------------------------------------------------- #
@@ -49,6 +51,15 @@ def _format_event_time(dt: datetime | date, all_day: bool) -> dict:
             dt = dt.replace(tzinfo=timezone.utc)
         return {"dateTime": dt.isoformat()}
     return {"date": str(dt)}
+
+
+def _infer_google_timezone(dt: datetime | date) -> str | None:
+    if not isinstance(dt, datetime):
+        return None
+    if dt.tzinfo is None:
+        return "UTC"
+    tz_name = dt.tzname()
+    return tz_name or "UTC"
 
 
 def _map_attendee_status(google_status: str) -> AttendeeStatus:
@@ -150,6 +161,20 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
             ),
         )
 
+    reminders = None
+    reminders_raw = raw.get("reminders")
+    if reminders_raw:
+        reminders = Reminder(
+            use_default=bool(reminders_raw.get("useDefault", False)),
+            overrides=[
+                ReminderOverride(
+                    method=override.get("method", "popup"),
+                    minutes_before=int(override.get("minutes", 0)),
+                )
+                for override in reminders_raw.get("overrides", [])
+            ],
+        )
+
     created_at = None
     if raw.get("created"):
         with contextlib.suppress(Exception):
@@ -176,6 +201,7 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
             "recurringEventId",
             "originalStartTime",
             "conferenceData",
+            "reminders",
             "created",
             "updated",
             "htmlLink",
@@ -202,6 +228,7 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         attendees=attendees,
         recurrence=recurrence,
         conference_data=conference_data,
+        reminders=reminders,
         created_at=created_at,
         updated_at=updated_at,
         html_link=raw.get("htmlLink"),
@@ -222,6 +249,11 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
     if event.timezone:
         body["start"].setdefault("timeZone", event.timezone)
         body["end"].setdefault("timeZone", event.timezone)
+    elif event.recurrence:
+        inferred_tz = _infer_google_timezone(event.start)
+        if inferred_tz:
+            body["start"].setdefault("timeZone", inferred_tz)
+            body["end"].setdefault("timeZone", inferred_tz)
     if event.description is not None:
         body["description"] = event.description
     if event.location is not None:
