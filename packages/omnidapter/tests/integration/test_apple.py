@@ -18,6 +18,7 @@ Apple Calendar uses Basic auth, not OAuth, so there is no token-refresh test.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
@@ -30,6 +31,24 @@ from omnidapter.services.calendar.models import (
 from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
+
+
+async def _create_with_retry(apple_service, req: CreateEventRequest) -> CalendarEvent:
+    from omnidapter.core.errors import ProviderAPIError
+
+    last_exc: ProviderAPIError | None = None
+    for attempt in range(3):
+        try:
+            return await apple_service.create_event(req)
+        except ProviderAPIError as exc:
+            last_exc = exc
+            if exc.status_code not in (400, 429, 503) or attempt == 2:
+                raise
+            await asyncio.sleep(1 + attempt)
+
+    assert last_exc is not None
+    raise last_exc
+
 
 pytestmark = pytest.mark.integration
 
@@ -218,7 +237,7 @@ async def test_recurring_event(apple_service, apple_calendar_id, retry_read):
     event_id: str | None = None
 
     try:
-        created = await apple_service.create_event(req)
+        created = await _create_with_retry(apple_service, req)
         event_id = created.event_id
 
         fetched = await retry_read(lambda: apple_service.get_event(apple_calendar_id, event_id))
@@ -257,7 +276,7 @@ async def test_pagination(apple_service, apple_calendar_id):
                 start=now + timedelta(hours=i + 1),
                 end=now + timedelta(hours=i + 1, minutes=30),
             )
-            event = await apple_service.create_event(req)
+            event = await _create_with_retry(apple_service, req)
             created_uids.append(event.event_id)
 
         collected: list[CalendarEvent] = []
