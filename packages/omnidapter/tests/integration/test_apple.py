@@ -8,6 +8,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_APPLE_CALENDAR_ID  (defaults to first discovered calendar)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL     (comma-separated invitee emails for attendee tests)
 
 Apple Calendar uses CalDAV under the hood with a fixed server URL
 (https://caldav.icloud.com). Authentication requires an app-specific
@@ -18,6 +19,7 @@ Apple Calendar uses Basic auth, not OAuth, so there is no token-refresh test.
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
@@ -30,6 +32,24 @@ from omnidapter.services.calendar.models import (
 from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
+
+
+async def _create_with_retry(apple_service, req: CreateEventRequest) -> CalendarEvent:
+    from omnidapter.core.errors import ProviderAPIError
+
+    last_exc: ProviderAPIError | None = None
+    for attempt in range(3):
+        try:
+            return await apple_service.create_event(req)
+        except ProviderAPIError as exc:
+            last_exc = exc
+            if exc.status_code not in (400, 429, 503) or attempt == 2:
+                raise
+            await asyncio.sleep(1 + attempt)
+
+    assert last_exc is not None
+    raise last_exc
+
 
 pytestmark = pytest.mark.integration
 
@@ -124,7 +144,9 @@ async def test_crud_round_trip(apple_service, apple_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    apple_service, apple_calendar_id, retry_read, integration_attendee_emails
+):
     """Verify that all supported iCalendar fields round-trip through iCloud."""
     now = datetime.now(timezone.utc).replace(microsecond=0)
     req = CreateEventRequest(
@@ -135,7 +157,8 @@ async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
         description="Testing iCalendar field-mapping fidelity",
         location="Mapper Test Location",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -156,7 +179,11 @@ async def test_mapper_fidelity(apple_service, apple_calendar_id, retry_read):
         assert fetched.status in EventStatus
         assert fetched.ical_uid is not None
         assert len(fetched.attendees) >= 1
-        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert expected_emails.issubset(fetched_emails)
         assert fetched.provider_data is not None
         assert "raw_props" in fetched.provider_data
 
@@ -218,7 +245,7 @@ async def test_recurring_event(apple_service, apple_calendar_id, retry_read):
     event_id: str | None = None
 
     try:
-        created = await apple_service.create_event(req)
+        created = await _create_with_retry(apple_service, req)
         event_id = created.event_id
 
         fetched = await retry_read(lambda: apple_service.get_event(apple_calendar_id, event_id))
@@ -257,7 +284,7 @@ async def test_pagination(apple_service, apple_calendar_id):
                 start=now + timedelta(hours=i + 1),
                 end=now + timedelta(hours=i + 1, minutes=30),
             )
-            event = await apple_service.create_event(req)
+            event = await _create_with_retry(apple_service, req)
             created_uids.append(event.event_id)
 
         collected: list[CalendarEvent] = []
@@ -275,3 +302,11 @@ async def test_pagination(apple_service, apple_calendar_id):
         for uid in created_uids:
             with suppress(Exception):
                 await apple_service.delete_event(apple_calendar_id, uid)
+
+
+async def test_get_event_unknown_id_raises(apple_service, apple_calendar_id):
+    from omnidapter.core.errors import ProviderAPIError
+
+    with pytest.raises(ProviderAPIError) as exc_info:
+        await apple_service.get_event(apple_calendar_id, "non-existent-omnidapter-event")
+    assert exc_info.value.status_code in (400, 404)

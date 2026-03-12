@@ -4,7 +4,9 @@ Unit tests for omnidapter.providers.google.mappers.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 from omnidapter.providers.google import mappers
@@ -39,8 +41,8 @@ def _make_raw(overrides: dict | None = None) -> dict:
     return base
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="evt-1",
         calendar_id="cal-1",
         summary="Test event",
@@ -163,6 +165,22 @@ class TestToCalendarEvent:
         assert event.conference_data.conference_solution_name == "Google Meet"
         assert event.conference_data.join_url == "https://meet.google.com/abc"
 
+    def test_reminders_mapped(self):
+        raw = _make_raw(
+            {
+                "reminders": {
+                    "useDefault": False,
+                    "overrides": [{"method": "popup", "minutes": 20}],
+                }
+            }
+        )
+        event = mappers.to_calendar_event(raw, "c")
+        assert event.reminders is not None
+        assert event.reminders.use_default is False
+        assert event.reminders.overrides
+        assert event.reminders.overrides[0].method == "popup"
+        assert event.reminders.overrides[0].minutes_before == 20
+
     def test_created_updated_timestamps(self):
         raw = _make_raw(
             {
@@ -265,6 +283,43 @@ class TestFromCalendarEvent:
         body = mappers.from_calendar_event(event)
         assert body["start"]["timeZone"] == "America/New_York"
         assert body["end"]["timeZone"] == "America/New_York"
+
+    def test_recurrence_without_explicit_timezone_infers_utc(self):
+        event = _make_event(
+            timezone=None,
+            recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["start"]["timeZone"] == "UTC"
+        assert body["end"]["timeZone"] == "UTC"
+
+    def test_recurrence_without_explicit_timezone_uses_iana_zoneinfo_key(self):
+        try:
+            tz = ZoneInfo("America/New_York")
+        except ZoneInfoNotFoundError:
+            pytest.skip("IANA tzdata not available in runtime environment")
+
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=tz),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=tz),
+            timezone=None,
+            recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["start"]["timeZone"] == "America/New_York"
+        assert body["end"]["timeZone"] == "America/New_York"
+
+    def test_recurrence_without_explicit_timezone_falls_back_to_utc_for_offset_tz(self):
+        fixed_offset_tz = timezone(timedelta(hours=-5))
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=fixed_offset_tz),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=fixed_offset_tz),
+            timezone=None,
+            recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["start"]["timeZone"] == "UTC"
+        assert body["end"]["timeZone"] == "UTC"
 
     def test_conference_data_generates_create_request(self):
         event = _make_event(conference_data=ConferenceData())

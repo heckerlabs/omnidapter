@@ -9,6 +9,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_GOOGLE_CALENDAR_ID   (defaults to first calendar on the account)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL       (comma-separated invitee emails for attendee tests)
 
 Use a dedicated test Google account. Tests create and delete events but never
 touch data they did not create.
@@ -21,11 +22,15 @@ from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
+from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,
     EventStatus,
     EventVisibility,
+    Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
@@ -33,7 +38,21 @@ from omnidapter.services.calendar.requests import (
     UpdateEventRequest,
 )
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
+
+
+async def _assert_deleted_event_state(google_service, calendar_id: str, event_id: str) -> None:
+    """Google may return 404/410 or a cancelled tombstone after delete."""
+    from omnidapter.core.errors import ProviderAPIError
+
+    try:
+        deleted = await google_service.get_event(calendar_id, event_id)
+    except ProviderAPIError as exc:
+        assert exc.status_code in (404, 410)
+        return
+
+    assert deleted.status == EventStatus.CANCELLED
+
 
 pytestmark = pytest.mark.integration
 
@@ -51,8 +70,16 @@ async def test_token_refresh():
     """
     from omnidapter.providers.google.provider import GoogleProvider
 
+    _require_env(
+        "OMNIDAPTER_TEST_GOOGLE_CLIENT_ID",
+        "OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN",
+    )
+
     stale = _stale_oauth2_stored("google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"])
-    assert stale.credentials.is_expired(), "Fixture must start with an expired token"
+    stale_creds = stale.credentials
+    assert isinstance(stale_creds, OAuth2Credentials)
+    assert stale_creds.is_expired(), "Fixture must start with an expired token"
 
     provider = GoogleProvider(
         client_id=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_ID"],
@@ -61,6 +88,7 @@ async def test_token_refresh():
     refreshed = await provider.refresh_token(stale)
 
     new_creds = refreshed.credentials
+    assert isinstance(new_creds, OAuth2Credentials)
     assert new_creds.access_token
     assert new_creds.access_token != "stale-will-be-refreshed"
     assert not new_creds.is_expired()
@@ -145,14 +173,7 @@ async def test_crud_round_trip(google_service, google_calendar_id, retry_read):
         await google_service.delete_event(google_calendar_id, created.event_id)
         created_ids.remove(created.event_id)
 
-        # Verify it's gone — the API should return a 404/410.
-        from omnidapter.core.errors import ProviderAPIError
-
-        with pytest.raises(ProviderAPIError):
-            await retry_read(
-                lambda: google_service.get_event(google_calendar_id, created.event_id),
-                max_attempts=1,
-            )
+        await _assert_deleted_event_state(google_service, google_calendar_id, created.event_id)
 
     finally:
         for eid in created_ids:
@@ -165,7 +186,9 @@ async def test_crud_round_trip(google_service, google_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    google_service, google_calendar_id, retry_read, integration_attendee_emails
+):
     """
     Verify that the Google → CalendarEvent mapper correctly handles real
     response shapes, including metadata fields the API adds (created_at,
@@ -181,7 +204,8 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         location="Mapper Test Location",
         timezone="UTC",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -211,7 +235,11 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         assert fetched.sequence is not None
         # Attendees round-trip
         assert len(fetched.attendees) >= 1
-        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert expected_emails.issubset(fetched_emails)
 
     finally:
         if event_id:
@@ -322,6 +350,66 @@ async def test_get_availability(google_service, google_calendar_id):
         assert interval.start < interval.end
 
 
+async def test_status_visibility_round_trip(google_service, google_calendar_id, retry_read):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    req = CreateEventRequest(
+        calendar_id=google_calendar_id,
+        summary=f"{EVENT_PREFIX} status visibility",
+        start=now + timedelta(hours=3),
+        end=now + timedelta(hours=4),
+        status=EventStatus.TENTATIVE,
+        visibility=EventVisibility.PRIVATE.value,
+    )
+    event_id: str | None = None
+
+    try:
+        created = await google_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(lambda: google_service.get_event(google_calendar_id, event_id))
+        assert fetched.status in (EventStatus.TENTATIVE, EventStatus.CONFIRMED)
+        assert fetched.visibility == EventVisibility.PRIVATE
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await google_service.delete_event(google_calendar_id, event_id)
+
+
+async def test_reminders_round_trip(google_service, google_calendar_id, retry_read):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    req = CreateEventRequest(
+        calendar_id=google_calendar_id,
+        summary=f"{EVENT_PREFIX} reminders",
+        start=now + timedelta(hours=5),
+        end=now + timedelta(hours=6),
+        reminders=Reminder(
+            use_default=False,
+            overrides=[ReminderOverride(method="popup", minutes_before=10)],
+        ),
+    )
+    event_id: str | None = None
+
+    try:
+        created = await google_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(lambda: google_service.get_event(google_calendar_id, event_id))
+        assert fetched.reminders is not None
+        assert fetched.reminders.use_default is False
+        assert fetched.reminders.overrides
+        assert fetched.reminders.overrides[0].minutes_before == 10
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await google_service.delete_event(google_calendar_id, event_id)
+
+
+async def test_get_event_unknown_id_raises(google_service, google_calendar_id):
+    from omnidapter.core.errors import ProviderAPIError
+
+    with pytest.raises(ProviderAPIError) as exc_info:
+        await google_service.get_event(google_calendar_id, "non-existent-omnidapter-event")
+    assert exc_info.value.status_code in (400, 404)
+
+
 # --------------------------------------------------------------------------- #
 # Recurrence                                                                   #
 # --------------------------------------------------------------------------- #
@@ -335,8 +423,8 @@ async def test_recurring_event(google_service, google_calendar_id, retry_read):
         summary=f"{EVENT_PREFIX} recurring weekly",
         start=now + timedelta(hours=1),
         end=now + timedelta(hours=2),
-        recurrence=None,  # We inject recurrence via extra
-        extra={"recurrence": ["RRULE:FREQ=WEEKLY;COUNT=4"]},
+        timezone="UTC",
+        recurrence=Recurrence(rules=["RRULE:FREQ=WEEKLY;COUNT=4"]),
     )
     event_id: str | None = None
 

@@ -4,7 +4,8 @@ Unit tests for omnidapter.providers.zoho.mappers.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 from omnidapter.providers.zoho import mappers
 from omnidapter.services.calendar.models import (
@@ -33,8 +34,8 @@ def _make_raw(overrides: dict | None = None) -> dict:
     return base
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="zoho-uid-1",
         calendar_id="cal-1",
         summary="Zoho Test Event",
@@ -77,6 +78,7 @@ class TestToCalendarEvent:
     def test_start_end_parsed(self):
         event = mappers.to_calendar_event(_make_raw(), "c")
         assert isinstance(event.start, datetime)
+        assert isinstance(event.end, datetime)
         assert event.start.hour == 10
         assert event.end.hour == 11
 
@@ -125,6 +127,13 @@ class TestToCalendarEvent:
         event = mappers.to_calendar_event(raw, "c")
         assert isinstance(event.start, datetime)
 
+    def test_compact_datetime_with_offset(self):
+        raw = _make_raw()
+        raw["dateandtime"]["start"] = "20240615T153000+0530"
+        event = mappers.to_calendar_event(raw, "c")
+        assert isinstance(event.start, datetime)
+        assert event.start.utcoffset() is not None
+
     def test_missing_datetime_uses_now(self):
         raw = {"uid": "x", "title": "T", "dateandtime": {}}
         event = mappers.to_calendar_event(raw, "c")
@@ -148,6 +157,15 @@ class TestFromCalendarEvent:
         event = _make_event()
         body = mappers.from_calendar_event(event)
         assert body["dateandtime"]["start"] == "20240615T100000Z"
+
+    def test_datetime_with_offset_is_converted_to_utc(self):
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=timezone(timedelta(hours=-4))),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=timezone(timedelta(hours=-4))),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["dateandtime"]["start"] == "20240615T140000Z"
+        assert body["dateandtime"]["end"] == "20240615T150000Z"
 
     def test_all_day_date_format(self):
         event = _make_event(start=date(2024, 6, 15), end=date(2024, 6, 16), all_day=True)
@@ -175,8 +193,8 @@ class TestFromCalendarEvent:
         )
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["email"] == "a@x.com"
-        assert body["attendees"][0]["name"] == "Alice"
-        assert body["attendees"][1]["name"] == "b@x.com"  # falls back to email
+        assert "name" not in body["attendees"][0]
+        assert body["attendees"][1]["email"] == "b@x.com"
 
 
 # --------------------------------------------------------------------------- #

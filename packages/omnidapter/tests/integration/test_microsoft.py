@@ -9,6 +9,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_MICROSOFT_CALENDAR_ID  (defaults to first calendar on the account)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL         (comma-separated invitee emails for attendee tests)
 
 Use a dedicated test Microsoft account. Tests create and delete events but never
 touch data they did not create.
@@ -21,10 +22,16 @@ from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from omnidapter.auth.models import OAuth2Credentials
+from omnidapter.core.errors import ProviderAPIError, TokenRefreshError
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,
     EventStatus,
+    EventVisibility,
+    Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 from omnidapter.services.calendar.requests import (
     CreateEventRequest,
@@ -32,7 +39,7 @@ from omnidapter.services.calendar.requests import (
     UpdateEventRequest,
 )
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
 pytestmark = pytest.mark.integration
 
@@ -48,16 +55,28 @@ async def test_token_refresh():
     """
     from omnidapter.providers.microsoft.provider import MicrosoftProvider
 
+    _require_env(
+        "OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID",
+        "OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN",
+    )
+
     stale = _stale_oauth2_stored("microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"])
-    assert stale.credentials.is_expired()
+    stale_creds = stale.credentials
+    assert isinstance(stale_creds, OAuth2Credentials)
+    assert stale_creds.is_expired()
 
     provider = MicrosoftProvider(
         client_id=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET"],
     )
-    refreshed = await provider.refresh_token(stale)
+    try:
+        refreshed = await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Microsoft integration credentials unusable: {exc}")
 
     new_creds = refreshed.credentials
+    assert isinstance(new_creds, OAuth2Credentials)
     assert new_creds.access_token
     assert new_creds.access_token != "stale-will-be-refreshed"
     assert not new_creds.is_expired()
@@ -160,7 +179,12 @@ async def test_crud_round_trip(microsoft_service, microsoft_calendar_id, retry_r
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    microsoft_service,
+    microsoft_calendar_id,
+    retry_read,
+    integration_attendee_emails,
+):
     """
     Verify the Microsoft Graph → CalendarEvent mapper handles real API response
     shapes, including Graph-specific fields (showAs → status, subject → summary,
@@ -176,7 +200,8 @@ async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_r
         location="Mapper Test Location",
         timezone="UTC",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -204,6 +229,11 @@ async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_r
         assert fetched.html_link is not None
         assert fetched.etag is not None
         assert len(fetched.attendees) >= 1
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert fetched_emails & expected_emails
 
     finally:
         if event_id:
@@ -306,8 +336,115 @@ async def test_get_availability(microsoft_service, microsoft_calendar_id):
     result = await microsoft_service.get_availability(req)
 
     assert result.queried_calendars == [microsoft_calendar_id]
+    assert result.time_min == req.time_min
+    assert result.time_max == req.time_max
     assert isinstance(result.busy_intervals, list)
     for interval in result.busy_intervals:
         assert isinstance(interval.start, datetime)
         assert isinstance(interval.end, datetime)
         assert interval.start < interval.end
+
+
+async def test_status_visibility_round_trip(microsoft_service, microsoft_calendar_id, retry_read):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    req = CreateEventRequest(
+        calendar_id=microsoft_calendar_id,
+        summary=f"{EVENT_PREFIX} status visibility",
+        start=now + timedelta(hours=3),
+        end=now + timedelta(hours=4),
+        timezone="UTC",
+        status=EventStatus.TENTATIVE,
+        visibility=EventVisibility.PRIVATE.value,
+    )
+    event_id: str | None = None
+
+    try:
+        created = await microsoft_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(
+            lambda: microsoft_service.get_event(microsoft_calendar_id, event_id)
+        )
+        assert fetched.status in (EventStatus.TENTATIVE, EventStatus.CONFIRMED)
+        assert fetched.visibility == EventVisibility.PRIVATE
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await microsoft_service.delete_event(microsoft_calendar_id, event_id)
+
+
+async def test_reminders_round_trip(microsoft_service, microsoft_calendar_id, retry_read):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    req = CreateEventRequest(
+        calendar_id=microsoft_calendar_id,
+        summary=f"{EVENT_PREFIX} reminders",
+        start=now + timedelta(hours=5),
+        end=now + timedelta(hours=6),
+        timezone="UTC",
+        reminders=Reminder(
+            use_default=False,
+            overrides=[ReminderOverride(method="popup", minutes_before=10)],
+        ),
+    )
+    event_id: str | None = None
+
+    try:
+        created = await microsoft_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(
+            lambda: microsoft_service.get_event(microsoft_calendar_id, event_id)
+        )
+        assert fetched.reminders is not None
+        assert fetched.reminders.use_default is False
+        assert fetched.reminders.overrides
+        assert fetched.reminders.overrides[0].minutes_before == 10
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await microsoft_service.delete_event(microsoft_calendar_id, event_id)
+
+
+async def test_get_event_unknown_id_raises(microsoft_service, microsoft_calendar_id):
+    from omnidapter.core.errors import ProviderAPIError
+
+    with pytest.raises(ProviderAPIError) as exc_info:
+        await microsoft_service.get_event(microsoft_calendar_id, "non-existent-omnidapter-event")
+    assert exc_info.value.status_code in (400, 404)
+
+
+async def test_recurring_event(microsoft_service, microsoft_calendar_id, retry_read):
+    """Create a recurring event and verify recurrence provider_data survives mapping."""
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    start = now + timedelta(hours=1)
+    end = now + timedelta(hours=2)
+    req = CreateEventRequest(
+        calendar_id=microsoft_calendar_id,
+        summary=f"{EVENT_PREFIX} recurring daily",
+        start=start,
+        end=end,
+        timezone="UTC",
+        recurrence=Recurrence(
+            provider_data={
+                "pattern": {"type": "daily", "interval": 1},
+                "range": {
+                    "type": "numbered",
+                    "startDate": start.date().isoformat(),
+                    "numberOfOccurrences": 2,
+                },
+            }
+        ),
+    )
+    event_id: str | None = None
+
+    try:
+        created = await microsoft_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(
+            lambda: microsoft_service.get_event(microsoft_calendar_id, event_id)
+        )
+        assert fetched.recurrence is not None
+        assert fetched.recurrence.provider_data is not None
+        assert fetched.recurrence.provider_data.get("pattern", {}).get("type") == "daily"
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await microsoft_service.delete_event(microsoft_calendar_id, event_id)

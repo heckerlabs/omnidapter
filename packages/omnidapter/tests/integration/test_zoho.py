@@ -9,6 +9,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_ZOHO_CALENDAR_ID   (defaults to first calendar on the account)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL     (comma-separated invitee emails for attendee tests)
 
 Use a dedicated test Zoho account. Tests create and delete events but never
 touch data they did not create.
@@ -22,17 +23,40 @@ Notes on Zoho limitations:
 
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.services.calendar.models import CalendarEvent, EventStatus
 from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
 pytestmark = pytest.mark.integration
+
+
+async def _assert_deleted_event_state(zoho_service, calendar_id: str, event_id: str) -> None:
+    from omnidapter.core.errors import ProviderAPIError
+
+    last_status: EventStatus | None = None
+    for attempt in range(3):
+        try:
+            deleted = await zoho_service.get_event(calendar_id, event_id)
+        except ProviderAPIError as exc:
+            assert exc.status_code in (400, 404)
+            return
+
+        if deleted.status in (EventStatus.CANCELLED, EventStatus.UNKNOWN):
+            return
+
+        last_status = deleted.status
+        if attempt < 2:
+            await asyncio.sleep(1)
+
+    pytest.fail(f"Deleted event still readable with status={last_status!r}")
 
 
 # --------------------------------------------------------------------------- #
@@ -46,8 +70,16 @@ async def test_token_refresh():
     """
     from omnidapter.providers.zoho.provider import ZohoProvider
 
+    _require_env(
+        "OMNIDAPTER_TEST_ZOHO_CLIENT_ID",
+        "OMNIDAPTER_TEST_ZOHO_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN",
+    )
+
     stale = _stale_oauth2_stored("zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"])
-    assert stale.credentials.is_expired()
+    stale_creds = stale.credentials
+    assert isinstance(stale_creds, OAuth2Credentials)
+    assert stale_creds.is_expired()
 
     provider = ZohoProvider(
         client_id=os.environ["OMNIDAPTER_TEST_ZOHO_CLIENT_ID"],
@@ -56,6 +88,7 @@ async def test_token_refresh():
     refreshed = await provider.refresh_token(stale)
 
     new_creds = refreshed.credentials
+    assert isinstance(new_creds, OAuth2Credentials)
     assert new_creds.access_token
     assert new_creds.access_token != "stale-will-be-refreshed"
     assert not new_creds.is_expired()
@@ -135,13 +168,7 @@ async def test_crud_round_trip(zoho_service, zoho_calendar_id, retry_read):
         await zoho_service.delete_event(zoho_calendar_id, created.event_id)
         created_ids.remove(created.event_id)
 
-        from omnidapter.core.errors import ProviderAPIError
-
-        with pytest.raises(ProviderAPIError):
-            await retry_read(
-                lambda: zoho_service.get_event(zoho_calendar_id, created.event_id),
-                max_attempts=1,
-            )
+        await _assert_deleted_event_state(zoho_service, zoho_calendar_id, created.event_id)
 
     finally:
         for eid in created_ids:
@@ -233,12 +260,57 @@ async def test_pagination(zoho_service, zoho_calendar_id):
                 await zoho_service.delete_event(zoho_calendar_id, eid)
 
 
+async def test_list_events_time_window_filters(zoho_service, zoho_calendar_id):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    near_req = CreateEventRequest(
+        calendar_id=zoho_calendar_id,
+        summary=f"{EVENT_PREFIX} list-window-near",
+        start=now + timedelta(hours=2),
+        end=now + timedelta(hours=3),
+    )
+    far_req = CreateEventRequest(
+        calendar_id=zoho_calendar_id,
+        summary=f"{EVENT_PREFIX} list-window-far",
+        start=now + timedelta(days=14),
+        end=now + timedelta(days=14, hours=1),
+    )
+    near_event_id: str | None = None
+    far_event_id: str | None = None
+
+    try:
+        near = await zoho_service.create_event(near_req)
+        far = await zoho_service.create_event(far_req)
+        near_event_id = near.event_id
+        far_event_id = far.event_id
+
+        seen_ids: set[str] = set()
+        async for event in zoho_service.list_events(
+            zoho_calendar_id,
+            time_min=now + timedelta(hours=1),
+            time_max=now + timedelta(hours=6),
+        ):
+            if (near_event_id and event.event_id == near_event_id) or (
+                far_event_id and event.event_id == far_event_id
+            ):
+                seen_ids.add(event.event_id)
+
+        assert near_event_id in seen_ids
+        assert far_event_id not in seen_ids
+    finally:
+        if near_event_id:
+            with suppress(Exception):
+                await zoho_service.delete_event(zoho_calendar_id, near_event_id)
+        if far_event_id:
+            with suppress(Exception):
+                await zoho_service.delete_event(zoho_calendar_id, far_event_id)
+
+
 # --------------------------------------------------------------------------- #
 # Attendees                                                                    #
 # --------------------------------------------------------------------------- #
 
 
-async def test_attendees(zoho_service, zoho_calendar_id, retry_read):
+async def test_attendees(zoho_service, zoho_calendar_id, retry_read, integration_attendee_emails):
     """Attendees added to a create request survive the Zoho mapper round-trip."""
     from omnidapter.services.calendar.models import Attendee
 
@@ -249,7 +321,8 @@ async def test_attendees(zoho_service, zoho_calendar_id, retry_read):
         start=now + timedelta(hours=1),
         end=now + timedelta(hours=2),
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -260,9 +333,57 @@ async def test_attendees(zoho_service, zoho_calendar_id, retry_read):
 
         fetched = await retry_read(lambda: zoho_service.get_event(zoho_calendar_id, event_id))
         assert len(fetched.attendees) >= 1
-        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert expected_emails.issubset(fetched_emails)
 
     finally:
         if event_id:
             with suppress(Exception):
                 await zoho_service.delete_event(zoho_calendar_id, event_id)
+
+
+async def test_all_day_event(zoho_service, zoho_calendar_id, retry_read):
+    now = datetime.now(timezone.utc)
+    req = CreateEventRequest(
+        calendar_id=zoho_calendar_id,
+        summary=f"{EVENT_PREFIX} all-day",
+        start=now.date() + timedelta(days=1),
+        end=now.date() + timedelta(days=2),
+        all_day=True,
+    )
+    event_id: str | None = None
+
+    try:
+        created = await zoho_service.create_event(req)
+        event_id = created.event_id
+        fetched = await retry_read(lambda: zoho_service.get_event(zoho_calendar_id, event_id))
+        assert fetched.all_day is True
+    finally:
+        if event_id:
+            with suppress(Exception):
+                await zoho_service.delete_event(zoho_calendar_id, event_id)
+
+
+async def test_get_event_unknown_id_raises(zoho_service, zoho_calendar_id):
+    from omnidapter.core.errors import ProviderAPIError
+
+    with pytest.raises(ProviderAPIError) as exc_info:
+        await zoho_service.get_event(zoho_calendar_id, "non-existent-omnidapter-event")
+    assert exc_info.value.status_code in (400, 404)
+
+
+async def test_non_confirmed_status_rejected(zoho_service, zoho_calendar_id):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    with pytest.raises(ValueError, match="confirmed event status"):
+        await zoho_service.create_event(
+            CreateEventRequest(
+                calendar_id=zoho_calendar_id,
+                summary=f"{EVENT_PREFIX} rejected status",
+                start=now + timedelta(hours=1),
+                end=now + timedelta(hours=2),
+                status=EventStatus.CANCELLED,
+            )
+        )

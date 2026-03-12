@@ -149,13 +149,21 @@ class OmnidapterHttpClient:
             )
 
             try:
+                request_kwargs: dict[str, Any] = {
+                    "headers": headers,
+                    "params": params,
+                    "json": json,
+                }
+                if data is not None:
+                    if isinstance(data, (str, bytes, bytearray, memoryview)):
+                        request_kwargs["content"] = data
+                    else:
+                        request_kwargs["data"] = data
+
                 response = await client.request(
                     method,
                     url,
-                    headers=headers,
-                    params=params,
-                    json=json,
-                    data=data,
+                    **request_kwargs,
                 )
             except httpx.TransportError as exc:
                 last_exception = TransportError(
