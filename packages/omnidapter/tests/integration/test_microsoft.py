@@ -32,7 +32,7 @@ from omnidapter.services.calendar.requests import (
     UpdateEventRequest,
 )
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
 pytestmark = pytest.mark.integration
 
@@ -47,6 +47,12 @@ async def test_token_refresh():
     Expired access token + valid refresh token → fresh credentials that work.
     """
     from omnidapter.providers.microsoft.provider import MicrosoftProvider
+
+    _require_env(
+        "OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID",
+        "OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN",
+    )
 
     stale = _stale_oauth2_stored("microsoft", os.environ["OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN"])
     assert stale.credentials.is_expired()
