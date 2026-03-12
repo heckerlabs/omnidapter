@@ -5,6 +5,7 @@ Zoho Calendar service implementation.
 from __future__ import annotations
 
 import json as _json
+from datetime import date, datetime, timezone
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
@@ -39,6 +40,28 @@ _ZOHO_CAPABILITIES = frozenset(
         CalendarCapability.ATTENDEES,
     }
 )
+
+
+def _as_utc_datetime(value: datetime | date) -> datetime:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+
+
+def _in_time_window(
+    event: CalendarEvent,
+    *,
+    time_min: datetime | date | None,
+    time_max: datetime | date | None,
+) -> bool:
+    event_start = _as_utc_datetime(event.start)
+    event_end = _as_utc_datetime(event.end)
+
+    if time_min is not None and event_end <= _as_utc_datetime(time_min):
+        return False
+    return not (time_max is not None and event_start >= _as_utc_datetime(time_max))
 
 
 class ZohoCalendarService(CalendarService):
@@ -152,6 +175,8 @@ class ZohoCalendarService(CalendarService):
             body["description"] = request.description
         if request.location is not None:
             body["location"] = request.location
+
+        current_etag = (current.provider_data or {}).get("etag")
         start_value = request.start if request.start is not None else current.start
         end_value = request.end if request.end is not None else current.end
         body["dateandtime"] = {
@@ -159,10 +184,15 @@ class ZohoCalendarService(CalendarService):
             "end": mappers._format_zoho_datetime(end_value),
         }
 
+        headers = await self._auth_headers()
+        if current_etag:
+            headers = dict(headers)
+            headers["ETag"] = str(current_etag)
+
         response = await self._http.request(
             "PUT",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events/{request.event_id}",
-            headers=await self._headers_with_event_etag(request.calendar_id, request.event_id),
+            headers=headers,
             params={"eventdata": _json.dumps(body)},
         )
         data = response.json()
@@ -200,6 +230,16 @@ class ZohoCalendarService(CalendarService):
     ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         params: dict[str, Any] = {}
+        if isinstance(time_min, (datetime, date)):
+            params["start"] = mappers._format_zoho_datetime(time_min)
+        elif time_min is not None:
+            params["start"] = str(time_min)
+
+        if isinstance(time_max, (datetime, date)):
+            params["end"] = mappers._format_zoho_datetime(time_max)
+        elif time_max is not None:
+            params["end"] = str(time_max)
+
         if extra:
             params.update(extra)
 
@@ -211,4 +251,6 @@ class ZohoCalendarService(CalendarService):
         )
         data = response.json()
         for e in data.get("events", []):
-            yield mappers.to_calendar_event(e, calendar_id)
+            event = mappers.to_calendar_event(e, calendar_id)
+            if _in_time_window(event, time_min=time_min, time_max=time_max):
+                yield event

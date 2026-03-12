@@ -65,3 +65,106 @@ class TestStatusValidation:
                     status=EventStatus.TENTATIVE,
                 )
             )
+
+
+class TestUpdateBehavior:
+    async def test_update_event_uses_prefetched_event_etag(self):
+        svc = ZohoCalendarService("conn-1", _stored())
+
+        get_response = MagicMock()
+        get_response.json.return_value = {
+            "events": [
+                {
+                    "uid": "evt-1",
+                    "title": "Current",
+                    "etag": "etag-123",
+                    "dateandtime": {
+                        "start": "20240615T100000Z",
+                        "end": "20240615T110000Z",
+                    },
+                }
+            ]
+        }
+
+        put_response = MagicMock()
+        put_response.json.return_value = {
+            "events": [
+                {
+                    "uid": "evt-1",
+                    "title": "Updated",
+                    "dateandtime": {
+                        "start": "20240615T100000Z",
+                        "end": "20240615T110000Z",
+                    },
+                }
+            ]
+        }
+
+        svc._http.request = AsyncMock(side_effect=[get_response, put_response])
+
+        await svc.update_event(
+            UpdateEventRequest(
+                calendar_id="cal-1",
+                event_id="evt-1",
+                summary="Updated",
+            )
+        )
+
+        assert svc._http.request.await_count == 2
+        put_call = svc._http.request.await_args_list[1]
+        assert put_call.args[0] == "PUT"
+        assert put_call.kwargs["headers"]["ETag"] == "etag-123"
+
+
+class TestListEvents:
+    async def test_list_events_maps_time_bounds_to_zoho_params(self):
+        svc = ZohoCalendarService("conn-1", _stored())
+        response = MagicMock()
+        response.json.return_value = {"events": []}
+        svc._http.request = AsyncMock(return_value=response)
+
+        time_min = datetime(2024, 6, 15, 10, 0, tzinfo=timezone.utc)
+        time_max = datetime(2024, 6, 15, 12, 0, tzinfo=timezone.utc)
+
+        events = [
+            event async for event in svc.list_events("cal-1", time_min=time_min, time_max=time_max)
+        ]
+
+        assert events == []
+        call = svc._http.request.await_args_list[0]
+        assert call.kwargs["params"]["start"] == "20240615T100000Z"
+        assert call.kwargs["params"]["end"] == "20240615T120000Z"
+
+    async def test_list_events_filters_results_by_requested_window(self):
+        svc = ZohoCalendarService("conn-1", _stored())
+        response = MagicMock()
+        response.json.return_value = {
+            "events": [
+                {
+                    "uid": "evt-in",
+                    "title": "In range",
+                    "dateandtime": {
+                        "start": "20240615T100000Z",
+                        "end": "20240615T110000Z",
+                    },
+                },
+                {
+                    "uid": "evt-out",
+                    "title": "Out of range",
+                    "dateandtime": {
+                        "start": "20240615T140000Z",
+                        "end": "20240615T150000Z",
+                    },
+                },
+            ]
+        }
+        svc._http.request = AsyncMock(return_value=response)
+
+        time_min = datetime(2024, 6, 15, 9, 0, tzinfo=timezone.utc)
+        time_max = datetime(2024, 6, 15, 12, 0, tzinfo=timezone.utc)
+
+        events = [
+            event async for event in svc.list_events("cal-1", time_min=time_min, time_max=time_max)
+        ]
+
+        assert [event.event_id for event in events] == ["evt-in"]

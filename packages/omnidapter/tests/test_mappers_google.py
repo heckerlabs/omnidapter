@@ -4,7 +4,8 @@ Unit tests for omnidapter.providers.google.mappers.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 from omnidapter.providers.google import mappers
@@ -284,6 +285,34 @@ class TestFromCalendarEvent:
 
     def test_recurrence_without_explicit_timezone_infers_utc(self):
         event = _make_event(
+            timezone=None,
+            recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["start"]["timeZone"] == "UTC"
+        assert body["end"]["timeZone"] == "UTC"
+
+    def test_recurrence_without_explicit_timezone_uses_iana_zoneinfo_key(self):
+        try:
+            tz = ZoneInfo("America/New_York")
+        except ZoneInfoNotFoundError:
+            pytest.skip("IANA tzdata not available in runtime environment")
+
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=tz),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=tz),
+            timezone=None,
+            recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["start"]["timeZone"] == "America/New_York"
+        assert body["end"]["timeZone"] == "America/New_York"
+
+    def test_recurrence_without_explicit_timezone_falls_back_to_utc_for_offset_tz(self):
+        fixed_offset_tz = timezone(timedelta(hours=-5))
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=fixed_offset_tz),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=fixed_offset_tz),
             timezone=None,
             recurrence=Recurrence(rules=["RRULE:FREQ=DAILY;COUNT=2"]),
         )
