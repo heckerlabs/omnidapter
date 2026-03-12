@@ -188,7 +188,7 @@ class GoogleCalendarService(CalendarService):
         if request.status is not None:
             body["status"] = request.status.value
         if request.visibility is not None:
-            body["visibility"] = request.visibility
+            body["visibility"] = _parse_event_visibility(request.visibility).value
         if request.attendees is not None:
             body["attendees"] = [
                 {"email": a.email, "displayName": a.display_name, "optional": a.optional}

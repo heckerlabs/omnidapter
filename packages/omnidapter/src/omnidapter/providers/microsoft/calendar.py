@@ -174,6 +174,13 @@ class MicrosoftCalendarService(CalendarService):
             body["start"] = mappers._format_ms_datetime(request.start, request.timezone)
         if request.end is not None:
             body["end"] = mappers._format_ms_datetime(request.end, request.timezone)
+        if request.all_day is not None:
+            body["isAllDay"] = request.all_day
+        if request.status is not None:
+            body["showAs"] = mappers._CANONICAL_STATUS_TO_MS.get(request.status, "normal")
+        if request.visibility is not None:
+            visibility = _parse_event_visibility(request.visibility)
+            body["sensitivity"] = mappers._CANONICAL_VISIBILITY_TO_MS.get(visibility, "normal")
         if request.attendees is not None:
             body["attendees"] = [
                 {
@@ -182,6 +189,12 @@ class MicrosoftCalendarService(CalendarService):
                 }
                 for a in request.attendees
             ]
+        if request.recurrence is not None:
+            body["recurrence"] = mappers._serialize_recurrence(request.recurrence)
+        if request.conference_data is not None:
+            body.update(mappers._serialize_conference_data(request.conference_data))
+        if request.reminders is not None:
+            body.update(mappers._serialize_reminders(request.reminders))
         body.update(request.extra)
         response = await self._http.request(
             "PATCH", url, headers=await self._auth_headers(), json=body

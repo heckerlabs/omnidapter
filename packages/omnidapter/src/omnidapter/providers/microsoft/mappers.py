@@ -25,6 +25,8 @@ from omnidapter.services.calendar.models import (
     EventVisibility,
     Organizer,
     Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 
 # --------------------------------------------------------------------------- #
@@ -82,6 +84,46 @@ _MS_ATTENDEE_STATUS = {
     "notResponded": AttendeeStatus.NEEDS_ACTION,
 }
 
+_MS_SENSITIVITY_TO_VISIBILITY = {
+    "normal": EventVisibility.DEFAULT,
+    "personal": EventVisibility.PRIVATE,
+    "private": EventVisibility.PRIVATE,
+    "confidential": EventVisibility.CONFIDENTIAL,
+}
+
+_CANONICAL_VISIBILITY_TO_MS = {
+    EventVisibility.DEFAULT: "normal",
+    EventVisibility.PUBLIC: "normal",
+    EventVisibility.PRIVATE: "private",
+    EventVisibility.CONFIDENTIAL: "confidential",
+}
+
+
+def _serialize_recurrence(recurrence: Recurrence) -> dict[str, Any]:
+    if recurrence.provider_data:
+        return dict(recurrence.provider_data)
+    raise ValueError(
+        "Microsoft recurrence requires provider_data in Graph recurrence shape (pattern/range)."
+    )
+
+
+def _serialize_conference_data(conference_data: ConferenceData) -> dict[str, Any]:
+    body: dict[str, Any] = {"isOnlineMeeting": True}
+    provider_data = conference_data.provider_data or {}
+    body["onlineMeetingProvider"] = provider_data.get("onlineMeetingProvider", "teamsForBusiness")
+    return body
+
+
+def _serialize_reminders(reminders: Reminder) -> dict[str, Any]:
+    if reminders.use_default:
+        return {"isReminderOn": True}
+    if reminders.overrides:
+        return {
+            "isReminderOn": True,
+            "reminderMinutesBeforeStart": max(0, reminders.overrides[0].minutes_before),
+        }
+    return {"isReminderOn": False}
+
 
 # --------------------------------------------------------------------------- #
 # Public mappers                                                               #
@@ -134,6 +176,17 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
             provider_data=online_meeting,
         )
 
+    reminders = None
+    if raw.get("isReminderOn") is not None:
+        is_reminder_on = bool(raw.get("isReminderOn"))
+        reminder_minutes = raw.get("reminderMinutesBeforeStart")
+        overrides: list[ReminderOverride] = []
+        if is_reminder_on and reminder_minutes is not None:
+            overrides.append(ReminderOverride(method="popup", minutes_before=int(reminder_minutes)))
+        reminders = Reminder(
+            use_default=is_reminder_on and reminder_minutes is None, overrides=overrides
+        )
+
     created_at = None
     if raw.get("createdDateTime"):
         with contextlib.suppress(Exception):
@@ -158,6 +211,9 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
             "attendees",
             "recurrence",
             "onlineMeeting",
+            "sensitivity",
+            "isReminderOn",
+            "reminderMinutesBeforeStart",
             "createdDateTime",
             "lastModifiedDateTime",
             "webLink",
@@ -171,7 +227,9 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         description=raw.get("body", {}).get("content") if raw.get("body") else None,
         location=raw.get("location", {}).get("displayName") if raw.get("location") else None,
         status=_MS_STATUS.get(raw.get("showAs", "normal"), EventStatus.CONFIRMED),
-        visibility=EventVisibility.DEFAULT,
+        visibility=_MS_SENSITIVITY_TO_VISIBILITY.get(
+            raw.get("sensitivity", "normal"), EventVisibility.DEFAULT
+        ),
         start=start,
         end=end,
         all_day=all_day,
@@ -180,6 +238,7 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         attendees=attendees,
         recurrence=recurrence,
         conference_data=conference_data,
+        reminders=reminders,
         created_at=created_at,
         updated_at=updated_at,
         html_link=raw.get("webLink"),
@@ -203,6 +262,8 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
         body["location"] = {"displayName": event.location}
     if event.status and event.status != EventStatus.UNKNOWN:
         body["showAs"] = _CANONICAL_STATUS_TO_MS.get(event.status, "normal")
+    if event.visibility:
+        body["sensitivity"] = _CANONICAL_VISIBILITY_TO_MS.get(event.visibility, "normal")
     if event.attendees:
         body["attendees"] = [
             {
@@ -211,6 +272,12 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
             }
             for a in event.attendees
         ]
+    if event.recurrence:
+        body["recurrence"] = _serialize_recurrence(event.recurrence)
+    if event.conference_data:
+        body.update(_serialize_conference_data(event.conference_data))
+    if event.reminders:
+        body.update(_serialize_reminders(event.reminders))
     return body
 
 

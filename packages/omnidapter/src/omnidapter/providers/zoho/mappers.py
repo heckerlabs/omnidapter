@@ -58,11 +58,12 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
 
     attendees = [
         Attendee(
-            email=att.get("email", ""),
+            email=email,
             display_name=att.get("name"),
             status=AttendeeStatus.NEEDS_ACTION,
         )
         for att in raw.get("attendees", [])
+        if (email := str(att.get("email", "")).strip())
     ]
 
     _MAPPED_KEYS = frozenset(

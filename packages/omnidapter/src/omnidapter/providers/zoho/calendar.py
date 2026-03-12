@@ -101,6 +101,8 @@ class ZohoCalendarService(CalendarService):
 
     async def create_event(self, request: CreateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.CREATE_EVENT)
+        if request.status is not None and request.status != EventStatus.CONFIRMED:
+            raise ValueError("Zoho only supports confirmed event status.")
         event = CalendarEvent(
             event_id="",
             calendar_id=request.calendar_id,
@@ -124,15 +126,12 @@ class ZohoCalendarService(CalendarService):
         data = response.json()
         events = data.get("events", [])
         raw = events[0] if events else body
-        result = mappers.to_calendar_event(raw, request.calendar_id)
-        if request.status is not None and request.status != EventStatus.CONFIRMED:
-            pd = dict(result.provider_data or {})
-            pd["status"] = request.status.value
-            result = result.model_copy(update={"provider_data": pd})
-        return result
+        return mappers.to_calendar_event(raw, request.calendar_id)
 
     async def update_event(self, request: UpdateEventRequest) -> CalendarEvent:
         self._require_capability(CalendarCapability.UPDATE_EVENT)
+        if request.status is not None and request.status != EventStatus.CONFIRMED:
+            raise ValueError("Zoho only supports confirmed event status.")
         body: dict[str, Any] = {}
         if request.summary is not None:
             body["title"] = request.summary
@@ -155,12 +154,7 @@ class ZohoCalendarService(CalendarService):
         data = response.json()
         events = data.get("events", [])
         raw = events[0] if events else body
-        result = mappers.to_calendar_event(raw, request.calendar_id)
-        if request.status is not None and request.status != EventStatus.CONFIRMED:
-            pd = dict(result.provider_data or {})
-            pd["status"] = request.status.value
-            result = result.model_copy(update={"provider_data": pd})
-        return result
+        return mappers.to_calendar_event(raw, request.calendar_id)
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         self._require_capability(CalendarCapability.DELETE_EVENT)
