@@ -125,6 +125,13 @@ class TestToCalendarEvent:
         event = mappers.to_calendar_event(raw, "c")
         assert isinstance(event.start, datetime)
 
+    def test_compact_datetime_with_offset(self):
+        raw = _make_raw()
+        raw["dateandtime"]["start"] = "20240615T153000+0530"
+        event = mappers.to_calendar_event(raw, "c")
+        assert isinstance(event.start, datetime)
+        assert event.start.utcoffset() is not None
+
     def test_missing_datetime_uses_now(self):
         raw = {"uid": "x", "title": "T", "dateandtime": {}}
         event = mappers.to_calendar_event(raw, "c")
@@ -175,8 +182,8 @@ class TestFromCalendarEvent:
         )
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["email"] == "a@x.com"
-        assert body["attendees"][0]["name"] == "Alice"
-        assert body["attendees"][1]["name"] == "b@x.com"  # falls back to email
+        assert "name" not in body["attendees"][0]
+        assert body["attendees"][1]["email"] == "b@x.com"
 
 
 # --------------------------------------------------------------------------- #

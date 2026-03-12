@@ -82,6 +82,18 @@ class ZohoCalendarService(CalendarService):
             return {"Authorization": f"Zoho-oauthtoken {creds.access_token}"}
         return {}
 
+    async def _headers_with_event_etag(self, calendar_id: str, event_id: str) -> dict[str, str]:
+        headers = await self._auth_headers()
+        try:
+            event = await self.get_event(calendar_id, event_id)
+        except Exception:
+            return headers
+        etag = (event.provider_data or {}).get("etag")
+        if etag:
+            headers = dict(headers)
+            headers["ETag"] = str(etag)
+        return headers
+
     async def list_calendars(self) -> list[Calendar]:
         self._require_capability(CalendarCapability.LIST_CALENDARS)
         response = await self._http.request(
@@ -121,7 +133,7 @@ class ZohoCalendarService(CalendarService):
             "POST",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events",
             headers=await self._auth_headers(),
-            json={"eventdata": _json.dumps(body)},
+            params={"eventdata": _json.dumps(body)},
         )
         data = response.json()
         events = data.get("events", [])
@@ -132,6 +144,7 @@ class ZohoCalendarService(CalendarService):
         self._require_capability(CalendarCapability.UPDATE_EVENT)
         if request.status is not None and request.status != EventStatus.CONFIRMED:
             raise ValueError("Zoho only supports confirmed event status.")
+        current = await self.get_event(request.calendar_id, request.event_id)
         body: dict[str, Any] = {}
         if request.summary is not None:
             body["title"] = request.summary
@@ -139,17 +152,18 @@ class ZohoCalendarService(CalendarService):
             body["description"] = request.description
         if request.location is not None:
             body["location"] = request.location
-        if request.start is not None and request.end is not None:
-            body["dateandtime"] = {
-                "start": mappers._format_zoho_datetime(request.start),
-                "end": mappers._format_zoho_datetime(request.end),
-            }
+        start_value = request.start if request.start is not None else current.start
+        end_value = request.end if request.end is not None else current.end
+        body["dateandtime"] = {
+            "start": mappers._format_zoho_datetime(start_value),
+            "end": mappers._format_zoho_datetime(end_value),
+        }
 
         response = await self._http.request(
             "PUT",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events/{request.event_id}",
-            headers=await self._auth_headers(),
-            json={"eventdata": _json.dumps(body)},
+            headers=await self._headers_with_event_etag(request.calendar_id, request.event_id),
+            params={"eventdata": _json.dumps(body)},
         )
         data = response.json()
         events = data.get("events", [])
@@ -161,7 +175,7 @@ class ZohoCalendarService(CalendarService):
         await self._http.request(
             "DELETE",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events/{event_id}",
-            headers=await self._auth_headers(),
+            headers=await self._headers_with_event_etag(calendar_id, event_id),
         )
 
     async def get_event(self, calendar_id: str, event_id: str) -> CalendarEvent:
@@ -186,14 +200,6 @@ class ZohoCalendarService(CalendarService):
     ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         params: dict[str, Any] = {}
-        if time_min:
-            params["startdatetime"] = (
-                time_min.strftime("%Y%m%dT%H%M%SZ") if hasattr(time_min, "strftime") else time_min
-            )
-        if time_max:
-            params["enddatetime"] = (
-                time_max.strftime("%Y%m%dT%H%M%SZ") if hasattr(time_max, "strftime") else time_max
-            )
         if extra:
             params.update(extra)
 
