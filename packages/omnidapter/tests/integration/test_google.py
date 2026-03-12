@@ -9,6 +9,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_GOOGLE_CALENDAR_ID   (defaults to first calendar on the account)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL       (comma-separated invitee emails for attendee tests)
 
 Use a dedicated test Google account. Tests create and delete events but never
 touch data they did not create.
@@ -185,7 +186,9 @@ async def test_crud_round_trip(google_service, google_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    google_service, google_calendar_id, retry_read, integration_attendee_emails
+):
     """
     Verify that the Google → CalendarEvent mapper correctly handles real
     response shapes, including metadata fields the API adds (created_at,
@@ -201,7 +204,8 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         location="Mapper Test Location",
         timezone="UTC",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -231,7 +235,11 @@ async def test_mapper_fidelity(google_service, google_calendar_id, retry_read):
         assert fetched.sequence is not None
         # Attendees round-trip
         assert len(fetched.attendees) >= 1
-        assert any(a.email == "integration-attendee@example.com" for a in fetched.attendees)
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert expected_emails.issubset(fetched_emails)
 
     finally:
         if event_id:

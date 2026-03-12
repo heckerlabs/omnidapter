@@ -9,6 +9,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_MICROSOFT_CALENDAR_ID  (defaults to first calendar on the account)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL         (comma-separated invitee emails for attendee tests)
 
 Use a dedicated test Microsoft account. Tests create and delete events but never
 touch data they did not create.
@@ -178,7 +179,12 @@ async def test_crud_round_trip(microsoft_service, microsoft_calendar_id, retry_r
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    microsoft_service,
+    microsoft_calendar_id,
+    retry_read,
+    integration_attendee_emails,
+):
     """
     Verify the Microsoft Graph → CalendarEvent mapper handles real API response
     shapes, including Graph-specific fields (showAs → status, subject → summary,
@@ -194,7 +200,8 @@ async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_r
         location="Mapper Test Location",
         timezone="UTC",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -222,6 +229,11 @@ async def test_mapper_fidelity(microsoft_service, microsoft_calendar_id, retry_r
         assert fetched.html_link is not None
         assert fetched.etag is not None
         assert len(fetched.attendees) >= 1
+        fetched_emails = {a.email.lower().removeprefix("mailto:") for a in fetched.attendees}
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert fetched_emails & expected_emails
 
     finally:
         if event_id:

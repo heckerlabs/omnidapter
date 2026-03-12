@@ -30,6 +30,11 @@ EVENT_PREFIX = "[omnidapter-test]"
 # events so that at least two pages are required.
 PAGINATION_PAGE_SIZE = 5
 
+# Shared attendee emails used by integration tests that create invited events.
+# Override to mailboxes you control to avoid delivery-failure noise.
+INTEGRATION_ATTENDEE_EMAIL_ENV = "OMNIDAPTER_TEST_ATTENDEE_EMAIL"
+DEFAULT_INTEGRATION_ATTENDEE_EMAIL = "integration-attendee@example.com"
+
 
 # --------------------------------------------------------------------------- #
 # Marker / guard                                                               #
@@ -105,6 +110,24 @@ def _stale_oauth2_stored(provider_key: str, refresh_token: str) -> StoredCredent
             expires_at=datetime(2000, 1, 1, tzinfo=timezone.utc),
         ),
     )
+
+
+@pytest.fixture(scope="session")
+def integration_attendee_emails() -> list[str]:
+    """Return attendee emails from env (comma-separated) with a safe default."""
+    raw = os.getenv(INTEGRATION_ATTENDEE_EMAIL_ENV, DEFAULT_INTEGRATION_ATTENDEE_EMAIL)
+    emails: list[str] = []
+    for part in raw.split(","):
+        email = part.strip()
+        if email and email not in emails:
+            emails.append(email)
+    return emails or [DEFAULT_INTEGRATION_ATTENDEE_EMAIL]
+
+
+@pytest.fixture(scope="session")
+def integration_attendee_email(integration_attendee_emails: list[str]) -> str:
+    """Backward-compatible single attendee fixture (first configured email)."""
+    return integration_attendee_emails[0]
 
 
 # --------------------------------------------------------------------------- #
