@@ -5,6 +5,7 @@ Unit tests for omnidapter.providers.microsoft.mappers.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
@@ -40,8 +41,8 @@ def _make_raw(overrides: dict | None = None) -> dict:
     return base
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="evt-ms-1",
         calendar_id="cal-1",
         summary="MS Test Event",
@@ -97,8 +98,11 @@ class TestToCalendarEvent:
             }
         )
         event = mappers.to_calendar_event(raw, "c")
+        assert isinstance(event.start, datetime)
         assert event.start.tzinfo is not None
-        assert event.start.utcoffset().total_seconds() == 0
+        offset = event.start.utcoffset()
+        assert offset is not None
+        assert offset.total_seconds() == 0
 
     def test_datetime_iana_timezone(self):
         try:
@@ -113,10 +117,12 @@ class TestToCalendarEvent:
             }
         )
         event = mappers.to_calendar_event(raw, "c")
+        assert isinstance(event.start, datetime)
         assert event.start.tzinfo == expected_tz
         # A 10:00 Eastern datetime is not 10:00 UTC
-        assert event.start.utcoffset() is not None
-        assert event.start.utcoffset().total_seconds() != 0
+        offset = event.start.utcoffset()
+        assert offset is not None
+        assert offset.total_seconds() != 0
 
     def test_datetime_unknown_windows_tz_falls_back_to_utc(self):
         raw = _make_raw(
@@ -126,6 +132,7 @@ class TestToCalendarEvent:
             }
         )
         event = mappers.to_calendar_event(raw, "c")
+        assert isinstance(event.start, datetime)
         assert event.start.tzinfo == timezone.utc
 
     def test_all_day_event(self):

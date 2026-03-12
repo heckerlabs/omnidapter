@@ -5,6 +5,7 @@ Unit tests for omnidapter.providers.zoho.mappers.
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 from omnidapter.providers.zoho import mappers
 from omnidapter.services.calendar.models import (
@@ -33,8 +34,8 @@ def _make_raw(overrides: dict | None = None) -> dict:
     return base
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="zoho-uid-1",
         calendar_id="cal-1",
         summary="Zoho Test Event",
@@ -77,6 +78,7 @@ class TestToCalendarEvent:
     def test_start_end_parsed(self):
         event = mappers.to_calendar_event(_make_raw(), "c")
         assert isinstance(event.start, datetime)
+        assert isinstance(event.end, datetime)
         assert event.start.hour == 10
         assert event.end.hour == 11
 
