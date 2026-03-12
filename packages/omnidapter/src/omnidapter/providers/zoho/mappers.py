@@ -46,8 +46,7 @@ def _parse_zoho_datetime(dt_str: str | None) -> datetime | None:
 
 def _format_zoho_datetime(dt: datetime | date) -> str:
     if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
         return dt.strftime("%Y%m%dT%H%M%SZ")
     return dt.strftime("%Y%m%d")
 

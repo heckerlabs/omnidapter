@@ -22,6 +22,7 @@ Notes on Zoho limitations:
 
 from __future__ import annotations
 
+import asyncio
 import os
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
@@ -38,13 +39,22 @@ pytestmark = pytest.mark.integration
 async def _assert_deleted_event_state(zoho_service, calendar_id: str, event_id: str) -> None:
     from omnidapter.core.errors import ProviderAPIError
 
-    try:
-        deleted = await zoho_service.get_event(calendar_id, event_id)
-    except ProviderAPIError as exc:
-        assert exc.status_code in (400, 404)
-        return
+    last_status: EventStatus | None = None
+    for attempt in range(3):
+        try:
+            deleted = await zoho_service.get_event(calendar_id, event_id)
+        except ProviderAPIError as exc:
+            assert exc.status_code in (400, 404)
+            return
 
-    assert deleted.status in (EventStatus.CANCELLED, EventStatus.UNKNOWN, EventStatus.CONFIRMED)
+        if deleted.status in (EventStatus.CANCELLED, EventStatus.UNKNOWN):
+            return
+
+        last_status = deleted.status
+        if attempt < 2:
+            await asyncio.sleep(1)
+
+    pytest.fail(f"Deleted event still readable with status={last_status!r}")
 
 
 # --------------------------------------------------------------------------- #
@@ -237,6 +247,51 @@ async def test_pagination(zoho_service, zoho_calendar_id):
         for eid in created_ids:
             with suppress(Exception):
                 await zoho_service.delete_event(zoho_calendar_id, eid)
+
+
+async def test_list_events_time_window_filters(zoho_service, zoho_calendar_id):
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    near_req = CreateEventRequest(
+        calendar_id=zoho_calendar_id,
+        summary=f"{EVENT_PREFIX} list-window-near",
+        start=now + timedelta(hours=2),
+        end=now + timedelta(hours=3),
+    )
+    far_req = CreateEventRequest(
+        calendar_id=zoho_calendar_id,
+        summary=f"{EVENT_PREFIX} list-window-far",
+        start=now + timedelta(days=14),
+        end=now + timedelta(days=14, hours=1),
+    )
+    near_event_id: str | None = None
+    far_event_id: str | None = None
+
+    try:
+        near = await zoho_service.create_event(near_req)
+        far = await zoho_service.create_event(far_req)
+        near_event_id = near.event_id
+        far_event_id = far.event_id
+
+        seen_ids: set[str] = set()
+        async for event in zoho_service.list_events(
+            zoho_calendar_id,
+            time_min=now + timedelta(hours=1),
+            time_max=now + timedelta(hours=6),
+        ):
+            if (near_event_id and event.event_id == near_event_id) or (
+                far_event_id and event.event_id == far_event_id
+            ):
+                seen_ids.add(event.event_id)
+
+        assert near_event_id in seen_ids
+        assert far_event_id not in seen_ids
+    finally:
+        if near_event_id:
+            with suppress(Exception):
+                await zoho_service.delete_event(zoho_calendar_id, near_event_id)
+        if far_event_id:
+            with suppress(Exception):
+                await zoho_service.delete_event(zoho_calendar_id, far_event_id)
 
 
 # --------------------------------------------------------------------------- #

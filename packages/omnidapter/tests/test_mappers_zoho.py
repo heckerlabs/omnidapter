@@ -4,7 +4,7 @@ Unit tests for omnidapter.providers.zoho.mappers.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from omnidapter.providers.zoho import mappers
 from omnidapter.services.calendar.models import (
@@ -155,6 +155,15 @@ class TestFromCalendarEvent:
         event = _make_event()
         body = mappers.from_calendar_event(event)
         assert body["dateandtime"]["start"] == "20240615T100000Z"
+
+    def test_datetime_with_offset_is_converted_to_utc(self):
+        event = _make_event(
+            start=datetime(2024, 6, 15, 10, 0, tzinfo=timezone(timedelta(hours=-4))),
+            end=datetime(2024, 6, 15, 11, 0, tzinfo=timezone(timedelta(hours=-4))),
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["dateandtime"]["start"] == "20240615T140000Z"
+        assert body["dateandtime"]["end"] == "20240615T150000Z"
 
     def test_all_day_date_format(self):
         event = _make_event(start=date(2024, 6, 15), end=date(2024, 6, 16), all_day=True)

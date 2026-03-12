@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from omnidapter.services.calendar.models import (
@@ -56,10 +56,22 @@ def _format_event_time(dt: datetime | date, all_day: bool) -> dict:
 def _infer_google_timezone(dt: datetime | date) -> str | None:
     if not isinstance(dt, datetime):
         return None
-    if dt.tzinfo is None:
+    tzinfo = dt.tzinfo
+    if tzinfo is None:
         return "UTC"
-    tz_name = dt.tzname()
-    return tz_name or "UTC"
+
+    zone_key = getattr(tzinfo, "key", None)
+    if isinstance(zone_key, str) and zone_key:
+        return zone_key
+
+    zone_name = getattr(tzinfo, "zone", None)
+    if isinstance(zone_name, str) and zone_name:
+        return zone_name
+
+    offset = dt.utcoffset()
+    if offset == timedelta(0):
+        return "UTC"
+    return "UTC"
 
 
 def _map_attendee_status(google_status: str) -> AttendeeStatus:
