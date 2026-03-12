@@ -9,6 +9,7 @@ Public API:
 
 from __future__ import annotations
 
+import contextlib
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -31,16 +32,21 @@ def _parse_zoho_datetime(dt_str: str | None) -> datetime | None:
     try:
         return datetime.strptime(dt_str, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
     except ValueError:
-        try:
-            return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
-        except Exception:
-            return None
+        pass
+    with_timezone = None
+    with contextlib.suppress(ValueError):
+        with_timezone = datetime.strptime(dt_str, "%Y%m%dT%H%M%S%z")
+    if with_timezone is not None:
+        return with_timezone
+    try:
+        return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+    except Exception:
+        return None
 
 
 def _format_zoho_datetime(dt: datetime | date) -> str:
     if isinstance(dt, datetime):
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
         return dt.strftime("%Y%m%dT%H%M%SZ")
     return dt.strftime("%Y%m%d")
 
@@ -108,9 +114,7 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
     if event.location is not None:
         body["location"] = event.location
     if event.attendees:
-        body["attendees"] = [
-            {"email": a.email, "name": a.display_name or a.email} for a in event.attendees
-        ]
+        body["attendees"] = [{"email": a.email} for a in event.attendees]
     return body
 
 

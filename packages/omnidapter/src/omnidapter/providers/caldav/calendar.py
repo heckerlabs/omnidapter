@@ -9,6 +9,7 @@ from __future__ import annotations
 import secrets
 import xml.etree.ElementTree as ET
 from typing import Any
+from urllib.parse import urlparse
 
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.providers.caldav import mappers
@@ -101,6 +102,76 @@ class CalDAVCalendarService(CalendarService):
             }
         return {}
 
+    def _resolve_calendar_url(self, calendar_id: str) -> str:
+        cid = (calendar_id or "").strip()
+        if cid.startswith("http://") or cid.startswith("https://"):
+            return cid.rstrip("/")
+        if cid.startswith("/"):
+            parsed_base = urlparse(self._server_url)
+            return f"{parsed_base.scheme}://{parsed_base.netloc}{cid}".rstrip("/")
+        return f"{self._server_url}/{cid.strip('/')}"
+
+    async def _propfind(self, url: str, body: str, *, depth: str) -> ET.Element:
+        headers = {**self._auth_headers(), "Depth": depth}
+        response = await self._http.request(
+            "PROPFIND",
+            url,
+            headers=headers,
+            data=body.encode(),
+        )
+        return ET.fromstring(response.text)
+
+    async def _discover_icloud_calendar_home_url(self) -> str:
+        principal_body = """<?xml version="1.0" encoding="UTF-8"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop>
+    <D:current-user-principal/>
+  </D:prop>
+</D:propfind>"""
+        principal_root = await self._propfind(self._server_url + "/", principal_body, depth="0")
+        principal_href = principal_root.findtext(".//{DAV:}current-user-principal/{DAV:}href", "")
+        if not principal_href:
+            from omnidapter.core.errors import ProviderAPIError
+            from omnidapter.transport.correlation import new_correlation_id
+
+            raise ProviderAPIError(
+                "Failed to discover iCloud current-user-principal",
+                provider_key=self._provider_key,
+                correlation_id=new_correlation_id(),
+            )
+
+        if principal_href.startswith("http://") or principal_href.startswith("https://"):
+            principal_url = principal_href.rstrip("/") + "/"
+        else:
+            principal_url = f"{self._server_url}/{principal_href.strip('/')}"
+            principal_url = principal_url.rstrip("/") + "/"
+
+        home_set_body = """<?xml version="1.0" encoding="UTF-8"?>
+<D:propfind xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:prop>
+    <C:calendar-home-set/>
+  </D:prop>
+</D:propfind>"""
+        home_root = await self._propfind(principal_url, home_set_body, depth="0")
+        home_href = home_root.findtext(
+            ".//{urn:ietf:params:xml:ns:caldav}calendar-home-set/{DAV:}href", ""
+        )
+        if not home_href:
+            from omnidapter.core.errors import ProviderAPIError
+            from omnidapter.transport.correlation import new_correlation_id
+
+            raise ProviderAPIError(
+                "Failed to discover iCloud calendar-home-set",
+                provider_key=self._provider_key,
+                correlation_id=new_correlation_id(),
+            )
+
+        if home_href.startswith("http://") or home_href.startswith("https://"):
+            return home_href.rstrip("/") + "/"
+
+        parsed_base = urlparse(self._server_url)
+        return f"{parsed_base.scheme}://{parsed_base.netloc}/{home_href.strip('/')}" + "/"
+
     async def list_calendars(self) -> list[Calendar]:
         self._require_capability(CalendarCapability.LIST_CALENDARS)
         propfind_body = """<?xml version="1.0" encoding="UTF-8"?>
@@ -112,10 +183,14 @@ class CalDAVCalendarService(CalendarService):
     <C:calendar-timezone/>
   </D:prop>
 </D:propfind>"""
+        discovery_url = self._server_url + "/"
+        if self._server_hint.value == "icloud":
+            discovery_url = await self._discover_icloud_calendar_home_url()
+
         headers = {**self._auth_headers(), "Depth": "1"}
         response = await self._http.request(
             "PROPFIND",
-            self._server_url + "/",
+            discovery_url,
             headers=headers,
             data=propfind_body.encode(),
         )
@@ -158,7 +233,8 @@ class CalDAVCalendarService(CalendarService):
             ical_uid=uid,
         )
         ical = mappers.from_calendar_event(event)
-        url = f"{self._server_url}/{request.calendar_id.strip('/')}/{uid}.ics"
+        calendar_url = self._resolve_calendar_url(request.calendar_id)
+        url = f"{calendar_url}/{uid}.ics"
         headers = {**self._auth_headers(), "Content-Type": "text/calendar; charset=utf-8"}
         await self._http.request("PUT", url, headers=headers, data=ical.encode())
         return event
@@ -183,19 +259,22 @@ class CalDAVCalendarService(CalendarService):
             }
         )
         ical = mappers.from_calendar_event(updated)
-        url = f"{self._server_url}/{request.calendar_id.strip('/')}/{request.event_id}.ics"
+        calendar_url = self._resolve_calendar_url(request.calendar_id)
+        url = f"{calendar_url}/{request.event_id}.ics"
         headers = {**self._auth_headers(), "Content-Type": "text/calendar; charset=utf-8"}
         await self._http.request("PUT", url, headers=headers, data=ical.encode())
         return await self.get_event(request.calendar_id, request.event_id)
 
     async def delete_event(self, calendar_id: str, event_id: str) -> None:
         self._require_capability(CalendarCapability.DELETE_EVENT)
-        url = f"{self._server_url}/{calendar_id.strip('/')}/{event_id}.ics"
+        calendar_url = self._resolve_calendar_url(calendar_id)
+        url = f"{calendar_url}/{event_id}.ics"
         await self._http.request("DELETE", url, headers=self._auth_headers())
 
     async def get_event(self, calendar_id: str, event_id: str) -> CalendarEvent:
         self._require_capability(CalendarCapability.GET_EVENT)
-        url = f"{self._server_url}/{calendar_id.strip('/')}/{event_id}.ics"
+        calendar_url = self._resolve_calendar_url(calendar_id)
+        url = f"{calendar_url}/{event_id}.ics"
         headers = {**self._auth_headers(), "Content-Type": "text/calendar"}
         response = await self._http.request("GET", url, headers=headers)
         event = mappers.to_calendar_event(response.text, calendar_id)
@@ -241,7 +320,7 @@ class CalDAVCalendarService(CalendarService):
   </C:filter>
 </C:calendar-query>"""
 
-        url = f"{self._server_url}/{calendar_id.strip('/')}/"
+        url = self._resolve_calendar_url(calendar_id) + "/"
         headers = {**self._auth_headers(), "Depth": "1"}
         response = await self._http.request(
             "REPORT", url, headers=headers, data=report_body.encode()

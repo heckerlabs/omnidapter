@@ -5,9 +5,11 @@ Zoho Calendar service implementation.
 from __future__ import annotations
 
 import json as _json
+from datetime import date, datetime, timezone
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
+from omnidapter.core.errors import ProviderAPIError, TransportError
 from omnidapter.providers.zoho import mappers
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.interface import CalendarService
@@ -39,6 +41,28 @@ _ZOHO_CAPABILITIES = frozenset(
         CalendarCapability.ATTENDEES,
     }
 )
+
+
+def _as_utc_datetime(value: datetime | date) -> datetime:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+
+
+def _in_time_window(
+    event: CalendarEvent,
+    *,
+    time_min: datetime | date | None,
+    time_max: datetime | date | None,
+) -> bool:
+    event_start = _as_utc_datetime(event.start)
+    event_end = _as_utc_datetime(event.end)
+
+    if time_min is not None and event_end <= _as_utc_datetime(time_min):
+        return False
+    return not (time_max is not None and event_start >= _as_utc_datetime(time_max))
 
 
 class ZohoCalendarService(CalendarService):
@@ -82,6 +106,18 @@ class ZohoCalendarService(CalendarService):
             return {"Authorization": f"Zoho-oauthtoken {creds.access_token}"}
         return {}
 
+    async def _headers_with_event_etag(self, calendar_id: str, event_id: str) -> dict[str, str]:
+        headers = await self._auth_headers()
+        try:
+            event = await self.get_event(calendar_id, event_id)
+        except (ProviderAPIError, TransportError):
+            return headers
+        etag = (event.provider_data or {}).get("etag")
+        if etag:
+            headers = dict(headers)
+            headers["ETag"] = str(etag)
+        return headers
+
     async def list_calendars(self) -> list[Calendar]:
         self._require_capability(CalendarCapability.LIST_CALENDARS)
         response = await self._http.request(
@@ -121,7 +157,7 @@ class ZohoCalendarService(CalendarService):
             "POST",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events",
             headers=await self._auth_headers(),
-            json={"eventdata": _json.dumps(body)},
+            params={"eventdata": _json.dumps(body)},
         )
         data = response.json()
         events = data.get("events", [])
@@ -132,6 +168,7 @@ class ZohoCalendarService(CalendarService):
         self._require_capability(CalendarCapability.UPDATE_EVENT)
         if request.status is not None and request.status != EventStatus.CONFIRMED:
             raise ValueError("Zoho only supports confirmed event status.")
+        current = await self.get_event(request.calendar_id, request.event_id)
         body: dict[str, Any] = {}
         if request.summary is not None:
             body["title"] = request.summary
@@ -139,17 +176,25 @@ class ZohoCalendarService(CalendarService):
             body["description"] = request.description
         if request.location is not None:
             body["location"] = request.location
-        if request.start is not None and request.end is not None:
-            body["dateandtime"] = {
-                "start": mappers._format_zoho_datetime(request.start),
-                "end": mappers._format_zoho_datetime(request.end),
-            }
+
+        current_etag = (current.provider_data or {}).get("etag")
+        start_value = request.start if request.start is not None else current.start
+        end_value = request.end if request.end is not None else current.end
+        body["dateandtime"] = {
+            "start": mappers._format_zoho_datetime(start_value),
+            "end": mappers._format_zoho_datetime(end_value),
+        }
+
+        headers = await self._auth_headers()
+        if current_etag:
+            headers = dict(headers)
+            headers["ETag"] = str(current_etag)
 
         response = await self._http.request(
             "PUT",
             f"{ZOHO_API_BASE}/calendars/{request.calendar_id}/events/{request.event_id}",
-            headers=await self._auth_headers(),
-            json={"eventdata": _json.dumps(body)},
+            headers=headers,
+            params={"eventdata": _json.dumps(body)},
         )
         data = response.json()
         events = data.get("events", [])
@@ -161,7 +206,7 @@ class ZohoCalendarService(CalendarService):
         await self._http.request(
             "DELETE",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events/{event_id}",
-            headers=await self._auth_headers(),
+            headers=await self._headers_with_event_etag(calendar_id, event_id),
         )
 
     async def get_event(self, calendar_id: str, event_id: str) -> CalendarEvent:
@@ -186,16 +231,22 @@ class ZohoCalendarService(CalendarService):
     ):
         self._require_capability(CalendarCapability.LIST_EVENTS)
         params: dict[str, Any] = {}
-        if time_min:
-            params["startdatetime"] = (
-                time_min.strftime("%Y%m%dT%H%M%SZ") if hasattr(time_min, "strftime") else time_min
-            )
-        if time_max:
-            params["enddatetime"] = (
-                time_max.strftime("%Y%m%dT%H%M%SZ") if hasattr(time_max, "strftime") else time_max
-            )
+        if isinstance(time_min, (datetime, date)):
+            params["start"] = mappers._format_zoho_datetime(time_min)
+        elif time_min is not None:
+            params["start"] = str(time_min)
+
+        if isinstance(time_max, (datetime, date)):
+            params["end"] = mappers._format_zoho_datetime(time_max)
+        elif time_max is not None:
+            params["end"] = str(time_max)
+
         if extra:
             params.update(extra)
+
+        window_time_min = time_min if isinstance(time_min, (datetime, date)) else None
+        window_time_max = time_max if isinstance(time_max, (datetime, date)) else None
+        apply_window_filter = window_time_min is not None or window_time_max is not None
 
         response = await self._http.request(
             "GET",
@@ -205,4 +256,10 @@ class ZohoCalendarService(CalendarService):
         )
         data = response.json()
         for e in data.get("events", []):
-            yield mappers.to_calendar_event(e, calendar_id)
+            event = mappers.to_calendar_event(e, calendar_id)
+            if not apply_window_filter or _in_time_window(
+                event,
+                time_min=window_time_min,
+                time_max=window_time_max,
+            ):
+                yield event

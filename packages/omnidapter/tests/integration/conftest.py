@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 import pytest
 from omnidapter.auth.models import BasicCredentials, OAuth2Credentials
+from omnidapter.core.errors import ProviderAPIError, TokenRefreshError
 from omnidapter.core.metadata import AuthKind
 from omnidapter.stores.credentials import StoredCredential
 
@@ -28,6 +29,11 @@ EVENT_PREFIX = "[omnidapter-test]"
 # Default page size used in pagination tests.  Tests create PAGE_SIZE + 2
 # events so that at least two pages are required.
 PAGINATION_PAGE_SIZE = 5
+
+# Shared attendee emails used by integration tests that create invited events.
+# Override to mailboxes you control to avoid delivery-failure noise.
+INTEGRATION_ATTENDEE_EMAIL_ENV = "OMNIDAPTER_TEST_ATTENDEE_EMAIL"
+DEFAULT_INTEGRATION_ATTENDEE_EMAIL = "integration-attendee@example.com"
 
 
 # --------------------------------------------------------------------------- #
@@ -106,6 +112,24 @@ def _stale_oauth2_stored(provider_key: str, refresh_token: str) -> StoredCredent
     )
 
 
+@pytest.fixture(scope="session")
+def integration_attendee_emails() -> list[str]:
+    """Return attendee emails from env (comma-separated) with a safe default."""
+    raw = os.getenv(INTEGRATION_ATTENDEE_EMAIL_ENV, DEFAULT_INTEGRATION_ATTENDEE_EMAIL)
+    emails: list[str] = []
+    for part in raw.split(","):
+        email = part.strip()
+        if email and email not in emails:
+            emails.append(email)
+    return emails or [DEFAULT_INTEGRATION_ATTENDEE_EMAIL]
+
+
+@pytest.fixture(scope="session")
+def integration_attendee_email(integration_attendee_emails: list[str]) -> str:
+    """Backward-compatible single attendee fixture (first configured email)."""
+    return integration_attendee_emails[0]
+
+
 # --------------------------------------------------------------------------- #
 # Google fixtures                                                              #
 # --------------------------------------------------------------------------- #
@@ -128,7 +152,10 @@ async def google_stored():
         client_id=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET"],
     )
-    return await provider.refresh_token(stale)
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Google integration credentials unusable: {exc}")
 
 
 @pytest.fixture(scope="module")
@@ -179,7 +206,10 @@ async def microsoft_stored():
         client_id=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET"],
     )
-    return await provider.refresh_token(stale)
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Microsoft integration credentials unusable: {exc}")
 
 
 @pytest.fixture(scope="module")
@@ -229,7 +259,10 @@ async def zoho_stored():
         client_id=os.environ["OMNIDAPTER_TEST_ZOHO_CLIENT_ID"],
         client_secret=os.environ["OMNIDAPTER_TEST_ZOHO_CLIENT_SECRET"],
     )
-    return await provider.refresh_token(stale)
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Zoho integration credentials unusable: {exc}")
 
 
 @pytest.fixture(scope="module")

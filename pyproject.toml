@@ -13,7 +13,9 @@ dev-dependencies = [
     "pytest-cov>=5.0",
     "httpx>=0.27",
     "respx>=0.21",
+    "tzdata>=2025.2",
     "ruff>=0.4",
+    "pyright>=1.1.408",
     "mypy>=1.10",
 ]
 

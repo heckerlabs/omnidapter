@@ -118,7 +118,7 @@ class TestConnection:
         )
 
         svc = conn.calendar()
-        assert svc._credential_resolver is resolver
+        assert getattr(svc, "_credential_resolver", None) is resolver
 
     def test_calendar_attaches_shared_http_client(self):
         stored = _stored_apikey("google")
@@ -296,7 +296,9 @@ class TestOmnidapter:
             conn = await omni.connection("conn-1")
             svc = conn.calendar()
 
-            assert svc._http._shared_client is shared_client
+            svc_http = getattr(svc, "_http", None)
+            assert svc_http is not None
+            assert getattr(svc_http, "_shared_client", None) is shared_client
             assert getattr(svc, "_credential_resolver", None) is not None
         finally:
             await shared_client.aclose()

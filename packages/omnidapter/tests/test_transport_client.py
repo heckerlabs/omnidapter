@@ -53,3 +53,47 @@ class TestSharedClientUsage:
 
         args, _ = shared_client.request.call_args
         assert args[1] == "https://api.example.com/v1/ping"
+
+    async def test_bytes_data_is_forwarded_as_content(self):
+        shared_client = MagicMock()
+        shared_client.request = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                json={"ok": True},
+                request=httpx.Request("PUT", "https://api.example.com/upload"),
+            )
+        )
+
+        client = OmnidapterHttpClient(
+            provider_key="test",
+            retry_policy=RetryPolicy.no_retry(),
+            shared_client=shared_client,
+        )
+
+        await client.request("PUT", "https://api.example.com/upload", data=b"payload")
+
+        _, kwargs = shared_client.request.call_args
+        assert kwargs["content"] == b"payload"
+        assert "data" not in kwargs
+
+    async def test_mapping_data_is_forwarded_as_data(self):
+        shared_client = MagicMock()
+        shared_client.request = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                json={"ok": True},
+                request=httpx.Request("POST", "https://api.example.com/form"),
+            )
+        )
+
+        client = OmnidapterHttpClient(
+            provider_key="test",
+            retry_policy=RetryPolicy.no_retry(),
+            shared_client=shared_client,
+        )
+
+        await client.request("POST", "https://api.example.com/form", data={"a": "b"})
+
+        _, kwargs = shared_client.request.call_args
+        assert kwargs["data"] == {"a": "b"}
+        assert "content" not in kwargs

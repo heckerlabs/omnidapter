@@ -10,6 +10,8 @@ Public API:
 from __future__ import annotations
 
 import contextlib
+import html
+import re
 from datetime import date, datetime, timezone
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -65,15 +67,40 @@ def _format_ms_datetime(dt: datetime | date, tz: str | None) -> dict:
     return {"dateTime": f"{dt}T00:00:00", "timeZone": tz or "UTC"}
 
 
+def _extract_body_content(body: dict[str, Any] | None) -> str | None:
+    if not body:
+        return None
+    content = body.get("content")
+    if not isinstance(content, str):
+        return None
+    content_type = str(body.get("contentType") or "").lower()
+    if content_type != "html":
+        return content
+
+    text = re.sub(r"<br\s*/?>", "\n", content, flags=re.IGNORECASE)
+    text = re.sub(r"</(p|div|li|tr|h[1-6])>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 _MS_STATUS = {
     "normal": EventStatus.CONFIRMED,
+    "busy": EventStatus.CONFIRMED,
+    "free": EventStatus.CONFIRMED,
+    "oof": EventStatus.CONFIRMED,
+    "workingElsewhere": EventStatus.CONFIRMED,
+    "unknown": EventStatus.CONFIRMED,
     "tentative": EventStatus.TENTATIVE,
-    "cancelled": EventStatus.CANCELLED,
 }
 _CANONICAL_STATUS_TO_MS = {
-    EventStatus.CONFIRMED: "normal",
+    EventStatus.CONFIRMED: "busy",
     EventStatus.TENTATIVE: "tentative",
-    EventStatus.CANCELLED: "cancelled",
+    # Graph does not accept "cancelled" in showAs. Cancellation is represented
+    # by event lifecycle/endpoints, not free/busy status.
+    EventStatus.CANCELLED: "busy",
 }
 
 _MS_ATTENDEE_STATUS = {
@@ -137,6 +164,7 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
     start = _parse_ms_datetime(start_obj) or datetime.now(tz=timezone.utc)
     end = _parse_ms_datetime(end_obj) or datetime.now(tz=timezone.utc)
     all_day = raw.get("isAllDay", False)
+    is_cancelled = bool(raw.get("isCancelled"))
 
     organizer_raw = raw.get("organizer", {}).get("emailAddress", {})
     organizer = None
@@ -207,6 +235,7 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
             "start",
             "end",
             "isAllDay",
+            "isCancelled",
             "organizer",
             "attendees",
             "recurrence",
@@ -224,9 +253,13 @@ def to_calendar_event(raw: dict, calendar_id: str) -> CalendarEvent:
         event_id=raw["id"],
         calendar_id=calendar_id,
         summary=raw.get("subject"),
-        description=raw.get("body", {}).get("content") if raw.get("body") else None,
+        description=_extract_body_content(raw.get("body")),
         location=raw.get("location", {}).get("displayName") if raw.get("location") else None,
-        status=_MS_STATUS.get(raw.get("showAs", "normal"), EventStatus.CONFIRMED),
+        status=(
+            EventStatus.CANCELLED
+            if is_cancelled
+            else _MS_STATUS.get(raw.get("showAs", "busy"), EventStatus.CONFIRMED)
+        ),
         visibility=_MS_SENSITIVITY_TO_VISIBILITY.get(
             raw.get("sensitivity", "normal"), EventVisibility.DEFAULT
         ),
@@ -261,7 +294,7 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
     if event.location is not None:
         body["location"] = {"displayName": event.location}
     if event.status and event.status != EventStatus.UNKNOWN:
-        body["showAs"] = _CANONICAL_STATUS_TO_MS.get(event.status, "normal")
+        body["showAs"] = _CANONICAL_STATUS_TO_MS.get(event.status, "busy")
     if event.visibility:
         body["sensitivity"] = _CANONICAL_VISIBILITY_TO_MS.get(event.visibility, "normal")
     if event.attendees:

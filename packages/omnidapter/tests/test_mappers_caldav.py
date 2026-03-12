@@ -5,6 +5,7 @@ Unit tests for omnidapter.providers.caldav.mappers.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from typing import Any
 
 from omnidapter.providers.caldav import mappers
 from omnidapter.services.calendar.models import (
@@ -49,8 +50,8 @@ _ALL_DAY_ICAL = "\r\n".join(
 )
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="test-uid-123",
         calendar_id="cal-1",
         summary="Hello World",

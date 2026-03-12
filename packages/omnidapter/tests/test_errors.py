@@ -65,6 +65,7 @@ class TestErrorHierarchy:
             correlation_id="corr",
             response_body=long_body,
         )
+        assert err.response_body is not None
         assert len(err.response_body) <= 4096 + 20  # truncation marker
 
     def test_rate_limit_error_fields(self):

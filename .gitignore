@@ -16,3 +16,7 @@ venv/
 *.so
 .coverage
 htmlcov/
+.env
+.env.*
+!.env.example
+!**/.env.example
