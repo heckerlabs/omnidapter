@@ -10,6 +10,7 @@ import secrets
 import xml.etree.ElementTree as ET
 from typing import Any
 from urllib.parse import urlparse
+from xml.sax.saxutils import escape, quoteattr
 
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.providers.caldav import mappers
@@ -57,6 +58,10 @@ NS = {
     "CS": "http://calendarserver.org/ns/",
     "ICAL": "http://apple.com/ns/ical/",
 }
+
+
+def _xml_text(value: str | None) -> str:
+    return escape(value or "")
 
 
 class CalDAVCalendarService(CalendarService):
@@ -246,13 +251,16 @@ class CalDAVCalendarService(CalendarService):
         base_url = await self._calendar_home_base_url()
         url = f"{base_url}{slug}-{secrets.token_hex(4)}/"
         props = mappers.from_create_calendar_request(request)
+        display_name = _xml_text(props.get("displayname"))
+        description = _xml_text(props.get("calendar-description"))
+        timezone = _xml_text(props.get("calendar-timezone"))
         mkcalendar_body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <C:mkcalendar xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
   <D:set>
     <D:prop>
-      <D:displayname>{props.get("displayname", "")}</D:displayname>
-      <C:calendar-description>{props.get("calendar-description", "")}</C:calendar-description>
-      <C:calendar-timezone>{props.get("calendar-timezone", "")}</C:calendar-timezone>
+      <D:displayname>{display_name}</D:displayname>
+      <C:calendar-description>{description}</C:calendar-description>
+      <C:calendar-timezone>{timezone}</C:calendar-timezone>
     </D:prop>
   </D:set>
 </C:mkcalendar>"""
@@ -270,14 +278,14 @@ class CalDAVCalendarService(CalendarService):
         props = mappers.from_update_calendar_request(request)
         set_lines = []
         if "displayname" in props:
-            set_lines.append(f"<D:displayname>{props['displayname']}</D:displayname>")
+            set_lines.append(f"<D:displayname>{_xml_text(props['displayname'])}</D:displayname>")
         if "calendar-description" in props:
             set_lines.append(
-                f"<C:calendar-description>{props['calendar-description']}</C:calendar-description>"
+                f"<C:calendar-description>{_xml_text(props['calendar-description'])}</C:calendar-description>"
             )
         if "calendar-timezone" in props:
             set_lines.append(
-                f"<C:calendar-timezone>{props['calendar-timezone']}</C:calendar-timezone>"
+                f"<C:calendar-timezone>{_xml_text(props['calendar-timezone'])}</C:calendar-timezone>"
             )
         if not set_lines:
             return await self.get_calendar(request.calendar_id)
@@ -400,7 +408,7 @@ class CalDAVCalendarService(CalendarService):
             ts_min = mappers._format_ical_datetime(time_min)
             ts_max = mappers._format_ical_datetime(time_max)
             time_filter = f"""
-            <C:time-range start="{ts_min}" end="{ts_max}"/>"""
+            <C:time-range start={quoteattr(ts_min)} end={quoteattr(ts_max)}/>"""
 
         report_body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
