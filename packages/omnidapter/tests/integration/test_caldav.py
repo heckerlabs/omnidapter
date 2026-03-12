@@ -294,3 +294,11 @@ async def test_pagination(caldav_service, caldav_calendar_id):
         for uid in created_uids:
             with suppress(Exception):
                 await caldav_service.delete_event(caldav_calendar_id, uid)
+
+
+async def test_get_event_unknown_id_raises(caldav_service, caldav_calendar_id):
+    from omnidapter.core.errors import ProviderAPIError
+
+    with pytest.raises(ProviderAPIError) as exc_info:
+        await caldav_service.get_event(caldav_calendar_id, "non-existent-omnidapter-event")
+    assert exc_info.value.status_code in (400, 404)
