@@ -36,7 +36,7 @@ from omnidapter.services.calendar.requests import (
     UpdateEventRequest,
 )
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
 
 async def _assert_deleted_event_state(google_service, calendar_id: str, event_id: str) -> None:
@@ -67,6 +67,12 @@ async def test_token_refresh():
     This is the single end-to-end test for the OAuth2 token refresh path.
     """
     from omnidapter.providers.google.provider import GoogleProvider
+
+    _require_env(
+        "OMNIDAPTER_TEST_GOOGLE_CLIENT_ID",
+        "OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN",
+    )
 
     stale = _stale_oauth2_stored("google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"])
     assert stale.credentials.is_expired(), "Fixture must start with an expired token"
