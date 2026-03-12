@@ -30,7 +30,12 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
     EventStatus,
 )
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    CreateEventRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
 
@@ -54,6 +59,43 @@ async def test_caldav_discovery(caldav_service):
     for cal in calendars:
         assert cal.calendar_id  # href path
         assert isinstance(cal.summary, str)
+
+
+async def test_calendar_crud_round_trip(caldav_service):
+    from omnidapter.core.errors import ProviderAPIError
+
+    created_id: str | None = None
+    try:
+        try:
+            created = await caldav_service.create_calendar(
+                CreateCalendarRequest(summary=f"{EVENT_PREFIX} calendar crud", timezone="UTC")
+            )
+        except ProviderAPIError as exc:
+            if exc.status_code in (400, 403, 405, 501):
+                pytest.skip(
+                    f"CalDAV MKCALENDAR not permitted for {caldav_service._server_url}: {exc}"
+                )
+            raise
+        created_id = created.calendar_id
+        assert created.calendar_id
+        assert created.summary
+
+        fetched = await caldav_service.get_calendar(created.calendar_id)
+        assert fetched.calendar_id == created.calendar_id
+
+        updated = await caldav_service.update_calendar(
+            UpdateCalendarRequest(
+                calendar_id=created.calendar_id, summary=f"{EVENT_PREFIX} renamed"
+            )
+        )
+        assert updated.summary == f"{EVENT_PREFIX} renamed"
+
+        await caldav_service.delete_calendar(created.calendar_id)
+        created_id = None
+    finally:
+        if created_id:
+            with suppress(Exception):
+                await caldav_service.delete_calendar(created_id)
 
 
 # --------------------------------------------------------------------------- #

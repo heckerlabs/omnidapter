@@ -16,8 +16,10 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 
@@ -58,6 +60,26 @@ class CalendarService(ABC):
     @abstractmethod
     async def list_calendars(self) -> list[Calendar]:
         """List all calendars accessible to this connection."""
+        ...
+
+    @abstractmethod
+    async def get_calendar(self, calendar_id: str) -> Calendar:
+        """Retrieve a single calendar by ID."""
+        ...
+
+    @abstractmethod
+    async def create_calendar(self, request: CreateCalendarRequest) -> Calendar:
+        """Create a new calendar."""
+        ...
+
+    @abstractmethod
+    async def update_calendar(self, request: UpdateCalendarRequest) -> Calendar:
+        """Update an existing calendar."""
+        ...
+
+    @abstractmethod
+    async def delete_calendar(self, calendar_id: str) -> None:
+        """Delete a calendar."""
         ...
 
     @abstractmethod

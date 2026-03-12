@@ -17,7 +17,12 @@ from omnidapter.services.calendar.models import (
     Reminder,
     ReminderOverride,
 )
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    CreateEventRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 from omnidapter.stores.credentials import StoredCredential
 
 
@@ -92,3 +97,42 @@ class TestCreateEventValidation:
                     recurrence=Recurrence(rules=["RRULE:FREQ=DAILY"]),
                 )
             )
+
+
+class TestCalendarCrud:
+    async def test_create_calendar_posts_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "id": "cal-ms-2",
+            "name": "Team",
+            "timeZone": "UTC",
+        }
+
+        created = await svc.create_calendar(
+            CreateCalendarRequest(summary="Team", timezone="UTC", background_color="#112233")
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "POST"
+        assert call.args[1].endswith("/me/calendars")
+        assert call.kwargs["json"]["name"] == "Team"
+        assert call.kwargs["json"]["hexColor"] == "#112233"
+        assert created.calendar_id == "cal-ms-2"
+
+    async def test_update_calendar_patches_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "id": "cal-ms-2",
+            "name": "Renamed",
+            "timeZone": "UTC",
+        }
+
+        updated = await svc.update_calendar(
+            UpdateCalendarRequest(calendar_id="cal-ms-2", summary="Renamed")
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "PATCH"
+        assert call.args[1].endswith("/me/calendars/cal-ms-2")
+        assert call.kwargs["json"] == {"name": "Renamed"}
+        assert updated.summary == "Renamed"

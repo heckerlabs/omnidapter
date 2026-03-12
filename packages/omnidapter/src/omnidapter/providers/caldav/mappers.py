@@ -12,6 +12,7 @@ from __future__ import annotations
 import secrets
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timezone
+from urllib.parse import urlparse
 
 from omnidapter.services.calendar.models import (
     Attendee,
@@ -71,6 +72,50 @@ def to_calendar(resp: ET.Element) -> Calendar | None:
         summary=display_name,
         description=description,
     )
+
+
+def from_create_calendar_request(request) -> dict[str, str]:
+    """Map a create-calendar request to CalDAV properties."""
+    props = {"displayname": request.summary}
+    if request.description is not None:
+        props["calendar-description"] = request.description
+    if request.timezone is not None:
+        props["calendar-timezone"] = request.timezone
+    return props
+
+
+def from_update_calendar_request(request) -> dict[str, str]:
+    """Map an update-calendar request to CalDAV properties."""
+    props: dict[str, str] = {}
+    if request.summary is not None:
+        props["displayname"] = request.summary
+    if request.description is not None:
+        props["calendar-description"] = request.description
+    if request.timezone is not None:
+        props["calendar-timezone"] = request.timezone
+    return props
+
+
+def slugify_calendar_name(summary: str) -> str:
+    """Create a filesystem-safe collection slug from calendar summary."""
+    allowed = []
+    for ch in summary.lower().strip():
+        if ch.isalnum():
+            allowed.append(ch)
+        elif ch in {" ", "-", "_"}:
+            allowed.append("-")
+    slug = "".join(allowed).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug or "calendar"
+
+
+def parse_collection_href(url_or_href: str) -> str:
+    """Return path-only calendar href from full URL or href."""
+    if url_or_href.startswith("http://") or url_or_href.startswith("https://"):
+        parsed = urlparse(url_or_href)
+        return parsed.path
+    return url_or_href
 
 
 def to_calendar_event(ical_text: str, calendar_id: str) -> CalendarEvent | None:

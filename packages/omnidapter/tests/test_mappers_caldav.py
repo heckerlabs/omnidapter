@@ -14,6 +14,7 @@ from omnidapter.services.calendar.models import (
     EventStatus,
     Recurrence,
 )
+from omnidapter.services.calendar.requests import CreateCalendarRequest, UpdateCalendarRequest
 
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
@@ -302,3 +303,24 @@ class TestFromCalendarEvent:
         assert recovered.summary == event.summary
         assert recovered.description == event.description
         assert recovered.location == event.location
+
+
+class TestCalendarCrudMappers:
+    def test_from_create_calendar_request(self):
+        req = CreateCalendarRequest(summary="Team", description="Desc", timezone="UTC")
+        props = mappers.from_create_calendar_request(req)
+        assert props["displayname"] == "Team"
+        assert props["calendar-description"] == "Desc"
+        assert props["calendar-timezone"] == "UTC"
+
+    def test_from_update_calendar_request(self):
+        req = UpdateCalendarRequest(calendar_id="/cal/1/", summary="Renamed")
+        props = mappers.from_update_calendar_request(req)
+        assert props == {"displayname": "Renamed"}
+
+    def test_slugify_calendar_name(self):
+        assert mappers.slugify_calendar_name("Team Ops 2026!") == "team-ops-2026"
+
+    def test_parse_collection_href(self):
+        assert mappers.parse_collection_href("https://dav.example.com/cal/a/") == "/cal/a/"
+        assert mappers.parse_collection_href("/cal/a/") == "/cal/a/"

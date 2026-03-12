@@ -11,7 +11,11 @@ from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers.google.calendar import GoogleCalendarService
 from omnidapter.services.calendar.models import EventStatus, EventVisibility
-from omnidapter.services.calendar.requests import UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 from omnidapter.stores.credentials import StoredCredential
 
 
@@ -106,3 +110,42 @@ class TestAuthHeadersRefresh:
         resolver.assert_awaited_once_with("conn-1")
         assert headers["Authorization"] == "Bearer new-token"
         assert svc._stored is refreshed
+
+
+class TestCalendarCrud:
+    async def test_create_calendar_posts_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "id": "cal-2",
+            "summary": "Team",
+            "timeZone": "UTC",
+        }
+
+        created = await svc.create_calendar(
+            CreateCalendarRequest(summary="Team", timezone="UTC", extra={"selected": True})
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "POST"
+        assert call.args[1].endswith("/calendars")
+        assert call.kwargs["json"]["summary"] == "Team"
+        assert call.kwargs["json"]["selected"] is True
+        assert created.calendar_id == "cal-2"
+
+    async def test_update_calendar_patches_expected_payload(self):
+        svc, mock_request = _make_service()
+        mock_request.return_value.json.return_value = {
+            "id": "cal-2",
+            "summary": "Renamed",
+            "timeZone": "UTC",
+        }
+
+        updated = await svc.update_calendar(
+            UpdateCalendarRequest(calendar_id="cal-2", summary="Renamed")
+        )
+
+        call = mock_request.await_args_list[-1]
+        assert call.args[0] == "PATCH"
+        assert call.args[1].endswith("/calendars/cal-2")
+        assert call.kwargs["json"] == {"summary": "Renamed"}
+        assert updated.summary == "Renamed"

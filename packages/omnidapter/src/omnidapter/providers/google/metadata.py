@@ -47,6 +47,10 @@ GOOGLE_METADATA = ProviderMetadata(
             c.value
             for c in [
                 CalendarCapability.LIST_CALENDARS,
+                CalendarCapability.GET_CALENDAR,
+                CalendarCapability.CREATE_CALENDAR,
+                CalendarCapability.UPDATE_CALENDAR,
+                CalendarCapability.DELETE_CALENDAR,
                 CalendarCapability.GET_AVAILABILITY,
                 CalendarCapability.CREATE_EVENT,
                 CalendarCapability.UPDATE_EVENT,

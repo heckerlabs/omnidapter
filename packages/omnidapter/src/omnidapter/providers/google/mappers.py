@@ -5,6 +5,8 @@ Public API:
   to_calendar_event(raw, calendar_id) -> CalendarEvent
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
+  from_create_calendar_request(request) -> dict
+  from_update_calendar_request(request) -> dict
 """
 
 from __future__ import annotations
@@ -325,3 +327,35 @@ def to_calendar(raw: dict) -> Calendar:
         foreground_color=raw.get("foregroundColor"),
         provider_data={k: v for k, v in raw.items() if k not in _MAPPED_KEYS},
     )
+
+
+def from_create_calendar_request(request) -> dict[str, Any]:
+    """Map a create-calendar request to Google Calendar API payload."""
+    body: dict[str, Any] = {"summary": request.summary}
+    if request.description is not None:
+        body["description"] = request.description
+    if request.timezone is not None:
+        body["timeZone"] = request.timezone
+    if request.background_color is not None:
+        body["backgroundColor"] = request.background_color
+    if request.foreground_color is not None:
+        body["foregroundColor"] = request.foreground_color
+    body.update(request.extra)
+    return body
+
+
+def from_update_calendar_request(request) -> dict[str, Any]:
+    """Map an update-calendar request to Google Calendar API payload."""
+    body: dict[str, Any] = {}
+    if request.summary is not None:
+        body["summary"] = request.summary
+    if request.description is not None:
+        body["description"] = request.description
+    if request.timezone is not None:
+        body["timeZone"] = request.timezone
+    if request.background_color is not None:
+        body["backgroundColor"] = request.background_color
+    if request.foreground_color is not None:
+        body["foregroundColor"] = request.foreground_color
+    body.update(request.extra)
+    return body
