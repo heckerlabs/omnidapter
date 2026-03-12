@@ -4,6 +4,7 @@ Unit tests for omnidapter.providers.google.calendar.GoogleCalendarService.
 
 from __future__ import annotations
 
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 from omnidapter.auth.models import OAuth2Credentials
@@ -98,7 +99,7 @@ class TestAuthHeadersRefresh:
         svc = GoogleCalendarService("conn-1", _google_stored("old-token"))
         refreshed = _google_stored("new-token")
         resolver = AsyncMock(return_value=refreshed)
-        svc._credential_resolver = resolver
+        cast(Any, svc)._credential_resolver = resolver
 
         headers = await svc._auth_headers()
 

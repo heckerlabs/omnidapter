@@ -5,6 +5,7 @@ Unit tests for omnidapter.providers.google.mappers.
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
@@ -40,8 +41,8 @@ def _make_raw(overrides: dict | None = None) -> dict:
     return base
 
 
-def _make_event(**kwargs) -> CalendarEvent:
-    defaults = dict(
+def _make_event(**kwargs: Any) -> CalendarEvent:
+    defaults: dict[str, Any] = dict(
         event_id="evt-1",
         calendar_id="cal-1",
         summary="Test event",
