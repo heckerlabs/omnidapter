@@ -31,7 +31,7 @@ import pytest
 from omnidapter.services.calendar.models import CalendarEvent, EventStatus
 from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
 
-from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _stale_oauth2_stored
+from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
 pytestmark = pytest.mark.integration
 
@@ -67,6 +67,12 @@ async def test_token_refresh():
     Expired access token + valid refresh token → fresh credentials that work.
     """
     from omnidapter.providers.zoho.provider import ZohoProvider
+
+    _require_env(
+        "OMNIDAPTER_TEST_ZOHO_CLIENT_ID",
+        "OMNIDAPTER_TEST_ZOHO_CLIENT_SECRET",
+        "OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN",
+    )
 
     stale = _stale_oauth2_stored("zoho", os.environ["OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN"])
     assert stale.credentials.is_expired()
