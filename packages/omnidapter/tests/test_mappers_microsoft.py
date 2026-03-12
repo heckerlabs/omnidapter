@@ -5,7 +5,7 @@ Unit tests for omnidapter.providers.microsoft.mappers.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 from omnidapter.providers.microsoft import mappers
@@ -72,6 +72,18 @@ class TestToCalendarEvent:
         assert event.description == "hello"
         assert event.location == "Mars"
 
+    def test_html_body_is_mapped_to_plain_text(self):
+        raw = _make_raw(
+            {
+                "body": {
+                    "contentType": "html",
+                    "content": "<html><body><p>Hello</p><div>World</div></body></html>",
+                }
+            }
+        )
+        event = mappers.to_calendar_event(raw, "cal-1")
+        assert event.description == "Hello\nWorld"
+
     def test_timed_event(self):
         event = mappers.to_calendar_event(_make_raw(), "c")
         assert isinstance(event.start, datetime)
@@ -89,6 +101,11 @@ class TestToCalendarEvent:
         assert event.start.utcoffset().total_seconds() == 0
 
     def test_datetime_iana_timezone(self):
+        try:
+            expected_tz = ZoneInfo("America/New_York")
+        except ZoneInfoNotFoundError:
+            pytest.skip("IANA tzdata not available in runtime environment")
+
         raw = _make_raw(
             {
                 "start": {"dateTime": "2024-06-15T10:00:00", "timeZone": "America/New_York"},
@@ -96,7 +113,7 @@ class TestToCalendarEvent:
             }
         )
         event = mappers.to_calendar_event(raw, "c")
-        assert event.start.tzinfo == ZoneInfo("America/New_York")
+        assert event.start.tzinfo == expected_tz
         # A 10:00 Eastern datetime is not 10:00 UTC
         assert event.start.utcoffset() is not None
         assert event.start.utcoffset().total_seconds() != 0
@@ -119,11 +136,15 @@ class TestToCalendarEvent:
     def test_status_mapping(self):
         for show_as, expected in [
             ("normal", EventStatus.CONFIRMED),
+            ("busy", EventStatus.CONFIRMED),
             ("tentative", EventStatus.TENTATIVE),
-            ("cancelled", EventStatus.CANCELLED),
         ]:
             event = mappers.to_calendar_event(_make_raw({"showAs": show_as}), "c")
             assert event.status == expected
+
+    def test_cancelled_status_from_is_cancelled(self):
+        event = mappers.to_calendar_event(_make_raw({"isCancelled": True}), "c")
+        assert event.status == EventStatus.CANCELLED
 
     def test_visibility_mapping_from_sensitivity(self):
         event = mappers.to_calendar_event(_make_raw({"sensitivity": "confidential"}), "c")

@@ -103,6 +103,56 @@ Use OAuth Playground: `https://developers.google.com/oauthplayground/`
 
 If no refresh token is returned, re-consent with offline access (or revoke prior consent and retry).
 
+## Getting Microsoft client id/secret and refresh token
+
+1. Create an app registration in Azure Portal:
+   - `https://portal.azure.com/` -> **Microsoft Entra ID** -> **App registrations** -> **New registration**
+   - Supported account type: use both org + personal accounts if you want to test with Outlook/Hotmail, or single tenant if org-only
+2. Add a Web redirect URI under **Authentication**:
+   - `http://localhost:8000/oauth/microsoft/callback`
+3. Create client credentials:
+   - **Certificates & secrets** -> **New client secret**
+   - Copy **Application (client) ID** and secret **Value**
+4. Ensure delegated Microsoft Graph scopes include:
+   - `Calendars.ReadWrite`
+   - `offline_access`
+   - `openid`
+   - `email`
+5. If portal save fails with `api.requestedAccessTokenVersion` when enabling personal accounts, update app **Manifest**:
+
+```json
+"signInAudience": "AzureADandPersonalMicrosoftAccount",
+"api": {
+  "requestedAccessTokenVersion": 2
+}
+```
+
+6. Open authorize URL in browser (replace `client_id` if needed):
+
+```text
+https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=<your-client-id>&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Foauth%2Fmicrosoft%2Fcallback&response_mode=query&scope=offline_access%20Calendars.ReadWrite%20openid%20email&prompt=consent
+```
+
+7. After consent, copy the `code` query param from the callback URL.
+8. Exchange the code for tokens:
+
+```bash
+curl -X POST "https://login.microsoftonline.com/common/oauth2/v2.0/token" \
+  --data-urlencode "client_id=<your-client-id>" \
+  --data-urlencode "client_secret=<your-client-secret>" \
+  --data-urlencode "grant_type=authorization_code" \
+  --data-urlencode "code=<auth-code-from-callback>" \
+  --data-urlencode "redirect_uri=http://localhost:8000/oauth/microsoft/callback" \
+  --data-urlencode "scope=offline_access Calendars.ReadWrite openid email"
+```
+
+9. Copy `refresh_token` into `OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN`.
+
+Notes:
+- If your app is org-only, replace `common` with your tenant ID in both authorize/token endpoints.
+- `code` is short-lived and single-use; exchange immediately.
+- `redirect_uri` must match exactly in Azure config, authorize request, and token request (including `localhost` vs `127.0.0.1`).
+
 ## Getting a Zoho refresh token
 
 1. Create a Server-based OAuth client in Zoho API Console:
