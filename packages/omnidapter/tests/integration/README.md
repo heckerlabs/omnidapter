@@ -59,6 +59,7 @@ uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omn
 ## Required env vars by provider
 
 - Common: `OMNIDAPTER_INTEGRATION=1`
+  - Optional: `OMNIDAPTER_TEST_ATTENDEE_EMAIL` (comma-separated list for attendee invite tests)
 - Google:
   - `OMNIDAPTER_TEST_GOOGLE_CLIENT_ID`
   - `OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET`

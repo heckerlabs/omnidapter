@@ -10,6 +10,7 @@ Required env vars:
 
 Optional:
     OMNIDAPTER_TEST_CALDAV_CALENDAR_ID  (defaults to first discovered calendar)
+    OMNIDAPTER_TEST_ATTENDEE_EMAIL      (comma-separated invitee emails for attendee tests)
 
 CI recommendation: run a local Radicale instance in Docker so the CalDAV URL
 points to localhost. For pre-release manual testing, point it at a real server
@@ -135,7 +136,9 @@ async def test_crud_round_trip(caldav_service, caldav_calendar_id, retry_read):
 # --------------------------------------------------------------------------- #
 
 
-async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
+async def test_mapper_fidelity(
+    caldav_service, caldav_calendar_id, retry_read, integration_attendee_emails
+):
     """
     Verify that the iCalendar VEVENT parser correctly maps all supported fields
     from a real server response.
@@ -149,7 +152,8 @@ async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
         description="Testing iCalendar field-mapping fidelity",
         location="Mapper Test Location",
         attendees=[
-            Attendee(email="integration-attendee@example.com", display_name="Test Attendee")
+            Attendee(email=email, display_name=f"Test Attendee {idx + 1}")
+            for idx, email in enumerate(integration_attendee_emails)
         ],
     )
     event_id: str | None = None
@@ -170,8 +174,14 @@ async def test_mapper_fidelity(caldav_service, caldav_calendar_id, retry_read):
         assert fetched.status in EventStatus
         assert fetched.ical_uid is not None
         # Attendees are included in the VCALENDAR and should round-trip.
-        if fetched.attendees:
-            assert all(a.email for a in fetched.attendees)
+        assert len(fetched.attendees) >= 1
+        fetched_emails = {
+            a.email.lower().removeprefix("mailto:") for a in fetched.attendees if a.email
+        }
+        expected_emails = {
+            email.lower().removeprefix("mailto:") for email in integration_attendee_emails
+        }
+        assert expected_emails.issubset(fetched_emails)
         # raw_props in provider_data lets callers access unmapped iCal properties.
         assert fetched.provider_data is not None
         assert "raw_props" in fetched.provider_data
