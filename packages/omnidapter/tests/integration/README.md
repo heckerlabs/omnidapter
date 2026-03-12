@@ -133,3 +133,22 @@ Notes:
 - The `code` is single-use and short-lived; exchange it immediately.
 - `redirect_uri` must exactly match both the authorize request and Zoho app config.
 - If your account is not on US DC, use your region host (for example `accounts.zoho.eu`).
+
+## Getting Apple credentials (iCloud CalDAV)
+
+Apple integration tests use Basic auth with your Apple ID email plus an app-specific password.
+
+1. Go to `https://appleid.apple.com/` and sign in.
+2. Under **Sign-In and Security**, enable two-factor authentication if it is not already enabled.
+3. In **App-Specific Passwords**, generate a new password.
+4. Use these env vars:
+   - `OMNIDAPTER_TEST_APPLE_USERNAME=<your-apple-id-email>`
+   - `OMNIDAPTER_TEST_APPLE_PASSWORD=<app-specific-password>`
+5. For CalDAV tests against iCloud, set:
+   - `OMNIDAPTER_TEST_CALDAV_URL=https://caldav.icloud.com`
+   - `OMNIDAPTER_TEST_CALDAV_USERNAME=<same-apple-id-email>`
+   - `OMNIDAPTER_TEST_CALDAV_PASSWORD=<same-app-specific-password>`
+
+Notes:
+- Use the app-specific password, not your regular Apple ID password.
+- If auth fails, generate a fresh app-specific password and retry.
