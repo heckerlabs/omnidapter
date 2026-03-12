@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers.google.calendar import GoogleCalendarService
-from omnidapter.services.calendar.models import EventStatus
+from omnidapter.services.calendar.models import EventStatus, EventVisibility
 from omnidapter.services.calendar.requests import UpdateEventRequest
 from omnidapter.stores.credentials import StoredCredential
 
@@ -78,6 +78,19 @@ class TestUpdateEventStatusSerialization:
         _, kwargs = mock_request.call_args
         body = kwargs["json"]
         assert "status" not in body
+
+    async def test_invalid_visibility_falls_back_to_default(self):
+        svc, mock_request = _make_service()
+        await svc.update_event(
+            UpdateEventRequest(
+                calendar_id="cal-1",
+                event_id="evt-1",
+                visibility="not-a-real-visibility",
+            )
+        )
+        _, kwargs = mock_request.call_args
+        body = kwargs["json"]
+        assert body["visibility"] == EventVisibility.DEFAULT.value
 
 
 class TestAuthHeadersRefresh:

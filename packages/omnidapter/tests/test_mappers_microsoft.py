@@ -7,12 +7,18 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+import pytest
 from omnidapter.providers.microsoft import mappers
 from omnidapter.services.calendar.models import (
     Attendee,
     AttendeeStatus,
     CalendarEvent,
+    ConferenceData,
     EventStatus,
+    EventVisibility,
+    Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 
 # --------------------------------------------------------------------------- #
@@ -119,6 +125,10 @@ class TestToCalendarEvent:
             event = mappers.to_calendar_event(_make_raw({"showAs": show_as}), "c")
             assert event.status == expected
 
+    def test_visibility_mapping_from_sensitivity(self):
+        event = mappers.to_calendar_event(_make_raw({"sensitivity": "confidential"}), "c")
+        assert event.visibility == EventVisibility.CONFIDENTIAL
+
     def test_organizer_mapped(self):
         raw = _make_raw({"organizer": {"emailAddress": {"address": "boss@x.com", "name": "Boss"}}})
         event = mappers.to_calendar_event(raw, "c")
@@ -193,10 +203,10 @@ class TestToCalendarEvent:
         assert event.etag == 'W/"tag"'
 
     def test_extra_keys_in_provider_data(self):
-        raw = _make_raw({"sensitivity": "normal"})
+        raw = _make_raw({"transactionId": "abc"})
         event = mappers.to_calendar_event(raw, "c")
         assert event.provider_data is not None
-        assert "sensitivity" in event.provider_data
+        assert "transactionId" in event.provider_data
 
     def test_mapped_keys_not_in_provider_data(self):
         event = mappers.to_calendar_event(_make_raw(), "c")
@@ -244,6 +254,41 @@ class TestFromCalendarEvent:
         body = mappers.from_calendar_event(event)
         assert body["attendees"][0]["emailAddress"]["address"] == "a@x.com"
         assert body["attendees"][0]["type"] == "required"
+
+    def test_visibility_mapped_to_sensitivity(self):
+        event = _make_event(visibility=EventVisibility.PRIVATE)
+        body = mappers.from_calendar_event(event)
+        assert body["sensitivity"] == "private"
+
+    def test_recurrence_serialized_from_provider_data(self):
+        recurrence = Recurrence(
+            provider_data={"pattern": {"type": "daily"}, "range": {"type": "noEnd"}}
+        )
+        event = _make_event(recurrence=recurrence)
+        body = mappers.from_calendar_event(event)
+        assert body["recurrence"]["pattern"]["type"] == "daily"
+
+    def test_recurrence_without_provider_data_raises(self):
+        event = _make_event(recurrence=Recurrence(rules=["RRULE:FREQ=DAILY"]))
+        with pytest.raises(ValueError, match="provider_data"):
+            mappers.from_calendar_event(event)
+
+    def test_conference_data_serialized_to_online_meeting(self):
+        event = _make_event(conference_data=ConferenceData())
+        body = mappers.from_calendar_event(event)
+        assert body["isOnlineMeeting"] is True
+        assert body["onlineMeetingProvider"] == "teamsForBusiness"
+
+    def test_reminders_serialized(self):
+        event = _make_event(
+            reminders=Reminder(
+                use_default=False,
+                overrides=[ReminderOverride(method="popup", minutes_before=20)],
+            )
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["isReminderOn"] is True
+        assert body["reminderMinutesBeforeStart"] == 20
 
 
 # --------------------------------------------------------------------------- #

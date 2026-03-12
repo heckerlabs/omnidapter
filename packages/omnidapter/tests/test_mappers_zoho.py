@@ -100,6 +100,12 @@ class TestToCalendarEvent:
         assert event.attendees[0].display_name == "Alice"
         assert event.attendees[0].status == AttendeeStatus.NEEDS_ACTION
 
+    def test_attendees_without_email_filtered_out(self):
+        raw = _make_raw({"attendees": [{"name": "Missing"}, {"email": "ok@example.com"}]})
+        event = mappers.to_calendar_event(raw, "c")
+        assert len(event.attendees) == 1
+        assert event.attendees[0].email == "ok@example.com"
+
     def test_extra_keys_in_provider_data(self):
         raw = _make_raw({"etag": "tag-123"})
         event = mappers.to_calendar_event(raw, "c")

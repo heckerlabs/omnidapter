@@ -12,9 +12,12 @@ from omnidapter.services.calendar.models import (
     Attendee,
     AttendeeStatus,
     CalendarEvent,
+    ConferenceData,
     EventStatus,
     EventVisibility,
     Recurrence,
+    Reminder,
+    ReminderOverride,
 )
 
 # --------------------------------------------------------------------------- #
@@ -262,6 +265,37 @@ class TestFromCalendarEvent:
         body = mappers.from_calendar_event(event)
         assert body["start"]["timeZone"] == "America/New_York"
         assert body["end"]["timeZone"] == "America/New_York"
+
+    def test_conference_data_generates_create_request(self):
+        event = _make_event(conference_data=ConferenceData())
+        body = mappers.from_calendar_event(event)
+        assert "conferenceData" in body
+        assert "createRequest" in body["conferenceData"]
+        assert (
+            body["conferenceData"]["createRequest"]["conferenceSolutionKey"]["type"]
+            == "hangoutsMeet"
+        )
+
+    def test_conference_data_provider_data_preserved(self):
+        event = _make_event(
+            conference_data=ConferenceData(
+                provider_data={"createRequest": {"requestId": "abc-123"}}
+            )
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["conferenceData"]["createRequest"]["requestId"] == "abc-123"
+
+    def test_reminders_serialized(self):
+        event = _make_event(
+            reminders=Reminder(
+                use_default=False,
+                overrides=[ReminderOverride(method="popup", minutes_before=15)],
+            )
+        )
+        body = mappers.from_calendar_event(event)
+        assert body["reminders"]["useDefault"] is False
+        assert body["reminders"]["overrides"][0]["method"] == "popup"
+        assert body["reminders"]["overrides"][0]["minutes"] == 15
 
 
 # --------------------------------------------------------------------------- #

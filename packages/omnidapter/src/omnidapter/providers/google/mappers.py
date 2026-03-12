@@ -10,6 +10,7 @@ Public API:
 from __future__ import annotations
 
 import contextlib
+import uuid
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -236,6 +237,22 @@ def from_calendar_event(event: CalendarEvent) -> dict[str, Any]:
         ]
     if event.recurrence:
         body["recurrence"] = event.recurrence.rules
+    if event.conference_data:
+        conference_data = dict(event.conference_data.provider_data or {})
+        if "createRequest" not in conference_data:
+            conference_data["createRequest"] = {
+                "requestId": uuid.uuid4().hex,
+                "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            }
+        body["conferenceData"] = conference_data
+    if event.reminders:
+        reminders: dict[str, Any] = {"useDefault": event.reminders.use_default}
+        if event.reminders.overrides:
+            reminders["overrides"] = [
+                {"method": override.method, "minutes": override.minutes_before}
+                for override in event.reminders.overrides
+            ]
+        body["reminders"] = reminders
     return body
 
 
