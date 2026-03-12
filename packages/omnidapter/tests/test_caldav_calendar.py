@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock
 
 from omnidapter.auth.models import BasicCredentials
@@ -43,6 +44,27 @@ class TestCalendarCrud:
         call = mock_request.await_args_list[0]
         assert call.args[0] == "MKCALENDAR"
 
+    async def test_create_calendar_escapes_xml_values(self):
+        svc, mock_request = _make_service()
+        svc.list_calendars = AsyncMock(
+            return_value=[
+                MagicMock(
+                    calendar_id="/caldav/user/existing/", summary="existing", description=None
+                )
+            ]
+        )
+        svc.get_calendar = AsyncMock(return_value=MagicMock(calendar_id="/caldav/user/new/"))
+
+        await svc.create_calendar(
+            CreateCalendarRequest(summary="A & B <Team>", description="x < y & z")
+        )
+
+        call = mock_request.await_args_list[0]
+        body = call.kwargs["data"].decode()
+        assert "A &amp; B &lt;Team&gt;" in body
+        assert "x &lt; y &amp; z" in body
+        ET.fromstring(body)
+
     async def test_update_calendar_uses_proppatch(self):
         svc, mock_request = _make_service()
         svc.get_calendar = AsyncMock(return_value=MagicMock(calendar_id="/caldav/user/existing/"))
@@ -53,6 +75,24 @@ class TestCalendarCrud:
 
         call = mock_request.await_args_list[0]
         assert call.args[0] == "PROPPATCH"
+
+    async def test_update_calendar_escapes_xml_values(self):
+        svc, mock_request = _make_service()
+        svc.get_calendar = AsyncMock(return_value=MagicMock(calendar_id="/caldav/user/existing/"))
+
+        await svc.update_calendar(
+            UpdateCalendarRequest(
+                calendar_id="/caldav/user/existing/",
+                summary="A & B <Team>",
+                description="x < y & z",
+            )
+        )
+
+        call = mock_request.await_args_list[0]
+        body = call.kwargs["data"].decode()
+        assert "A &amp; B &lt;Team&gt;" in body
+        assert "x &lt; y &amp; z" in body
+        ET.fromstring(body)
 
     async def test_delete_calendar_uses_delete(self):
         svc, mock_request = _make_service()
