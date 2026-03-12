@@ -19,3 +19,9 @@ packages = ["src/omnidapter"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/"]
+
+[tool.pyright]
+venvPath = "../.."
+venv = ".venv"
+extraPaths = ["src"]
+include = ["src", "tests"]

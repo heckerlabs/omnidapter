@@ -32,9 +32,3 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501"]
-
-[tool.pyright]
-
-[[tool.pyright.executionEnvironments]]
-root = "."
-extraPaths = ["packages/omnidapter/src"]

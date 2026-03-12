@@ -21,6 +21,7 @@ from contextlib import suppress
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
+from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.services.calendar.models import (
     Attendee,
     CalendarEvent,
@@ -75,7 +76,9 @@ async def test_token_refresh():
     )
 
     stale = _stale_oauth2_stored("google", os.environ["OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN"])
-    assert stale.credentials.is_expired(), "Fixture must start with an expired token"
+    stale_creds = stale.credentials
+    assert isinstance(stale_creds, OAuth2Credentials)
+    assert stale_creds.is_expired(), "Fixture must start with an expired token"
 
     provider = GoogleProvider(
         client_id=os.environ["OMNIDAPTER_TEST_GOOGLE_CLIENT_ID"],
@@ -84,6 +87,7 @@ async def test_token_refresh():
     refreshed = await provider.refresh_token(stale)
 
     new_creds = refreshed.credentials
+    assert isinstance(new_creds, OAuth2Credentials)
     assert new_creds.access_token
     assert new_creds.access_token != "stale-will-be-refreshed"
     assert not new_creds.is_expired()
