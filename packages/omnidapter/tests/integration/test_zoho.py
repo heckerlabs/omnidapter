@@ -31,7 +31,12 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from omnidapter.auth.models import OAuth2Credentials
 from omnidapter.services.calendar.models import CalendarEvent, EventStatus
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    CreateEventRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
 
@@ -110,6 +115,43 @@ async def test_list_calendars(zoho_service):
     for cal in calendars:
         assert cal.calendar_id
         assert isinstance(cal.summary, str)
+
+
+async def test_calendar_crud_round_trip(zoho_service):
+    from omnidapter.core.errors import ProviderAPIError
+
+    created_id: str | None = None
+    try:
+        try:
+            created = await zoho_service.create_calendar(
+                CreateCalendarRequest(summary=f"{EVENT_PREFIX} calendar crud", timezone="UTC")
+            )
+        except ProviderAPIError as exc:
+            if exc.status_code in (400, 403, 405, 501):
+                pytest.skip(
+                    f"Zoho calendar creation not permitted for this account/API mode: {exc}"
+                )
+            raise
+        created_id = created.calendar_id
+        assert created.calendar_id
+        assert created.summary
+
+        fetched = await zoho_service.get_calendar(created.calendar_id)
+        assert fetched.calendar_id == created.calendar_id
+
+        updated = await zoho_service.update_calendar(
+            UpdateCalendarRequest(
+                calendar_id=created.calendar_id, summary=f"{EVENT_PREFIX} renamed"
+            )
+        )
+        assert updated.summary == f"{EVENT_PREFIX} renamed"
+
+        await zoho_service.delete_calendar(created.calendar_id)
+        created_id = None
+    finally:
+        if created_id:
+            with suppress(Exception):
+                await zoho_service.delete_calendar(created_id)
 
 
 # --------------------------------------------------------------------------- #

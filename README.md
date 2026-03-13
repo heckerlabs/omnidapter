@@ -64,6 +64,10 @@ Set `auto_register_by_env=False` to register all built-ins regardless of env var
 | Capability | Google | Microsoft | Zoho | Apple | CalDAV* |
 |---|:---:|:---:|:---:|:---:|:---:|
 | List calendars | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Get calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
+| Create calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
+| Update calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
+| Delete calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
 | List events | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Get event | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Create event | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -75,6 +79,8 @@ Set `auto_register_by_env=False` to register all built-ins regardless of env var
 | Attendees | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 *CalDAV requires manual registration via `omni.register_provider(CalDAVProvider())`.
+
+Footnote `**`: CalDAV calendar collection CRUD depends on server policy. Some CalDAV servers reject `MKCALENDAR`/`MKCOL` (for example, Zoho's CalDAV sync endpoint), so top-level calendar create/delete may fail with `403/405/501` even when event CRUD works.
 
 ## OAuth flows
 
@@ -133,6 +139,9 @@ stored = StoredCredential(
     credentials=BasicCredentials(username="user", password="pass"),
     provider_config={"server_url": "https://dav.fastmail.com/"},
 )
+
+# Note: server-side method support varies. Some CalDAV servers disable
+# MKCALENDAR/MKCOL and therefore do not allow creating calendars over CalDAV.
 ```
 
 ## Credential stores

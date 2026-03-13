@@ -66,3 +66,26 @@ class GetAvailabilityRequest(BaseModel):
     time_min: datetime
     time_max: datetime
     timezone: str | None = None
+
+
+class CreateCalendarRequest(BaseModel):
+    """Request model for creating a calendar."""
+
+    summary: str
+    description: str | None = None
+    timezone: str | None = None
+    background_color: str | None = None
+    foreground_color: str | None = None
+    extra: dict[str, Any] = {}
+
+
+class UpdateCalendarRequest(BaseModel):
+    """Request model for updating a calendar."""
+
+    calendar_id: str
+    summary: str | None = None
+    description: str | None = None
+    timezone: str | None = None
+    background_color: str | None = None
+    foreground_color: str | None = None
+    extra: dict[str, Any] = {}

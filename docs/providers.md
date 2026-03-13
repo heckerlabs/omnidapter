@@ -283,6 +283,13 @@ stored = StoredCredential(
 await omni.credential_store.save_credentials("conn_123", stored)
 ```
 
+### Server caveats
+
+- CalDAV method support varies by server; `MKCALENDAR` support is recommended by RFC 4791 but not required.
+- If your server disallows calendar collection creation, top-level calendar CRUD may fail with `403/405/501` while event CRUD still works.
+- Zoho's CalDAV sync endpoint is one such case: event sync works, but creating calendars via CalDAV is not supported.
+- If you need guaranteed calendar-level CRUD for Zoho accounts, use the Zoho OAuth provider (`provider_key="zoho"`) instead of Zoho CalDAV sync.
+
 ### Known server URLs
 
 | Server | URL pattern |

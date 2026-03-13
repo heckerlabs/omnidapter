@@ -20,8 +20,10 @@ from omnidapter.services.calendar.models import (
     FreeBusyInterval,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 from omnidapter.stores.credentials import StoredCredential
@@ -32,6 +34,10 @@ GOOGLE_API_BASE = "https://www.googleapis.com/calendar/v3"
 _GOOGLE_CAPABILITIES = frozenset(
     {
         CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.GET_CALENDAR,
+        CalendarCapability.CREATE_CALENDAR,
+        CalendarCapability.UPDATE_CALENDAR,
+        CalendarCapability.DELETE_CALENDAR,
         CalendarCapability.GET_AVAILABILITY,
         CalendarCapability.CREATE_EVENT,
         CalendarCapability.UPDATE_EVENT,
@@ -105,6 +111,35 @@ class GoogleCalendarService(CalendarService):
             if not page_token:
                 break
         return all_calendars
+
+    async def get_calendar(self, calendar_id: str) -> Calendar:
+        self._require_capability(CalendarCapability.GET_CALENDAR)
+        url = f"{GOOGLE_API_BASE}/calendars/{calendar_id}"
+        response = await self._http.request("GET", url, headers=await self._auth_headers())
+        return mappers.to_calendar(response.json())
+
+    async def create_calendar(self, request: CreateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.CREATE_CALENDAR)
+        url = f"{GOOGLE_API_BASE}/calendars"
+        body = mappers.from_create_calendar_request(request)
+        response = await self._http.request(
+            "POST", url, headers=await self._auth_headers(), json=body
+        )
+        return mappers.to_calendar(response.json())
+
+    async def update_calendar(self, request: UpdateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.UPDATE_CALENDAR)
+        url = f"{GOOGLE_API_BASE}/calendars/{request.calendar_id}"
+        body = mappers.from_update_calendar_request(request)
+        response = await self._http.request(
+            "PATCH", url, headers=await self._auth_headers(), json=body
+        )
+        return mappers.to_calendar(response.json())
+
+    async def delete_calendar(self, calendar_id: str) -> None:
+        self._require_capability(CalendarCapability.DELETE_CALENDAR)
+        url = f"{GOOGLE_API_BASE}/calendars/{calendar_id}"
+        await self._http.request("DELETE", url, headers=await self._auth_headers())
 
     async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
         self._require_capability(CalendarCapability.GET_AVAILABILITY)
