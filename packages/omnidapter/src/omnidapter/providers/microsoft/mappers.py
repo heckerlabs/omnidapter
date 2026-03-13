@@ -5,6 +5,8 @@ Public API:
   to_calendar_event(raw, calendar_id) -> CalendarEvent
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
+  from_create_calendar_request(request) -> dict
+  from_update_calendar_request(request) -> dict
 """
 
 from __future__ import annotations
@@ -337,3 +339,27 @@ def to_calendar(raw: dict) -> Calendar:
         background_color=raw.get("hexColor"),
         provider_data={k: v for k, v in raw.items() if k not in _MAPPED_KEYS},
     )
+
+
+def from_create_calendar_request(request) -> dict[str, Any]:
+    """Map a create-calendar request to Microsoft Graph payload."""
+    body: dict[str, Any] = {"name": request.summary}
+    if request.timezone is not None:
+        body["timeZone"] = request.timezone
+    if request.background_color is not None:
+        body["hexColor"] = request.background_color
+    body.update(request.extra)
+    return body
+
+
+def from_update_calendar_request(request) -> dict[str, Any]:
+    """Map an update-calendar request to Microsoft Graph payload."""
+    body: dict[str, Any] = {}
+    if request.summary is not None:
+        body["name"] = request.summary
+    if request.timezone is not None:
+        body["timeZone"] = request.timezone
+    if request.background_color is not None:
+        body["hexColor"] = request.background_color
+    body.update(request.extra)
+    return body

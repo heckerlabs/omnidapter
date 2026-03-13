@@ -90,6 +90,7 @@ uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omn
 - Use dedicated test accounts/calendars where possible.
 - Tests create/update/delete events and clean up after themselves.
 - If a provider's required env vars are missing, that provider's integration tests are skipped.
+- CalDAV `test_calendar_crud_round_trip` may skip when the configured CalDAV server blocks `MKCALENDAR` (for example, Zoho CalDAV sync endpoints). Use iCloud or a self-hosted CalDAV server that allows calendar collection creation for full CalDAV calendar CRUD coverage.
 
 ## Getting a Google refresh token
 

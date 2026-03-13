@@ -34,8 +34,10 @@ from omnidapter.services.calendar.models import (
     ReminderOverride,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 
@@ -98,6 +100,34 @@ async def test_list_calendars(microsoft_service):
     for cal in calendars:
         assert cal.calendar_id
         assert isinstance(cal.summary, str)
+
+
+async def test_calendar_crud_round_trip(microsoft_service):
+    created_id: str | None = None
+    try:
+        created = await microsoft_service.create_calendar(
+            CreateCalendarRequest(summary=f"{EVENT_PREFIX} calendar crud", timezone="UTC")
+        )
+        created_id = created.calendar_id
+        assert created.calendar_id
+        assert created.summary
+
+        fetched = await microsoft_service.get_calendar(created.calendar_id)
+        assert fetched.calendar_id == created.calendar_id
+
+        updated = await microsoft_service.update_calendar(
+            UpdateCalendarRequest(
+                calendar_id=created.calendar_id, summary=f"{EVENT_PREFIX} renamed"
+            )
+        )
+        assert updated.summary == f"{EVENT_PREFIX} renamed"
+
+        await microsoft_service.delete_calendar(created.calendar_id)
+        created_id = None
+    finally:
+        if created_id:
+            with suppress(Exception):
+                await microsoft_service.delete_calendar(created_id)
 
 
 # --------------------------------------------------------------------------- #

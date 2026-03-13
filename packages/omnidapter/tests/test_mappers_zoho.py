@@ -13,6 +13,7 @@ from omnidapter.services.calendar.models import (
     AttendeeStatus,
     CalendarEvent,
 )
+from omnidapter.services.calendar.requests import CreateCalendarRequest, UpdateCalendarRequest
 
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
@@ -233,3 +234,30 @@ class TestToCalendar:
         cal = mappers.to_calendar(raw)
         for key in ("uid", "name", "description", "timezone", "isprimary"):
             assert key not in (cal.provider_data or {})
+
+
+class TestCalendarCrudMappers:
+    def test_from_create_calendar_request(self):
+        req = CreateCalendarRequest(
+            summary="Ops",
+            description="Ops calendar",
+            timezone="UTC",
+            background_color="#abcdef",
+            extra={"isprivate": True},
+        )
+        body = mappers.from_create_calendar_request(req)
+        assert body["name"] == "Ops"
+        assert body["color"] == "#abcdef"
+        assert body["description"] == "Ops calendar"
+        assert body["timezone"] == "UTC"
+        assert body["isprivate"] is True
+
+    def test_from_create_calendar_request_defaults_color(self):
+        req = CreateCalendarRequest(summary="Ops")
+        body = mappers.from_create_calendar_request(req)
+        assert body["color"] == "#8CBF40"
+
+    def test_from_update_calendar_request(self):
+        req = UpdateCalendarRequest(calendar_id="cal-1", summary="Ops v2")
+        body = mappers.from_update_calendar_request(req)
+        assert body == {"name": "Ops v2"}

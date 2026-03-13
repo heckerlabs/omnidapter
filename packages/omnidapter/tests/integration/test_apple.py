@@ -29,7 +29,12 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
     EventStatus,
 )
-from omnidapter.services.calendar.requests import CreateEventRequest, UpdateEventRequest
+from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
+    CreateEventRequest,
+    UpdateCalendarRequest,
+    UpdateEventRequest,
+)
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
 
@@ -71,6 +76,34 @@ async def test_apple_discovery(apple_service):
     for cal in calendars:
         assert cal.calendar_id
         assert isinstance(cal.summary, str)
+
+
+async def test_calendar_crud_round_trip(apple_service):
+    created_id: str | None = None
+    try:
+        created = await apple_service.create_calendar(
+            CreateCalendarRequest(summary=f"{EVENT_PREFIX} calendar crud", timezone="UTC")
+        )
+        created_id = created.calendar_id
+        assert created.calendar_id
+        assert created.summary
+
+        fetched = await apple_service.get_calendar(created.calendar_id)
+        assert fetched.calendar_id == created.calendar_id
+
+        updated = await apple_service.update_calendar(
+            UpdateCalendarRequest(
+                calendar_id=created.calendar_id, summary=f"{EVENT_PREFIX} renamed"
+            )
+        )
+        assert updated.summary == f"{EVENT_PREFIX} renamed"
+
+        await apple_service.delete_calendar(created.calendar_id)
+        created_id = None
+    finally:
+        if created_id:
+            with suppress(Exception):
+                await apple_service.delete_calendar(created_id)
 
 
 # --------------------------------------------------------------------------- #

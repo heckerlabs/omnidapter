@@ -5,6 +5,8 @@ Public API:
   to_calendar_event(raw, calendar_id) -> CalendarEvent
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
+  from_create_calendar_request(request) -> dict
+  from_update_calendar_request(request) -> dict
 """
 
 from __future__ import annotations
@@ -129,3 +131,35 @@ def to_calendar(raw: dict) -> Calendar:
         is_primary=raw.get("isprimary", False),
         provider_data={k: v for k, v in raw.items() if k not in _MAPPED_KEYS},
     )
+
+
+def from_create_calendar_request(request) -> dict[str, Any]:
+    """Map a create-calendar request to Zoho Calendar payload."""
+    body: dict[str, Any] = {
+        "name": request.summary,
+        # Zoho's create API requires a color field.
+        "color": request.background_color or "#8CBF40",
+    }
+    if request.description is not None:
+        body["description"] = request.description
+    if request.timezone is not None:
+        body["timezone"] = request.timezone
+    if request.background_color is not None:
+        body["color"] = request.background_color
+    body.update(request.extra)
+    return body
+
+
+def from_update_calendar_request(request) -> dict[str, Any]:
+    """Map an update-calendar request to Zoho Calendar payload."""
+    body: dict[str, Any] = {}
+    if request.summary is not None:
+        body["name"] = request.summary
+    if request.description is not None:
+        body["description"] = request.description
+    if request.timezone is not None:
+        body["timezone"] = request.timezone
+    if request.background_color is not None:
+        body["color"] = request.background_color
+    body.update(request.extra)
+    return body

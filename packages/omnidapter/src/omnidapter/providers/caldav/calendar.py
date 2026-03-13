@@ -10,6 +10,7 @@ import secrets
 import xml.etree.ElementTree as ET
 from typing import Any
 from urllib.parse import urlparse
+from xml.sax.saxutils import escape, quoteattr
 
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.providers.caldav import mappers
@@ -23,8 +24,10 @@ from omnidapter.services.calendar.models import (
     CalendarEvent,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 from omnidapter.stores.credentials import StoredCredential
@@ -34,6 +37,10 @@ from omnidapter.transport.retry import RetryPolicy
 _CALDAV_CAPABILITIES = frozenset(
     {
         CalendarCapability.LIST_CALENDARS,
+        CalendarCapability.GET_CALENDAR,
+        CalendarCapability.CREATE_CALENDAR,
+        CalendarCapability.UPDATE_CALENDAR,
+        CalendarCapability.DELETE_CALENDAR,
         CalendarCapability.CREATE_EVENT,
         CalendarCapability.UPDATE_EVENT,
         CalendarCapability.DELETE_EVENT,
@@ -51,6 +58,10 @@ NS = {
     "CS": "http://calendarserver.org/ns/",
     "ICAL": "http://apple.com/ns/ical/",
 }
+
+
+def _xml_text(value: str | None) -> str:
+    return escape(value or "")
 
 
 class CalDAVCalendarService(CalendarService):
@@ -172,6 +183,14 @@ class CalDAVCalendarService(CalendarService):
         parsed_base = urlparse(self._server_url)
         return f"{parsed_base.scheme}://{parsed_base.netloc}/{home_href.strip('/')}" + "/"
 
+    async def _calendar_home_base_url(self) -> str:
+        calendars = await self.list_calendars()
+        if calendars:
+            first = self._resolve_calendar_url(calendars[0].calendar_id).rstrip("/")
+            return first.rsplit("/", 1)[0] + "/"
+        base = self._server_url.rstrip("/")
+        return base + "/"
+
     async def list_calendars(self) -> list[Calendar]:
         self._require_capability(CalendarCapability.LIST_CALENDARS)
         propfind_body = """<?xml version="1.0" encoding="UTF-8"?>
@@ -206,6 +225,91 @@ class CalDAVCalendarService(CalendarService):
             pass
 
         return calendars
+
+    async def get_calendar(self, calendar_id: str) -> Calendar:
+        self._require_capability(CalendarCapability.GET_CALENDAR)
+        calendars = await self.list_calendars()
+        requested = mappers.parse_collection_href(calendar_id).rstrip("/")
+        for calendar in calendars:
+            current = mappers.parse_collection_href(calendar.calendar_id).rstrip("/")
+            if current == requested:
+                return calendar
+
+        from omnidapter.core.errors import ProviderAPIError
+        from omnidapter.transport.correlation import new_correlation_id
+
+        raise ProviderAPIError(
+            f"Calendar not found: {calendar_id}",
+            provider_key=self._provider_key,
+            status_code=404,
+            correlation_id=new_correlation_id(),
+        )
+
+    async def create_calendar(self, request: CreateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.CREATE_CALENDAR)
+        slug = mappers.slugify_calendar_name(request.summary)
+        base_url = await self._calendar_home_base_url()
+        url = f"{base_url}{slug}-{secrets.token_hex(4)}/"
+        props = mappers.from_create_calendar_request(request)
+        display_name = _xml_text(props.get("displayname"))
+        description = _xml_text(props.get("calendar-description"))
+        timezone = _xml_text(props.get("calendar-timezone"))
+        mkcalendar_body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<C:mkcalendar xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:set>
+    <D:prop>
+      <D:displayname>{display_name}</D:displayname>
+      <C:calendar-description>{description}</C:calendar-description>
+      <C:calendar-timezone>{timezone}</C:calendar-timezone>
+    </D:prop>
+  </D:set>
+</C:mkcalendar>"""
+        await self._http.request(
+            "MKCALENDAR",
+            url,
+            headers=self._auth_headers(),
+            data=mkcalendar_body.encode(),
+        )
+        return await self.get_calendar(mappers.parse_collection_href(url))
+
+    async def update_calendar(self, request: UpdateCalendarRequest) -> Calendar:
+        self._require_capability(CalendarCapability.UPDATE_CALENDAR)
+        calendar_url = self._resolve_calendar_url(request.calendar_id) + "/"
+        props = mappers.from_update_calendar_request(request)
+        set_lines = []
+        if "displayname" in props:
+            set_lines.append(f"<D:displayname>{_xml_text(props['displayname'])}</D:displayname>")
+        if "calendar-description" in props:
+            set_lines.append(
+                f"<C:calendar-description>{_xml_text(props['calendar-description'])}</C:calendar-description>"
+            )
+        if "calendar-timezone" in props:
+            set_lines.append(
+                f"<C:calendar-timezone>{_xml_text(props['calendar-timezone'])}</C:calendar-timezone>"
+            )
+        if not set_lines:
+            return await self.get_calendar(request.calendar_id)
+
+        proppatch_body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<D:propertyupdate xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:set>
+    <D:prop>
+      {"".join(set_lines)}
+    </D:prop>
+  </D:set>
+</D:propertyupdate>"""
+        await self._http.request(
+            "PROPPATCH",
+            calendar_url,
+            headers=self._auth_headers(),
+            data=proppatch_body.encode(),
+        )
+        return await self.get_calendar(request.calendar_id)
+
+    async def delete_calendar(self, calendar_id: str) -> None:
+        self._require_capability(CalendarCapability.DELETE_CALENDAR)
+        calendar_url = self._resolve_calendar_url(calendar_id) + "/"
+        await self._http.request("DELETE", calendar_url, headers=self._auth_headers())
 
     async def get_availability(self, request: GetAvailabilityRequest) -> AvailabilityResponse:
         self._require_capability(CalendarCapability.GET_AVAILABILITY)
@@ -304,7 +408,7 @@ class CalDAVCalendarService(CalendarService):
             ts_min = mappers._format_ical_datetime(time_min)
             ts_max = mappers._format_ical_datetime(time_max)
             time_filter = f"""
-            <C:time-range start="{ts_min}" end="{ts_max}"/>"""
+            <C:time-range start={quoteattr(ts_min)} end={quoteattr(ts_max)}/>"""
 
         report_body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">

@@ -21,6 +21,7 @@ from omnidapter.services.calendar.models import (
     Reminder,
     ReminderOverride,
 )
+from omnidapter.services.calendar.requests import CreateCalendarRequest, UpdateCalendarRequest
 
 # --------------------------------------------------------------------------- #
 # Helpers                                                                      #
@@ -358,3 +359,23 @@ class TestToCalendar:
         cal = mappers.to_calendar(raw)
         assert "id" not in (cal.provider_data or {})
         assert "name" not in (cal.provider_data or {})
+
+
+class TestCalendarCrudMappers:
+    def test_from_create_calendar_request(self):
+        req = CreateCalendarRequest(
+            summary="Roadmap",
+            timezone="UTC",
+            background_color="#1a2b3c",
+            extra={"canShare": True},
+        )
+        body = mappers.from_create_calendar_request(req)
+        assert body["name"] == "Roadmap"
+        assert body["timeZone"] == "UTC"
+        assert body["hexColor"] == "#1a2b3c"
+        assert body["canShare"] is True
+
+    def test_from_update_calendar_request(self):
+        req = UpdateCalendarRequest(calendar_id="cal-1", summary="Renamed")
+        body = mappers.from_update_calendar_request(req)
+        assert body == {"name": "Renamed"}
