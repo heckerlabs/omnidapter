@@ -4,7 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.10"
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["packages/*", "apps/*"]
 
 [tool.uv]
 dev-dependencies = [
@@ -21,7 +21,7 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["packages/omnidapter/tests"]
+testpaths = ["packages/omnidapter/tests", "apps/omnidapter-api/tests"]
 markers = [
     "integration: marks tests requiring live provider credentials; set OMNIDAPTER_INTEGRATION=1 to enable",
 ]
@@ -32,4 +32,4 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "B008"]
