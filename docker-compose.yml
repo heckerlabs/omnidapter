@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: omnidapter
+      POSTGRES_USER: omnidapter
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnidapter -d omnidapter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/omnidapter
+      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:?OMNIDAPTER_ENCRYPTION_KEY is required}
+      OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:8000}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-production}
+      # OAuth provider credentials (at least one required)
+      OMNIDAPTER_GOOGLE_CLIENT_ID: ${OMNIDAPTER_GOOGLE_CLIENT_ID:-}
+      OMNIDAPTER_GOOGLE_CLIENT_SECRET: ${OMNIDAPTER_GOOGLE_CLIENT_SECRET:-}
+      OMNIDAPTER_MICROSOFT_CLIENT_ID: ${OMNIDAPTER_MICROSOFT_CLIENT_ID:-}
+      OMNIDAPTER_MICROSOFT_CLIENT_SECRET: ${OMNIDAPTER_MICROSOFT_CLIENT_SECRET:-}
+      OMNIDAPTER_ZOHO_CLIENT_ID: ${OMNIDAPTER_ZOHO_CLIENT_ID:-}
+      OMNIDAPTER_ZOHO_CLIENT_SECRET: ${OMNIDAPTER_ZOHO_CLIENT_SECRET:-}
+      # Optional limits
+      OMNIDAPTER_FREE_TIER_CALLS: ${OMNIDAPTER_FREE_TIER_CALLS:-1000}
+      OMNIDAPTER_RATE_LIMIT_FREE: ${OMNIDAPTER_RATE_LIMIT_FREE:-60}
+      OMNIDAPTER_RATE_LIMIT_PAID: ${OMNIDAPTER_RATE_LIMIT_PAID:-300}
+      # Optional billing
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
