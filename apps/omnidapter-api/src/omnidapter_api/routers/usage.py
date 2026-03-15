@@ -47,8 +47,8 @@ async def get_usage(
     free_tier = settings.omnidapter_free_tier_calls
     billable_calls = max(0, total_calls - free_tier)
 
-    # Simple pricing: $0.005 per billable call
-    estimated_cost_cents = billable_calls * 0  # Price TBD
+    # Billing model is not finalized yet; report 0 until pricing is enabled.
+    estimated_cost_cents = 0
 
     response = UsageResponse(
         period_start=period_start,

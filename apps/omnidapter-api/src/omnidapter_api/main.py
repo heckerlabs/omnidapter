@@ -22,7 +22,7 @@ app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Tighten in production to dashboard domain
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -39,6 +39,17 @@ app.include_router(usage.router, prefix="/v1")
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.middleware("http")
+async def add_rate_limit_headers(request: Request, call_next):
+    response = await call_next(request)
+    rate_limit = getattr(request.state, "rate_limit", None)
+    if rate_limit:
+        response.headers.setdefault("X-RateLimit-Limit", str(rate_limit.get("limit", "")))
+        response.headers.setdefault("X-RateLimit-Remaining", str(rate_limit.get("remaining", "")))
+        response.headers.setdefault("X-RateLimit-Reset", str(rate_limit.get("reset", "")))
+    return response
 
 
 @app.exception_handler(Exception)

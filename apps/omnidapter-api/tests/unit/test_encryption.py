@@ -8,12 +8,12 @@ from omnidapter_api.encryption import EncryptionService, decrypt, encrypt
 
 @pytest.fixture
 def key() -> str:
-    return "test-encryption-key-for-unit-tests"
+    return "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 
 @pytest.fixture
 def key2() -> str:
-    return "another-encryption-key-for-rotation"
+    return "ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA="
 
 
 def test_encrypt_decrypt_roundtrip(key):
@@ -65,17 +65,17 @@ def test_invalid_token_format(key):
         decrypt("not-a-valid-token", key)
 
 
-def test_encryption_service_roundtrip():
-    svc = EncryptionService(current_key="my-key")
+def test_encryption_service_roundtrip(key):
+    svc = EncryptionService(current_key=key)
     plaintext = "encrypt and decrypt me"
     token = svc.encrypt(plaintext)
     recovered = svc.decrypt(token)
     assert recovered == plaintext
 
 
-def test_encryption_service_key_rotation():
-    old_key = "old-key"
-    new_key = "new-key"
+def test_encryption_service_key_rotation(key, key2):
+    old_key = key
+    new_key = key2
 
     # Encrypt with old key using old service
     old_svc = EncryptionService(current_key=old_key)

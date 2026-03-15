@@ -5,12 +5,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from omnidapter_api.database import Base
+
+if TYPE_CHECKING:
+    from omnidapter_api.models.organization import Organization
+    from omnidapter_api.models.user import User
 
 
 class MemberRole(str, Enum):
@@ -38,7 +43,5 @@ class Membership(Base):
     role: Mapped[str] = mapped_column(String(50), nullable=False, default=MemberRole.MEMBER)
 
     # Relationships
-    organization: Mapped[Organization] = relationship(  # noqa: F821
-        "Organization", back_populates="memberships"
-    )
-    user: Mapped[User] = relationship("User", back_populates="memberships")  # noqa: F821
+    organization: Mapped[Organization] = relationship("Organization", back_populates="memberships")
+    user: Mapped[User] = relationship("User", back_populates="memberships")

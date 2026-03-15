@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from omnidapter_api.database import Base
+
+if TYPE_CHECKING:
+    from omnidapter_api.models.connection import Connection
+    from omnidapter_api.models.organization import Organization
 
 
 class UsageRecord(Base):
@@ -32,10 +37,10 @@ class UsageRecord(Base):
     billed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship(  # noqa: F821
+    organization: Mapped[Organization] = relationship(
         "Organization", back_populates="usage_records"
     )
-    connection: Mapped[Connection | None] = relationship(  # noqa: F821
+    connection: Mapped[Connection | None] = relationship(
         "Connection", back_populates="usage_records"
     )
 

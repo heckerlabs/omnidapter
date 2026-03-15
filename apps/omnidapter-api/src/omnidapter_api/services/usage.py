@@ -38,7 +38,6 @@ async def count_monthly_usage(
         select(func.count(UsageRecord.id)).where(
             UsageRecord.organization_id == org_id,
             UsageRecord.created_at >= period_start_dt,
-            UsageRecord.billed.is_(False),  # Count all, mark billable separately
         )
     )
     return result.scalar_one() or 0

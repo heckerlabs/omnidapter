@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from omnidapter_api.database import Base
+
+if TYPE_CHECKING:
+    from omnidapter_api.models.organization import Organization
 
 
 class ProviderConfig(Base):
@@ -39,6 +43,6 @@ class ProviderConfig(Base):
     is_fallback: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship(  # noqa: F821
+    organization: Mapped[Organization] = relationship(
         "Organization", back_populates="provider_configs"
     )

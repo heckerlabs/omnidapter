@@ -12,13 +12,14 @@ from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from omnidapter_api.database import Base, get_session
 from omnidapter_api.encryption import EncryptionService
 from omnidapter_api.main import app
 from omnidapter_api.models.api_key import APIKey
 from omnidapter_api.models.organization import Organization
 from omnidapter_api.services.auth import generate_api_key
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 TEST_DB_URL = os.environ.get(
@@ -27,8 +28,8 @@ TEST_DB_URL = os.environ.get(
 )
 
 # Skip integration tests when DB is not available or OMNIDAPTER_INTEGRATION not set
-_SKIP_INTEGRATION = not bool(os.environ.get("OMNIDAPTER_INTEGRATION"))
-TEST_ENCRYPTION_KEY = "test-encryption-key-integration-tests"
+_SKIP_INTEGRATION = os.getenv("OMNIDAPTER_INTEGRATION") != "1"
+TEST_ENCRYPTION_KEY = "dGVzdC1lbmNyeXB0aW9uLWtleS1pbnRlZ3JhdGlvbiEh"
 
 _test_engine = None
 _test_factory = None
@@ -77,12 +78,28 @@ async def setup_database():
 async def session(setup_database) -> AsyncIterator[AsyncSession]:
     """Provide a transactional session that rolls back after each test."""
     engine = get_test_engine()
-    async with engine.begin() as conn:
-        # Use nested transaction for rollback
+    async with engine.connect() as conn:
+        transaction = await conn.begin()
         session = AsyncSession(bind=conn, expire_on_commit=False)
-        yield session
-        await session.rollback()
-        await session.close()
+        await conn.begin_nested()
+
+        @event.listens_for(session.sync_session, "after_transaction_end")
+        def restart_savepoint(_session, transaction_ended):
+            if (
+                transaction_ended.nested
+                and transaction_ended._parent is not None
+                and not transaction_ended._parent.nested
+            ):
+                sync_conn = conn.sync_connection
+                if sync_conn is not None:
+                    sync_conn.begin_nested()
+
+        try:
+            yield session
+        finally:
+            event.remove(session.sync_session, "after_transaction_end", restart_savepoint)
+            await session.close()
+            await transaction.rollback()
 
 
 @pytest.fixture
@@ -149,7 +166,7 @@ async def client(session: AsyncSession, api_key: tuple[str, APIKey]) -> AsyncIte
     app.dependency_overrides[get_settings] = override_settings
     app.dependency_overrides[get_encryption_service] = override_encryption
 
-    async with AsyncClient(app=app, base_url="http://testserver") as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
         yield c
 

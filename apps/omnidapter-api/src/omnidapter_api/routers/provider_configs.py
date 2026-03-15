@@ -75,16 +75,6 @@ async def upsert_provider_config(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    # Check if encryption key is configured
-    if not encryption._current_key:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "code": "encryption_not_configured",
-                "message": "Encryption key is not configured",
-            },
-        )
-
     result = await session.execute(
         select(ProviderConfig).where(
             ProviderConfig.organization_id == auth.org_id,
@@ -93,8 +83,17 @@ async def upsert_provider_config(
     )
     cfg = result.scalar_one_or_none()
 
-    client_id_enc = encryption.encrypt(body.client_id)
-    client_secret_enc = encryption.encrypt(body.client_secret)
+    try:
+        client_id_enc = encryption.encrypt(body.client_id)
+        client_secret_enc = encryption.encrypt(body.client_secret)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "encryption_not_configured",
+                "message": str(exc),
+            },
+        ) from exc
 
     if cfg is None:
         import uuid as _uuid

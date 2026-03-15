@@ -61,7 +61,7 @@ async def get_provider(
     omni = _build_omni()
     try:
         meta = omni.describe_provider(provider_key)
-    except Exception as exc:
+    except KeyError as exc:
         raise HTTPException(
             status_code=404,
             detail={

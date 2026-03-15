@@ -9,15 +9,15 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection as SAConnection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import all models so Alembic can detect them
+from omnidapter_api import models  # noqa: F401, E402
 from omnidapter_api.database import Base  # noqa: E402
-from omnidapter_api.models import *  # noqa: F401, F403, E402
 
 config = context.config
 
@@ -45,7 +45,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
+def do_run_migrations(connection: SAConnection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()

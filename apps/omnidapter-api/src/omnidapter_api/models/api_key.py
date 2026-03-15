@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from omnidapter_api.database import Base
+
+if TYPE_CHECKING:
+    from omnidapter_api.models.organization import Organization
+    from omnidapter_api.models.user import User
 
 
 class APIKey(Base):
@@ -32,9 +37,5 @@ class APIKey(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship(  # noqa: F821
-        "Organization", back_populates="api_keys"
-    )
-    created_by_user: Mapped[User | None] = relationship(  # noqa: F821
-        "User", back_populates="api_keys_created"
-    )
+    organization: Mapped[Organization] = relationship("Organization", back_populates="api_keys")
+    created_by_user: Mapped[User | None] = relationship("User", back_populates="api_keys_created")

@@ -106,7 +106,7 @@ async def test_free_tier_enforcement(
     def override_settings():
         return Settings(
             omnidapter_database_url="",
-            omnidapter_encryption_key="test",
+            omnidapter_encryption_key="dGVzdC1lbmNyeXB0aW9uLWtleS1pbnRlZ3JhdGlvbiEh",
             omnidapter_free_tier_calls=2,  # Very low limit
         )
 

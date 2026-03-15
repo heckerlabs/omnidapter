@@ -5,9 +5,10 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from omnidapter import (
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -52,7 +53,7 @@ async def _check_usage_and_get_conn(
     settings: Settings,
     request: Request,
     endpoint: str,
-) -> Connection:
+) -> Connection | JSONResponse:
     """Validate connection, check status, enforce usage limits."""
     from sqlalchemy import select
 
@@ -80,10 +81,7 @@ async def _check_usage_and_get_conn(
     # Check connection status
     error = check_connection_status(conn.status, request)
     if error is not None:
-        raise HTTPException(
-            status_code=error.status_code,
-            detail={"code": "connection_status_error", "message": "Connection not usable"},
-        )
+        return error
 
     # Check free tier (only for billable endpoints)
     if is_billable_endpoint(endpoint):
@@ -133,16 +131,18 @@ async def _record_and_respond(
     )
     await update_last_used(connection_id, session)
 
+    def _to_json_data(value: object) -> Any:
+        if hasattr(value, "model_dump"):
+            return cast(Any, value).model_dump(mode="json")
+        return value
+
     if isinstance(data, list):
         return {
-            "data": [
-                item.model_dump(mode="json") if hasattr(item, "model_dump") else item
-                for item in data
-            ],
+            "data": [_to_json_data(item) for item in data],
             "meta": {"request_id": request_id},
         }
     if hasattr(data, "model_dump"):
-        return {"data": data.model_dump(mode="json"), "meta": {"request_id": request_id}}
+        return {"data": _to_json_data(data), "meta": {"request_id": request_id}}
     return {"data": data, "meta": {"request_id": request_id}}
 
 
@@ -163,6 +163,8 @@ async def list_calendars(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start = time.time()
     try:
@@ -201,6 +203,8 @@ async def list_events(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start_time = time.time()
     try:
@@ -244,6 +248,8 @@ async def get_event(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start = time.time()
     try:
@@ -271,6 +277,8 @@ async def create_event(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start = time.time()
     try:
@@ -299,6 +307,8 @@ async def update_event(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start = time.time()
     try:
@@ -328,6 +338,8 @@ async def delete_event(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start = time.time()
     try:
@@ -365,6 +377,8 @@ async def get_availability(
     conn = await _check_usage_and_get_conn(
         connection_id, auth, session, settings, request, endpoint
     )
+    if isinstance(conn, JSONResponse):
+        return conn
     omni = _build_omni(session, encryption)
     start_time = time.time()
     avail_req = GetAvailabilityRequest(

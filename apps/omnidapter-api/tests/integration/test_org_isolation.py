@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from omnidapter_api.models.api_key import APIKey
 from omnidapter_api.models.connection import Connection, ConnectionStatus
 from omnidapter_api.models.organization import Organization
@@ -26,7 +27,7 @@ async def org_b(session: AsyncSession) -> Organization:
 
 
 @pytest_asyncio.fixture
-async def client_b(session: AsyncSession, org_b: Organization) -> AsyncClient:
+async def client_b(session: AsyncSession, org_b: Organization) -> AsyncIterator[AsyncClient]:
     """HTTP client authenticated as Org B."""
     raw_key, key_hash, key_prefix = generate_api_key()
     key = APIKey(
@@ -50,12 +51,12 @@ async def client_b(session: AsyncSession, org_b: Organization) -> AsyncClient:
         yield session
 
     def override_encryption():
-        return EncryptionService(current_key="test-encryption-key-integration-tests")
+        return EncryptionService(current_key="dGVzdC1lbmNyeXB0aW9uLWtleS1pbnRlZ3JhdGlvbiEh")
 
     def override_settings():
         return Settings(
             omnidapter_database_url="",
-            omnidapter_encryption_key="test-encryption-key-integration-tests",
+            omnidapter_encryption_key="dGVzdC1lbmNyeXB0aW9uLWtleS1pbnRlZ3JhdGlvbiEh",
             omnidapter_env="test",
         )
 
@@ -65,7 +66,7 @@ async def client_b(session: AsyncSession, org_b: Organization) -> AsyncClient:
 
     from httpx import AsyncClient
 
-    async with AsyncClient(app=app, base_url="http://testserver") as c:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
         yield c
 

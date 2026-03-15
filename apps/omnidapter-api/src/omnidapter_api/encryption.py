@@ -10,6 +10,7 @@ with the current key.
 from __future__ import annotations
 
 import base64
+import binascii
 import os
 
 from cryptography.exceptions import InvalidTag
@@ -21,19 +22,20 @@ _SEPARATOR = ":"
 
 
 def _decode_key(key_str: str) -> bytes:
-    """Decode a base64-encoded 32-byte key, or derive from raw string."""
+    """Decode a URL-safe base64-encoded 32-byte key."""
     if not key_str:
         raise ValueError("Encryption key is not configured")
-    try:
-        raw = base64.urlsafe_b64decode(key_str + "==")
-        if len(raw) == 32:
-            return raw
-    except Exception:
-        pass
-    # Derive a 32-byte key by hashing the string (deterministic, for dev convenience)
-    import hashlib
 
-    return hashlib.sha256(key_str.encode()).digest()
+    normalized_key = key_str + ("=" * (-len(key_str) % 4))
+    try:
+        raw = base64.urlsafe_b64decode(normalized_key)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Encryption key must be a URL-safe base64-encoded 32-byte value") from exc
+
+    if len(raw) != 32:
+        raise ValueError("Encryption key must decode to exactly 32 bytes")
+
+    return raw
 
 
 def encrypt(plaintext: str, encryption_key: str, key_version: str = _KEY_VERSION_CURRENT) -> str:
@@ -62,7 +64,15 @@ def decrypt(
         raise ValueError("Invalid encrypted token format")
 
     version, encoded = token.split(_SEPARATOR, 1)
-    raw = base64.urlsafe_b64decode(encoded + "==")
+    normalized_encoded = encoded + ("=" * (-len(encoded) % 4))
+    try:
+        raw = base64.urlsafe_b64decode(normalized_encoded)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Invalid encrypted token payload") from exc
+
+    if len(raw) <= 12:
+        raise ValueError("Invalid encrypted token payload")
+
     nonce, ciphertext = raw[:12], raw[12:]
 
     # Determine which key to try based on version

@@ -68,6 +68,8 @@ async def test_provider_config_credentials_encrypted_in_db(
     # Verify stored value is encrypted (not plaintext)
     assert cfg.client_id_encrypted != "ms-client-id"
     assert cfg.client_secret_encrypted != "ms-secret"
+    assert cfg.client_id_encrypted is not None
+    assert cfg.client_secret_encrypted is not None
     # But can be decrypted
     assert encryption.decrypt(cfg.client_id_encrypted) == "ms-client-id"
     assert encryption.decrypt(cfg.client_secret_encrypted) == "ms-secret"

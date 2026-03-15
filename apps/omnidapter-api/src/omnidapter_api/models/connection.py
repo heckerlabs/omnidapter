@@ -5,12 +5,16 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from omnidapter_api.database import Base
+
+if TYPE_CHECKING:
+    from omnidapter_api.models.organization import Organization
 
 
 class ConnectionStatus(str, Enum):
@@ -56,7 +60,5 @@ class Connection(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    organization: Mapped[Organization] = relationship(  # noqa: F821
-        "Organization", back_populates="connections"
-    )
+    organization: Mapped[Organization] = relationship("Organization", back_populates="connections")
     usage_records: Mapped[list] = relationship("UsageRecord", back_populates="connection")

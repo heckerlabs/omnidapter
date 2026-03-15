@@ -97,7 +97,7 @@ async def get_auth_context(
             },
         )
 
-    # Update last_used_at asynchronously (don't await, fire and forget)
+    # Update API key last_used_at for request auditability.
     await update_last_used(api_key.id, session)
 
     return AuthContext(api_key=api_key, organization=org)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
@@ -18,6 +19,10 @@ from omnidapter_api.models.connection import Connection, ConnectionStatus
 from omnidapter_api.models.oauth_state import OAuthState
 from omnidapter_api.models.provider_config import ProviderConfig
 from omnidapter_api.services.connection_health import transition_to_active
+from omnidapter_api.services.provider_overrides import (
+    register_fallback_provider_credentials,
+    register_provider_credentials,
+)
 from omnidapter_api.stores.credential_store import DatabaseCredentialStore
 from omnidapter_api.stores.oauth_state_store import DatabaseOAuthStateStore
 
@@ -36,28 +41,35 @@ async def _get_provider_config(
     return result.scalar_one_or_none()
 
 
-@router.get("/{provider_key}/authorize")
-async def oauth_authorize(
-    provider_key: str,
-    state: str = Query(...),
-    request: Request = None,
-    session: AsyncSession = Depends(get_session),
-):
-    """Redirect browser to provider's authorization URL.
+def _append_query_params(url: str, params: dict[str, str]) -> str:
+    parsed = urlparse(url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query.update(params)
+    return urlunparse(parsed._replace(query=urlencode(query)))
 
-    This endpoint is called when organizations redirect end users here.
-    We look up the OAuth state and redirect to the provider.
-    """
-    # Look up the state record to get the authorization URL stored by begin()
-    result = await session.execute(select(OAuthState).where(OAuthState.state_token == state))
-    state_row = result.scalar_one_or_none()
-    if state_row is None:
-        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
 
-    raise HTTPException(
-        status_code=400,
-        detail="Authorization URL should be used directly. This endpoint is for callbacks.",
+def _build_omni(
+    session: AsyncSession,
+    encryption: EncryptionService,
+    settings: Settings,
+    provider_config: ProviderConfig | None,
+) -> Omnidapter:
+    cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
+    state_store = DatabaseOAuthStateStore(session=session, encryption=encryption)
+
+    omni = Omnidapter(
+        credential_store=cred_store,
+        oauth_state_store=state_store,
+        auto_register_by_env=True,
     )
+    register_fallback_provider_credentials(omni, settings)
+
+    if provider_config and not provider_config.is_fallback:
+        client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
+        client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
+        register_provider_credentials(omni, provider_config.provider_key, client_id, client_secret)
+
+    return omni
 
 
 @router.get("/{provider_key}/callback")
@@ -89,9 +101,10 @@ async def oauth_callback(
                 if conn:
                     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
                     if redirect_url:
-                        return RedirectResponse(
-                            url=f"{redirect_url}?error={error}&connection_id={conn.id}"
-                        )
+                        params = {"error": error, "connection_id": str(conn.id)}
+                        if error_description:
+                            params["error_description"] = error_description
+                        return RedirectResponse(url=_append_query_params(redirect_url, params))
         raise HTTPException(status_code=400, detail=f"OAuth error: {error}: {error_description}")
 
     if not code or not state:
@@ -115,25 +128,10 @@ async def oauth_callback(
 
     # Get provider config for the organization
     provider_config = await _get_provider_config(conn.organization_id, provider_key, session)
-
-    # Set up env override if org has their own credentials
-    if provider_config and not provider_config.is_fallback:
-        client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
-        client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
-        import os
-
-        env_prefix = provider_key.upper()
-        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_ID"] = client_id
-        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_SECRET"] = client_secret
-
-    cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
-    state_store = DatabaseOAuthStateStore(session=session, encryption=encryption)
-
-    omni = Omnidapter(
-        credential_store=cred_store,
-        oauth_state_store=state_store,
-        auto_register_by_env=True,
-    )
+    try:
+        omni = _build_omni(session, encryption, settings, provider_config)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"OAuth configuration error: {exc}") from exc
 
     callback_url = f"{settings.omnidapter_base_url}/oauth/{provider_key}/callback"
 
@@ -168,6 +166,8 @@ async def oauth_callback(
     # Get redirect URL from connection's provider_config
     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
     if redirect_url:
-        return RedirectResponse(url=f"{redirect_url}?connection_id={connection_id}")
+        return RedirectResponse(
+            url=_append_query_params(redirect_url, {"connection_id": connection_id})
+        )
 
     return {"status": "connected", "connection_id": connection_id}

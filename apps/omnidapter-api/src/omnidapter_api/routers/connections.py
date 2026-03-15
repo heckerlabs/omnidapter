@@ -21,6 +21,7 @@ from omnidapter_api.dependencies import (
 from omnidapter_api.encryption import EncryptionService
 from omnidapter_api.models.connection import Connection, ConnectionStatus
 from omnidapter_api.models.provider_config import ProviderConfig
+from omnidapter_api.pagination import build_pagination_meta
 from omnidapter_api.schemas.connection import (
     ConnectionResponse,
     CreateConnectionRequest,
@@ -28,6 +29,10 @@ from omnidapter_api.schemas.connection import (
     ReauthorizeConnectionRequest,
 )
 from omnidapter_api.services.connection_health import transition_to_revoked
+from omnidapter_api.services.provider_overrides import (
+    register_fallback_provider_credentials,
+    register_provider_credentials,
+)
 from omnidapter_api.stores.credential_store import DatabaseCredentialStore
 from omnidapter_api.stores.oauth_state_store import DatabaseOAuthStateStore
 
@@ -44,37 +49,20 @@ def _build_omni(
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = DatabaseOAuthStateStore(session=session, encryption=encryption)
 
-    # Build registry from env but allow overriding with org's credentials
     omni = Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
         auto_register_by_env=True,
     )
+    register_fallback_provider_credentials(omni, settings)
 
-    # If the org has their own provider config, override the registry
+    # If the org has their own provider config, override the provider instance.
     if provider_config and not provider_config.is_fallback:
         client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
         client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
-        _configure_provider(omni, provider_config.provider_key, client_id, client_secret, settings)
+        register_provider_credentials(omni, provider_config.provider_key, client_id, client_secret)
 
     return omni
-
-
-def _configure_provider(
-    omni: Omnidapter,
-    provider_key: str,
-    client_id: str,
-    client_secret: str,
-    settings: Settings,
-) -> None:
-    """Reconfigure a provider with custom credentials."""
-    import os
-
-    env_prefix = provider_key.upper()
-    os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_ID"] = client_id
-    os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_SECRET"] = client_secret
-    # Re-register builtins to pick up new env vars
-    omni._registry.register_builtins(auto_register_by_env=True)
 
 
 async def _get_provider_config(
@@ -134,14 +122,14 @@ async def create_connection(
 
     # Check fallback connection limit
     if provider_config is None or provider_config.is_fallback:
-        result = await session.execute(
+        existing_result = await session.execute(
             select(Connection).where(
                 Connection.organization_id == auth.org_id,
                 Connection.provider_key == body.provider,
                 Connection.status != ConnectionStatus.REVOKED,
             )
         )
-        existing = result.scalars().all()
+        existing = existing_result.scalars().all()
         if len(existing) >= settings.omnidapter_fallback_connection_limit:
             raise HTTPException(
                 status_code=422,
@@ -164,12 +152,10 @@ async def create_connection(
     await session.commit()
     await session.refresh(conn)
 
-    # Begin OAuth flow
-    omni = _build_omni(session, encryption, settings, provider_config)
-    callback_url = f"{settings.omnidapter_base_url}/oauth/{body.provider}/callback"
-
     try:
-        result = await omni.oauth.begin(
+        omni = _build_omni(session, encryption, settings, provider_config)
+        callback_url = f"{settings.omnidapter_base_url}/oauth/{body.provider}/callback"
+        oauth_begin = await omni.oauth.begin(
             provider=body.provider,
             connection_id=str(conn.id),
             redirect_uri=callback_url,
@@ -188,7 +174,7 @@ async def create_connection(
     conn.provider_config = {
         "redirect_url": body.redirect_url,
         "metadata": body.metadata or {},
-        "oauth_state": result.state,
+        "oauth_state": oauth_begin.state,
     }
     await session.commit()
 
@@ -196,7 +182,7 @@ async def create_connection(
         "data": CreateConnectionResponse(
             connection_id=str(conn.id),
             status=ConnectionStatus.PENDING,
-            authorization_url=result.authorization_url,
+            authorization_url=oauth_begin.authorization_url,
         ),
         "meta": {"request_id": request_id},
     }
@@ -236,12 +222,7 @@ async def list_connections(
         "data": [ConnectionResponse.from_model(c) for c in connections],
         "meta": {
             "request_id": request_id,
-            "pagination": {
-                "total": total,
-                "limit": limit,
-                "offset": offset,
-                "has_more": (offset + limit) < total,
-            },
+            "pagination": build_pagination_meta(total=total, limit=limit, offset=offset),
         },
     }
 
@@ -292,15 +273,21 @@ async def reauthorize_connection(
         )
 
     provider_config = await _get_provider_config(auth.org_id, conn.provider_key, session)
-    omni = _build_omni(session, encryption, settings, provider_config)
-    callback_url = f"{settings.omnidapter_base_url}/oauth/{conn.provider_key}/callback"
 
-    result = await omni.oauth.begin(
-        provider=conn.provider_key,
-        connection_id=str(conn.id),
-        redirect_uri=callback_url,
-        scopes=provider_config.scopes if provider_config else None,
-    )
+    try:
+        omni = _build_omni(session, encryption, settings, provider_config)
+        callback_url = f"{settings.omnidapter_base_url}/oauth/{conn.provider_key}/callback"
+        result = await omni.oauth.begin(
+            provider=conn.provider_key,
+            connection_id=str(conn.id),
+            redirect_uri=callback_url,
+            scopes=provider_config.scopes if provider_config else None,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "oauth_begin_failed", "message": str(e)},
+        ) from e
 
     # Update connection back to pending
     from sqlalchemy import update
