@@ -9,6 +9,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
+from omnidapter.core.errors import ProviderAPIError, TransportError
 from omnidapter.providers.zoho import mappers
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.interface import CalendarService
@@ -115,7 +116,7 @@ class ZohoCalendarService(CalendarService):
         headers = await self._auth_headers()
         try:
             event = await self.get_event(calendar_id, event_id)
-        except Exception:
+        except (ProviderAPIError, TransportError):
             return headers
         etag = (event.provider_data or {}).get("etag")
         if etag:
@@ -293,6 +294,10 @@ class ZohoCalendarService(CalendarService):
         if extra:
             params.update(extra)
 
+        window_time_min = time_min if isinstance(time_min, (datetime, date)) else None
+        window_time_max = time_max if isinstance(time_max, (datetime, date)) else None
+        apply_window_filter = window_time_min is not None or window_time_max is not None
+
         response = await self._http.request(
             "GET",
             f"{ZOHO_API_BASE}/calendars/{calendar_id}/events",
@@ -302,5 +307,9 @@ class ZohoCalendarService(CalendarService):
         data = response.json()
         for e in data.get("events", []):
             event = mappers.to_calendar_event(e, calendar_id)
-            if _in_time_window(event, time_min=time_min, time_max=time_max):
+            if not apply_window_filter or _in_time_window(
+                event,
+                time_min=window_time_min,
+                time_max=window_time_max,
+            ):
                 yield event
