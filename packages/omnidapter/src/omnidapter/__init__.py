@@ -56,6 +56,7 @@ from omnidapter.services.calendar.requests import (
     UpdateEventRequest,
 )
 from omnidapter.stores.credentials import CredentialStore, StoredCredential
+from omnidapter.stores.file import EncryptedFileCredentialStore
 from omnidapter.stores.memory import InMemoryCredentialStore, InMemoryOAuthStateStore
 from omnidapter.stores.oauth_state import OAuthStateStore
 from omnidapter.transport.retry import RetryPolicy
@@ -88,6 +89,7 @@ __all__ = [
     "OAuthStateStore",
     "InMemoryCredentialStore",
     "InMemoryOAuthStateStore",
+    "EncryptedFileCredentialStore",
     # Transport
     "RetryPolicy",
     # Registry
