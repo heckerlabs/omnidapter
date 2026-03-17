@@ -10,9 +10,6 @@ dependencies = [
     "anyio>=4.0",
 ]
 
-[project.optional-dependencies]
-encryption = ["cryptography>=41.0"]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
