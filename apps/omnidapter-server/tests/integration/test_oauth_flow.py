@@ -6,7 +6,8 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+from omnidapter_server.main import app
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.models.oauth_state import OAuthState
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -152,7 +153,7 @@ async def test_oauth_callback_transitions_to_active(
 
         # No auth header needed for callback — it's public
         async with AsyncClient(
-            app=client._transport._app, base_url="http://testserver"
+            transport=ASGITransport(app), base_url="http://testserver"
         ) as public_client:
             response = await public_client.get(
                 f"/oauth/google/callback?code=auth_code&state={state_token}",
@@ -170,7 +171,7 @@ async def test_oauth_callback_invalid_state(
 ):
     """Callback with invalid state returns error."""
     async with AsyncClient(
-        app=client._transport._app, base_url="http://testserver"
+        transport=ASGITransport(app), base_url="http://testserver"
     ) as public_client:
         response = await public_client.get(
             "/oauth/google/callback?code=some_code&state=INVALID_STATE_TOKEN",
@@ -186,7 +187,7 @@ async def test_oauth_callback_error_from_provider(
 ):
     """Callback with error param from provider is handled gracefully."""
     async with AsyncClient(
-        app=client._transport._app, base_url="http://testserver"
+        transport=ASGITransport(app), base_url="http://testserver"
     ) as public_client:
         response = await public_client.get(
             "/oauth/google/callback?error=access_denied&error_description=User+denied+access",

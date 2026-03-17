@@ -9,16 +9,16 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection as SAConnection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import server models (to pick up server tables in metadata)
 # Import hosted models
+import omnidapter_hosted.models  # noqa: F401, E402
+import omnidapter_server.models  # noqa: F401, E402
 from omnidapter_hosted.database import HostedBase  # noqa: E402
-from omnidapter_hosted.models import *  # noqa: F401, F403, E402
-from omnidapter_server.models import *  # noqa: F401, F403, E402
 
 config = context.config
 
@@ -49,7 +49,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
+def do_run_migrations(connection: SAConnection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
