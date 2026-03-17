@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import update
+from sqlalchemy import and_, case, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_server.models.connection import Connection, ConnectionStatus
@@ -21,34 +21,36 @@ async def record_refresh_failure(
     Returns:
         New connection status
     """
-    from sqlalchemy import select
+    needs_reauth_expr = and_(
+        Connection.status == ConnectionStatus.ACTIVE,
+        Connection.refresh_failure_count + 1 >= reauth_threshold,
+    )
 
-    result = await session.execute(select(Connection).where(Connection.id == connection_id))
-    conn = result.scalar_one_or_none()
-    if conn is None:
-        return ConnectionStatus.REVOKED
-
-    new_count = conn.refresh_failure_count + 1
-    new_status = conn.status
-    if new_count >= reauth_threshold and conn.status == ConnectionStatus.ACTIVE:
-        new_status = ConnectionStatus.NEEDS_REAUTH
-
-    await session.execute(
+    result = await session.execute(
         update(Connection)
         .where(Connection.id == connection_id)
         .values(
-            refresh_failure_count=new_count,
+            refresh_failure_count=Connection.refresh_failure_count + 1,
             last_refresh_failure_at=datetime.now(timezone.utc),
-            status=new_status,
-            status_reason=(
-                "Token refresh failed repeatedly. Please reauthorize."
-                if new_status == ConnectionStatus.NEEDS_REAUTH
-                else conn.status_reason
+            status=case(
+                (needs_reauth_expr, ConnectionStatus.NEEDS_REAUTH),
+                else_=Connection.status,
+            ),
+            status_reason=case(
+                (needs_reauth_expr, "Token refresh failed repeatedly. Please reauthorize."),
+                else_=Connection.status_reason,
             ),
         )
+        .returning(Connection.status)
     )
+    new_status = result.scalar_one_or_none()
+    if new_status is None:
+        return ConnectionStatus.REVOKED
+
     await session.commit()
-    return new_status
+    if isinstance(new_status, ConnectionStatus):
+        return new_status.value
+    return str(new_status)
 
 
 async def record_refresh_success(

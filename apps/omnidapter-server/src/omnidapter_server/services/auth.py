@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_server.models.api_key import APIKey
 
-_API_KEY_PREFIX = "omni_sk_"
 _RAW_KEY_LENGTH = 32
 
 

@@ -8,7 +8,8 @@ RUN pip install uv
 # Copy dependency files
 COPY pyproject.toml .
 
-# Install dependencies (excluding local dev sources — use published packages)
+# Install dependencies from published indexes only.
+# This image intentionally does not copy workspace sources for omnidapter/omnidapter-server.
 RUN uv pip install --system .
 
 # Copy source

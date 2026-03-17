@@ -101,8 +101,11 @@ async def test_get_provider_config_success() -> None:
 
 @pytest.mark.asyncio
 async def test_upsert_provider_config_requires_encryption_key() -> None:
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
+
     encryption = MagicMock()
-    encryption._current_key = ""
+    encryption.encrypt.side_effect = ValueError("invalid key")
 
     with pytest.raises(HTTPException) as exc_info:
         await upsert_provider_config(
@@ -110,7 +113,7 @@ async def test_upsert_provider_config_requires_encryption_key() -> None:
             body=UpsertProviderConfigRequest(client_id="id", client_secret="secret"),
             auth=_auth(),
             encryption=encryption,
-            session=AsyncMock(),
+            session=session,
             request_id="req_4",
         )
 
@@ -132,7 +135,6 @@ async def test_upsert_provider_config_create_path() -> None:
     session.refresh = AsyncMock(side_effect=_refresh)
 
     encryption = MagicMock()
-    encryption._current_key = "configured"
     encryption.encrypt.side_effect = ["enc-id", "enc-secret"]
 
     response = await upsert_provider_config(
@@ -159,7 +161,6 @@ async def test_upsert_provider_config_update_path() -> None:
     session.refresh = AsyncMock()
 
     encryption = MagicMock()
-    encryption._current_key = "configured"
     encryption.encrypt.side_effect = ["new-id", "new-secret"]
 
     response = await upsert_provider_config(
