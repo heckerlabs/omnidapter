@@ -68,7 +68,7 @@ class ProviderRegistry:
         When ``auto_register_by_env`` is True (default):
         - OAuth providers are auto-registered only when their environment-based
           credentials are present.
-        - Apple is auto-registered only when ``OMNIDAPTER_ENABLE_APPLE`` is
+        - Apple is auto-registered only when ``OMNIDAPTER_APPLE_ENABLED`` is
           set to a truthy value (1/true/yes/on).
 
         When ``auto_register_by_env`` is False, all built-in providers are
@@ -112,10 +112,10 @@ class ProviderRegistry:
                         oauth_registered_count += 1
 
                     elif provider_key == "apple" and not _env_flag_enabled(
-                        "OMNIDAPTER_ENABLE_APPLE"
+                        "OMNIDAPTER_APPLE_ENABLED"
                     ):
                         registry_logger.info(
-                            "Skipping built-in provider %r: set OMNIDAPTER_ENABLE_APPLE=1 "
+                            "Skipping built-in provider %r: set OMNIDAPTER_APPLE_ENABLED=1 "
                             "to enable auto-registration",
                             provider_key,
                         )
@@ -145,7 +145,7 @@ class ProviderRegistry:
             if auto_register_by_env:
                 registry_logger.warning(
                     "No built-in providers were auto-registered. "
-                    "Configure provider env vars and/or set OMNIDAPTER_ENABLE_APPLE=1."
+                    "Configure provider env vars and/or set OMNIDAPTER_APPLE_ENABLED=1."
                 )
             else:
                 registry_logger.warning(

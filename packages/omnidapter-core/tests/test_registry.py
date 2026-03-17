@@ -82,7 +82,7 @@ class TestProviderRegistry:
         monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()
@@ -100,7 +100,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.setenv("OMNIDAPTER_ENABLE_APPLE", "1")
+        monkeypatch.setenv("OMNIDAPTER_APPLE_ENABLED", "1")
 
         reg = ProviderRegistry()
         reg.register_builtins()
@@ -115,7 +115,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()
@@ -134,7 +134,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         with caplog.at_level(logging.WARNING, logger="omnidapter.registry"):
@@ -149,7 +149,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.setenv("OMNIDAPTER_ENABLE_APPLE", "true")
+        monkeypatch.setenv("OMNIDAPTER_APPLE_ENABLED", "true")
 
         reg = ProviderRegistry()
         with caplog.at_level(logging.WARNING, logger="omnidapter.registry"):
@@ -164,7 +164,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins(auto_register_by_env=False)
@@ -182,7 +182,7 @@ class TestProviderRegistry:
         monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()

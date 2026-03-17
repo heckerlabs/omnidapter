@@ -55,7 +55,7 @@ Built-in registration is environment-aware by default (`auto_register_by_env=Tru
   - Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
   - Microsoft: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`
   - Zoho: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`
-- Apple is auto-registered only when `OMNIDAPTER_ENABLE_APPLE` is truthy (`1`, `true`, `yes`, `on`).
+- Apple is auto-registered only when `OMNIDAPTER_APPLE_ENABLED` is truthy (`1`, `true`, `yes`, `on`).
 
 Set `auto_register_by_env=False` to register all built-ins regardless of env vars, or register providers manually for full control.
 
