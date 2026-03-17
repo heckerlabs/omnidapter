@@ -1,0 +1,133 @@
+"""OAuth callback endpoints."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
+from omnidapter import OAuthStateError, Omnidapter
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from omnidapter_server.config import Settings, get_settings
+from omnidapter_server.database import get_session
+from omnidapter_server.dependencies import get_encryption_service
+from omnidapter_server.encryption import EncryptionService
+from omnidapter_server.models.connection import Connection, ConnectionStatus
+from omnidapter_server.models.oauth_state import OAuthState
+from omnidapter_server.models.provider_config import ProviderConfig
+from omnidapter_server.services.connection_health import transition_to_active
+from omnidapter_server.stores.credential_store import DatabaseCredentialStore
+from omnidapter_server.stores.factory import build_oauth_state_store
+
+router = APIRouter(prefix="/oauth", tags=["oauth"])
+
+
+async def _get_provider_config(provider_key: str, session: AsyncSession) -> ProviderConfig | None:
+    result = await session.execute(
+        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.get("/{provider_key}/callback")
+async def oauth_callback(
+    provider_key: str,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    encryption: EncryptionService = Depends(get_encryption_service),
+    settings: Settings = Depends(get_settings),
+    code: str | None = Query(None),
+    state: str | None = Query(None),
+    error: str | None = Query(None),
+    error_description: str | None = Query(None),
+):
+    """Handle OAuth callback from provider."""
+    if error:
+        if state:
+            result = await session.execute(
+                select(OAuthState).where(OAuthState.state_token == state)
+            )
+            state_row = result.scalar_one_or_none()
+            if state_row:
+                conn_result = await session.execute(
+                    select(Connection).where(Connection.id == state_row.connection_id)
+                )
+                conn = conn_result.scalar_one_or_none()
+                if conn:
+                    redirect_url = (conn.provider_config or {}).get("redirect_url", "")
+                    if redirect_url:
+                        return RedirectResponse(
+                            url=f"{redirect_url}?error={error}&connection_id={conn.id}"
+                        )
+        raise HTTPException(status_code=400, detail=f"OAuth error: {error}: {error_description}")
+
+    if not code or not state:
+        raise HTTPException(status_code=400, detail="Missing code or state parameter")
+
+    state_result = await session.execute(select(OAuthState).where(OAuthState.state_token == state))
+    state_row = state_result.scalar_one_or_none()
+    if state_row is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
+
+    connection_id = str(state_row.connection_id)
+
+    conn_result = await session.execute(
+        select(Connection).where(Connection.id == state_row.connection_id)
+    )
+    conn = conn_result.scalar_one_or_none()
+    if conn is None:
+        raise HTTPException(status_code=400, detail="Connection not found")
+
+    provider_config = await _get_provider_config(provider_key, session)
+
+    if provider_config and not provider_config.is_fallback:
+        client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
+        client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
+        import os
+
+        env_prefix = provider_key.upper()
+        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_ID"] = client_id
+        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_SECRET"] = client_secret
+
+    cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
+    state_store = build_oauth_state_store(settings, session, encryption)
+
+    omni = Omnidapter(
+        credential_store=cred_store,
+        oauth_state_store=state_store,
+        auto_register_by_env=True,
+    )
+
+    callback_url = f"{settings.omnidapter_base_url}/oauth/{provider_key}/callback"
+
+    try:
+        stored_credential = await omni.oauth.complete(
+            provider=provider_key,
+            connection_id=connection_id,
+            code=code,
+            state=state,
+            redirect_uri=callback_url,
+        )
+    except OAuthStateError as e:
+        raise HTTPException(status_code=400, detail=f"OAuth state error: {e}") from e
+    except Exception as e:
+        await session.execute(
+            update(Connection)
+            .where(Connection.id == state_row.connection_id)
+            .values(status=ConnectionStatus.REVOKED, status_reason=str(e))
+        )
+        await session.commit()
+        raise HTTPException(status_code=400, detail=f"OAuth completion failed: {e}") from e
+
+    await transition_to_active(
+        connection_id=state_row.connection_id,
+        session=session,
+        granted_scopes=stored_credential.granted_scopes,
+        provider_account_id=stored_credential.provider_account_id,
+    )
+
+    redirect_url = (conn.provider_config or {}).get("redirect_url", "")
+    if redirect_url:
+        return RedirectResponse(url=f"{redirect_url}?connection_id={connection_id}")
+
+    return {"status": "connected", "connection_id": connection_id}

@@ -1,0 +1,40 @@
+[project]
+name = "omnidapter-server"
+version = "0.3.0"
+description = "Omnidapter Server — self-hosted REST API wrapping the Omnidapter library"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "omnidapter",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0",
+    "alembic>=1.13",
+    "asyncpg>=0.29",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "cryptography>=42.0",
+    "bcrypt>=4.0",
+    "httpx>=0.27",
+    "redis[asyncio]>=5.0",
+]
+
+[project.scripts]
+omnidapter-server = "omnidapter_server.main:run"
+omnidapter-bootstrap = "omnidapter_server.scripts.bootstrap:main"
+
+[tool.uv.sources]
+omnidapter = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/omnidapter_server"]
+
+[tool.pyright]
+venvPath = "../.."
+venv = ".venv"
+include = ["src", "tests"]
+pythonVersion = "3.10"

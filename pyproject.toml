@@ -21,7 +21,8 @@ dev-dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["packages/omnidapter/tests", "apps/omnidapter-api/tests"]
+addopts = "--import-mode=importlib"
+testpaths = ["packages/omnidapter-core/tests", "apps/omnidapter-server/tests", "apps/omnidapter-hosted/tests"]
 markers = [
     "integration: marks tests requiring live provider credentials; set OMNIDAPTER_INTEGRATION=1 to enable",
 ]
