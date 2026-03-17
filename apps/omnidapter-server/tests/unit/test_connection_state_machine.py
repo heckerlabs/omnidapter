@@ -6,7 +6,7 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from omnidapter_server.models.connection import Connection, ConnectionStatus
+from omnidapter_server.models.connection import ConnectionStatus
 from omnidapter_server.services.connection_health import (
     record_refresh_failure,
     record_refresh_success,
@@ -15,19 +15,10 @@ from omnidapter_server.services.connection_health import (
 )
 
 
-def _make_conn(status: str = ConnectionStatus.ACTIVE, failures: int = 0) -> Connection:
-    conn = MagicMock(spec=Connection)
-    conn.id = uuid.uuid4()
-    conn.status = status
-    conn.refresh_failure_count = failures
-    conn.status_reason = None
-    return conn
-
-
-def _make_session(conn: Connection) -> AsyncMock:
+def _make_session(returned_status: str | None) -> AsyncMock:
     session = AsyncMock()
-    result = MagicMock()  # Non-async result object
-    result.scalar_one_or_none.return_value = conn
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = returned_status
     session.execute = AsyncMock(return_value=result)
     session.commit = AsyncMock()
     return session
@@ -35,9 +26,8 @@ def _make_session(conn: Connection) -> AsyncMock:
 
 @pytest.mark.asyncio
 async def test_refresh_failure_increments_count():
-    conn = _make_conn(status=ConnectionStatus.ACTIVE, failures=0)
-    session = _make_session(conn)
-    new_status = await record_refresh_failure(conn.id, session, reauth_threshold=3)
+    session = _make_session(ConnectionStatus.ACTIVE)
+    new_status = await record_refresh_failure(uuid.uuid4(), session, reauth_threshold=3)
     assert new_status == ConnectionStatus.ACTIVE
     # execute should have been called (with update)
     session.execute.assert_called()
@@ -45,25 +35,22 @@ async def test_refresh_failure_increments_count():
 
 @pytest.mark.asyncio
 async def test_refresh_failure_reaches_threshold():
-    conn = _make_conn(status=ConnectionStatus.ACTIVE, failures=2)
-    session = _make_session(conn)
-    new_status = await record_refresh_failure(conn.id, session, reauth_threshold=3)
+    session = _make_session(ConnectionStatus.NEEDS_REAUTH)
+    new_status = await record_refresh_failure(uuid.uuid4(), session, reauth_threshold=3)
     assert new_status == ConnectionStatus.NEEDS_REAUTH
 
 
 @pytest.mark.asyncio
 async def test_refresh_failure_below_threshold():
-    conn = _make_conn(status=ConnectionStatus.ACTIVE, failures=1)
-    session = _make_session(conn)
-    new_status = await record_refresh_failure(conn.id, session, reauth_threshold=3)
+    session = _make_session(ConnectionStatus.ACTIVE)
+    new_status = await record_refresh_failure(uuid.uuid4(), session, reauth_threshold=3)
     assert new_status == ConnectionStatus.ACTIVE
 
 
 @pytest.mark.asyncio
 async def test_refresh_failure_already_needs_reauth():
-    conn = _make_conn(status=ConnectionStatus.NEEDS_REAUTH, failures=5)
-    session = _make_session(conn)
-    new_status = await record_refresh_failure(conn.id, session, reauth_threshold=3)
+    session = _make_session(ConnectionStatus.NEEDS_REAUTH)
+    new_status = await record_refresh_failure(uuid.uuid4(), session, reauth_threshold=3)
     # Already in needs_reauth, stays there
     assert new_status == ConnectionStatus.NEEDS_REAUTH
 
@@ -108,11 +95,7 @@ async def test_transition_to_revoked():
 
 @pytest.mark.asyncio
 async def test_refresh_failure_not_found():
-    session = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    session.execute = AsyncMock(return_value=result)
-    session.commit = AsyncMock()
+    session = _make_session(None)
     status = await record_refresh_failure(uuid.uuid4(), session, reauth_threshold=3)
     assert status == ConnectionStatus.REVOKED
 

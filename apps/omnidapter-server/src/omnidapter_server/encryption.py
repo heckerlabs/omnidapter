@@ -26,19 +26,20 @@ def _decode_urlsafe_base64(value: str) -> bytes:
 
 
 def _decode_key(key_str: str) -> bytes:
-    """Decode a base64-encoded 32-byte key, or derive from raw string."""
-    if not key_str:
+    """Decode a URL-safe base64 encoded 32-byte key."""
+    normalized = key_str.strip()
+    if not normalized:
         raise ValueError("Encryption key is not configured")
-    try:
-        raw = _decode_urlsafe_base64(key_str)
-        if len(raw) == 32:
-            return raw
-    except Exception:
-        pass
-    # Derive a 32-byte key by hashing the string (deterministic, for dev convenience)
-    import hashlib
 
-    return hashlib.sha256(key_str.encode()).digest()
+    try:
+        raw = _decode_urlsafe_base64(normalized)
+    except Exception as exc:
+        raise ValueError("Encryption key must be URL-safe base64") from exc
+
+    if len(raw) != 32:
+        raise ValueError("Encryption key must decode to exactly 32 bytes")
+
+    return raw
 
 
 def encrypt(plaintext: str, encryption_key: str, key_version: str = _KEY_VERSION_CURRENT) -> str:

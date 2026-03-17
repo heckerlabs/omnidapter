@@ -26,10 +26,9 @@ async def test_revoke_clears_credentials():
     session.commit.assert_called_once()
 
     # Inspect the update statement — credentials_encrypted should be set to None
-    call_args = session.execute.call_args[0][0]
-    # SQLAlchemy update clause's compiled values should include credentials_encrypted=None
-    compiled = str(call_args)
-    assert "credentials_encrypted" in compiled
+    statement = session.execute.call_args[0][0]
+    compiled = statement.compile()
+    assert compiled.params.get("credentials_encrypted") is None
 
 
 @pytest.mark.asyncio

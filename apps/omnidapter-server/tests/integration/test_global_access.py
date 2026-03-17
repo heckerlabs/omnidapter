@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.integration
 
+TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
 
 @pytest_asyncio.fixture
 async def second_api_key(session: AsyncSession) -> tuple[str, APIKey]:
@@ -51,12 +53,12 @@ async def second_client(
         yield session
 
     def override_encryption():
-        return EncryptionService(current_key="test-encryption-key-integration-tests")
+        return EncryptionService(current_key=TEST_ENCRYPTION_KEY)
 
     def override_settings():
         return Settings(
             omnidapter_database_url="",
-            omnidapter_encryption_key="test-encryption-key-integration-tests",
+            omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
             omnidapter_env="test",
         )
 
@@ -148,12 +150,12 @@ async def test_unauthenticated_request_rejected(client: AsyncClient):
             yield s
 
     def override_encryption():
-        return EncryptionService(current_key="test-encryption-key-integration-tests")
+        return EncryptionService(current_key=TEST_ENCRYPTION_KEY)
 
     def override_settings():
         return Settings(
             omnidapter_database_url="",
-            omnidapter_encryption_key="test-encryption-key-integration-tests",
+            omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
             omnidapter_env="test",
         )
 

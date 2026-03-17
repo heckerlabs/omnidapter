@@ -25,7 +25,7 @@ TEST_DB_URL = os.environ.get(
 )
 
 _SKIP_INTEGRATION = os.environ.get("OMNIDAPTER_INTEGRATION") != "1"
-TEST_ENCRYPTION_KEY = "test-encryption-key-integration-tests"
+TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 _test_engine = None
 _test_factory = None
