@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from omnidapter_server.database import Base, get_session
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.main import app
@@ -128,7 +128,7 @@ async def client(session: AsyncSession, api_key: tuple[str, APIKey]) -> AsyncIte
     app.dependency_overrides[get_settings] = override_settings
     app.dependency_overrides[get_encryption_service] = override_encryption
 
-    async with AsyncClient(app=app, base_url="http://testserver") as c:
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
         yield c
 

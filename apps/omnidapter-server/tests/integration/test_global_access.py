@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.auth import generate_api_key
@@ -36,7 +37,7 @@ async def second_api_key(session: AsyncSession) -> tuple[str, APIKey]:
 async def second_client(
     session: AsyncSession,
     second_api_key: tuple[str, APIKey],
-) -> AsyncClient:
+) -> AsyncIterator[AsyncClient]:
     """HTTP client authenticated with a second independent API key."""
     raw_key, _ = second_api_key
 
@@ -63,7 +64,7 @@ async def second_client(
     app.dependency_overrides[get_settings] = override_settings
     app.dependency_overrides[get_encryption_service] = override_encryption
 
-    async with AsyncClient(app=app, base_url="http://testserver") as c:
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
         yield c
 
@@ -160,7 +161,9 @@ async def test_unauthenticated_request_rejected(client: AsyncClient):
     app.dependency_overrides[get_encryption_service] = override_encryption
 
     try:
-        async with AsyncClient(app=app, base_url="http://testserver") as anon_client:
+        async with AsyncClient(
+            transport=ASGITransport(app), base_url="http://testserver"
+        ) as anon_client:
             response = await anon_client.get("/v1/connections")
         assert response.status_code == 401
     finally:
