@@ -20,12 +20,17 @@ _KEY_VERSION_PREVIOUS = "v0"
 _SEPARATOR = ":"
 
 
+def _decode_urlsafe_base64(value: str) -> bytes:
+    padding = (-len(value)) % 4
+    return base64.urlsafe_b64decode(value + ("=" * padding))
+
+
 def _decode_key(key_str: str) -> bytes:
     """Decode a base64-encoded 32-byte key, or derive from raw string."""
     if not key_str:
         raise ValueError("Encryption key is not configured")
     try:
-        raw = base64.urlsafe_b64decode(key_str + "==")
+        raw = _decode_urlsafe_base64(key_str)
         if len(raw) == 32:
             return raw
     except Exception:
@@ -62,7 +67,7 @@ def decrypt(
         raise ValueError("Invalid encrypted token format")
 
     version, encoded = token.split(_SEPARATOR, 1)
-    raw = base64.urlsafe_b64decode(encoded + "==")
+    raw = _decode_urlsafe_base64(encoded)
     nonce, ciphertext = raw[:12], raw[12:]
 
     # Determine which key to try based on version

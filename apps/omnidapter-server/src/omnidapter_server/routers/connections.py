@@ -21,6 +21,7 @@ from omnidapter_server.dependencies import (
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.models.provider_config import ProviderConfig
+from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     ConnectionResponse,
     CreateConnectionRequest,
@@ -42,27 +43,17 @@ def _build_omni(
 ) -> Omnidapter:
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
-
-    omni = Omnidapter(
-        credential_store=cred_store,
-        oauth_state_store=state_store,
-        auto_register_by_env=True,
+    registry = build_provider_registry(
+        settings,
+        provider_config=provider_config,
+        encryption=encryption,
     )
 
-    if provider_config and not provider_config.is_fallback:
-        client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
-        client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
-        _configure_provider(provider_config.provider_key, client_id, client_secret)
-
-    return omni
-
-
-def _configure_provider(provider_key: str, client_id: str, client_secret: str) -> None:
-    import os
-
-    env_prefix = provider_key.upper()
-    os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_ID"] = client_id
-    os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_SECRET"] = client_secret
+    return Omnidapter(
+        credential_store=cred_store,
+        oauth_state_store=state_store,
+        registry=registry,
+    )
 
 
 async def _get_provider_config(

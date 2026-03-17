@@ -24,7 +24,7 @@ TEST_DB_URL = os.environ.get(
     "postgresql+asyncpg://localhost/omnidapter_test",
 )
 
-_SKIP_INTEGRATION = not bool(os.environ.get("OMNIDAPTER_INTEGRATION"))
+_SKIP_INTEGRATION = os.environ.get("OMNIDAPTER_INTEGRATION") != "1"
 TEST_ENCRYPTION_KEY = "test-encryption-key-integration-tests"
 
 _test_engine = None
