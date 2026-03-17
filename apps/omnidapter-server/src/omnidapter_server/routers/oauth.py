@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from omnidapter import OAuthStateError, Omnidapter
@@ -15,6 +17,7 @@ from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.models.provider_config import ProviderConfig
+from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.connection_health import transition_to_active
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
@@ -27,6 +30,17 @@ async def _get_provider_config(provider_key: str, session: AsyncSession) -> Prov
         select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
     )
     return result.scalar_one_or_none()
+
+
+def _append_query_params(url: str, **params: str) -> str:
+    parts = urlsplit(url)
+    query_params = dict(parse_qsl(parts.query, keep_blank_values=True))
+    for key, value in params.items():
+        if value:
+            query_params[key] = value
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, urlencode(query_params), parts.fragment)
+    )
 
 
 @router.get("/{provider_key}/callback")
@@ -57,7 +71,12 @@ async def oauth_callback(
                     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
                     if redirect_url:
                         return RedirectResponse(
-                            url=f"{redirect_url}?error={error}&connection_id={conn.id}"
+                            url=_append_query_params(
+                                redirect_url,
+                                error=error,
+                                error_description=error_description or "",
+                                connection_id=str(conn.id),
+                            )
                         )
         raise HTTPException(status_code=400, detail=f"OAuth error: {error}: {error_description}")
 
@@ -80,22 +99,18 @@ async def oauth_callback(
 
     provider_config = await _get_provider_config(provider_key, session)
 
-    if provider_config and not provider_config.is_fallback:
-        client_id = encryption.decrypt(provider_config.client_id_encrypted or "")
-        client_secret = encryption.decrypt(provider_config.client_secret_encrypted or "")
-        import os
-
-        env_prefix = provider_key.upper()
-        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_ID"] = client_id
-        os.environ[f"OMNIDAPTER_{env_prefix}_CLIENT_SECRET"] = client_secret
-
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
+    registry = build_provider_registry(
+        settings,
+        provider_config=provider_config,
+        encryption=encryption,
+    )
 
     omni = Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
-        auto_register_by_env=True,
+        registry=registry,
     )
 
     callback_url = f"{settings.omnidapter_base_url}/oauth/{provider_key}/callback"
@@ -128,6 +143,6 @@ async def oauth_callback(
 
     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
     if redirect_url:
-        return RedirectResponse(url=f"{redirect_url}?connection_id={connection_id}")
+        return RedirectResponse(url=_append_query_params(redirect_url, connection_id=connection_id))
 
     return {"status": "connected", "connection_id": connection_id}

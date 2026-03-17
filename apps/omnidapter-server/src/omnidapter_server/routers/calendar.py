@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -71,9 +72,10 @@ async def _get_conn(
 
     error = check_connection_status(conn.status, request)
     if error is not None:
+        body = json.loads(bytes(error.body))
         raise HTTPException(
             status_code=error.status_code,
-            detail={"code": "connection_status_error", "message": "Connection not usable"},
+            detail=body["error"],
         )
 
     return conn

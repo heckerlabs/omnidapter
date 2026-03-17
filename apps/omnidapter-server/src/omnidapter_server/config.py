@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # App
     omnidapter_base_url: str = "http://localhost:8000"
     omnidapter_env: str = "development"
+    omnidapter_cors_origins: str = "*"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
 

@@ -23,7 +23,7 @@ def build_oauth_state_store(
     """Build the appropriate OAuth state store based on settings priority:
 
     1. OMNIDAPTER_OAUTH_STATE_REDIS_URL  -> RedisOAuthStateStore
-    2. OMNIDAPTER_OAUTH_STATE_DB_URL     -> DatabaseOAuthStateStore (uses db url)
+    2. OMNIDAPTER_OAUTH_STATE_DB_URL     -> DatabaseURLOAuthStateStore
     3. omnidapter_database_url set       -> DatabaseOAuthStateStore (uses main db url)
     4. fallback                          -> InMemoryOAuthStateStore (warns)
     """
@@ -34,6 +34,14 @@ def build_oauth_state_store(
 
         return RedisOAuthStateStore(
             redis_url=settings.omnidapter_oauth_state_redis_url,
+            encryption=encryption,
+        )
+
+    if settings.omnidapter_oauth_state_db_url:
+        from omnidapter_server.stores.oauth_state_store import DatabaseURLOAuthStateStore
+
+        return DatabaseURLOAuthStateStore(
+            database_url=settings.omnidapter_oauth_state_db_url,
             encryption=encryption,
         )
 

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 def _make_settings(**kwargs):
     s = MagicMock()
     s.omnidapter_oauth_state_redis_url = kwargs.get("redis_url", "")
+    s.omnidapter_oauth_state_db_url = kwargs.get("oauth_state_db_url", "")
     s.omnidapter_database_url = kwargs.get("db_url", "postgresql+asyncpg://localhost/omnidapter")
     return s
 
@@ -37,6 +38,19 @@ def test_factory_uses_db_when_no_redis():
     settings = _make_settings(redis_url="", db_url="postgresql+asyncpg://localhost/omnidapter")
     store = build_oauth_state_store(settings, _make_session(), _make_encryption())
     assert isinstance(store, DatabaseOAuthStateStore)
+
+
+def test_factory_uses_oauth_state_db_url_when_configured():
+    from omnidapter_server.stores.factory import build_oauth_state_store
+    from omnidapter_server.stores.oauth_state_store import DatabaseURLOAuthStateStore
+
+    settings = _make_settings(
+        redis_url="",
+        oauth_state_db_url="postgresql+asyncpg://localhost/oauth_state",
+        db_url="postgresql+asyncpg://localhost/main",
+    )
+    store = build_oauth_state_store(settings, _make_session(), _make_encryption())
+    assert isinstance(store, DatabaseURLOAuthStateStore)
 
 
 def test_factory_uses_inmemory_when_no_db_no_redis(caplog):

@@ -7,13 +7,15 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from omnidapter import Omnidapter
 
+from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.dependencies import AuthContext, get_auth_context, get_request_id
+from omnidapter_server.provider_registry import build_provider_registry
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
 
-def _build_omni() -> Omnidapter:
-    return Omnidapter(auto_register_by_env=True)
+def _build_omni(settings: Settings) -> Omnidapter:
+    return Omnidapter(registry=build_provider_registry(settings))
 
 
 def _provider_to_dict(meta: Any) -> dict:
@@ -34,9 +36,10 @@ def _provider_to_dict(meta: Any) -> dict:
 async def list_providers(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     request_id: str = Depends(get_request_id),
 ):
-    omni = _build_omni()
+    omni = _build_omni(settings)
     providers = [_provider_to_dict(omni.describe_provider(key)) for key in omni.list_providers()]
     return {"data": providers, "meta": {"request_id": request_id}}
 
@@ -46,12 +49,13 @@ async def get_provider(
     provider_key: str,
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
     request_id: str = Depends(get_request_id),
 ):
-    omni = _build_omni()
+    omni = _build_omni(settings)
     try:
         meta = omni.describe_provider(provider_key)
-    except Exception as exc:
+    except KeyError as exc:
         raise HTTPException(
             status_code=404,
             detail={

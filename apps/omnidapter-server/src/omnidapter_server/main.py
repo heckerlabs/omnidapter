@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from omnidapter_server.config import get_settings
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
 
@@ -19,10 +20,18 @@ app = FastAPI(
 
 # Middleware
 app.add_middleware(RequestIdMiddleware)
+
+settings = get_settings()
+cors_origins = [
+    origin.strip() for origin in settings.omnidapter_cors_origins.split(",") if origin.strip()
+]
+if not cors_origins:
+    cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials="*" not in cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
