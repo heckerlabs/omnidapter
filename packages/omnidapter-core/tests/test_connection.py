@@ -217,7 +217,7 @@ class TestOmnidapter:
         monkeypatch.setenv("MICROSOFT_CLIENT_SECRET", "msecret")
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         omni = Omnidapter()
         providers = omni.list_providers()
@@ -234,7 +234,7 @@ class TestOmnidapter:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.setenv("OMNIDAPTER_ENABLE_APPLE", "1")
+        monkeypatch.setenv("OMNIDAPTER_APPLE_ENABLED", "1")
 
         omni = Omnidapter()
         providers = omni.list_providers()
@@ -248,7 +248,7 @@ class TestOmnidapter:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         omni = Omnidapter()
         providers = omni.list_providers()
@@ -265,7 +265,7 @@ class TestOmnidapter:
         monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
-        monkeypatch.delenv("OMNIDAPTER_ENABLE_APPLE", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
 
         omni = Omnidapter(auto_register_by_env=False)
         providers = omni.list_providers()

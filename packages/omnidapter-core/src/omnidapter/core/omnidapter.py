@@ -43,7 +43,7 @@ class Omnidapter:
         auto_register_by_env: Whether built-in providers are auto-registered
             based on environment configuration (default: True). When True,
             OAuth providers are registered only when configured via env vars,
-            and Apple is registered only when OMNIDAPTER_ENABLE_APPLE is set.
+            and Apple is registered only when OMNIDAPTER_APPLE_ENABLED is set.
             When False, all built-in providers are registered.
         retry_policy: HTTP retry policy (default: RetryPolicy.default()).
         http_client: Optional shared ``httpx.AsyncClient`` instance. When provided,

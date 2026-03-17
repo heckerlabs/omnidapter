@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir uv
 # Copy workspace definition and source
 COPY pyproject.toml uv.lock ./
 COPY packages/ packages/
-COPY apps/omnidapter-api/ apps/omnidapter-api/
+COPY apps/omnidapter-server/ apps/omnidapter-server/
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Install production dependencies and set up non-root user

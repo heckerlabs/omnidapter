@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-cd /app/apps/omnidapter-api
+cd /app/apps/omnidapter-server
 
 echo "Running database migrations..."
 uv run alembic upgrade head
 
 echo "Starting server on port ${PORT:-8000}..."
-exec uv run uvicorn omnidapter_api.main:app \
+exec uv run uvicorn omnidapter_server.main:app \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \
     --workers 1 \
