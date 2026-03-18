@@ -27,6 +27,8 @@ services:
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:?OMNIDAPTER_ENCRYPTION_KEY is required}
       OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:8000}
       OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-production}
+      OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       # OAuth provider credentials (at least one required)
       OMNIDAPTER_GOOGLE_CLIENT_ID: ${OMNIDAPTER_GOOGLE_CLIENT_ID:-}
       OMNIDAPTER_GOOGLE_CLIENT_SECRET: ${OMNIDAPTER_GOOGLE_CLIENT_SECRET:-}
@@ -43,6 +45,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: >-
+      sh -c "if [ \"$${RUN_MIGRATIONS}\" = \"true\" ]; then uv run alembic upgrade head; fi
+      && exec uv run uvicorn omnidapter_server.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   pgdata:

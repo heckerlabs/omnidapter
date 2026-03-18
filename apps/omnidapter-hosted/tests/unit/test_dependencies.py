@@ -145,7 +145,7 @@ async def test_get_hosted_auth_context_rate_limited() -> None:
         ),
         patch(
             "omnidapter_hosted.dependencies.check_rate_limit",
-            return_value=(False, 60, 0, 1_700_000_000.0),
+            new=AsyncMock(return_value=(False, 60, 0, 1_700_000_000.0)),
         ),
         patch(
             "omnidapter_hosted.dependencies.update_key_last_used",
@@ -180,7 +180,7 @@ async def test_get_hosted_auth_context_success() -> None:
         ),
         patch(
             "omnidapter_hosted.dependencies.check_rate_limit",
-            return_value=(True, 60, 59, 1_700_000_000.0),
+            new=AsyncMock(return_value=(True, 60, 59, 1_700_000_000.0)),
         ),
         patch(
             "omnidapter_hosted.dependencies.update_key_last_used",

@@ -86,11 +86,12 @@ async def get_hosted_auth_context(
     api_key, tenant = result
 
     # Rate limiting
-    allowed, limit, remaining, reset_at = check_rate_limit(
+    allowed, limit, remaining, reset_at = await check_rate_limit(
         tenant_id=str(tenant.id),
         plan=tenant.plan,
         rate_limit_free=hosted_settings.hosted_rate_limit_free,
         rate_limit_paid=hosted_settings.hosted_rate_limit_paid,
+        redis_url=hosted_settings.hosted_rate_limit_redis_url,
     )
 
     request.state.rate_limit = {"limit": limit, "remaining": remaining, "reset": int(reset_at)}

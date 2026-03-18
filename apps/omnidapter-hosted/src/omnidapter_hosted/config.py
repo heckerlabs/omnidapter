@@ -21,6 +21,7 @@ class HostedSettings(BaseSettings):
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60
     hosted_rate_limit_paid: int = 600
+    hosted_rate_limit_redis_url: str = ""
 
     # Free tier call limit per tenant per month (calendar API calls)
     hosted_free_tier_calls: int = 1000
@@ -32,6 +33,7 @@ class HostedSettings(BaseSettings):
     omnidapter_oauth_state_redis_url: str = ""
     omnidapter_base_url: str = "http://localhost:8000"
     omnidapter_env: str = "development"
+    omnidapter_allowed_origin_domains: str = "*"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
 
