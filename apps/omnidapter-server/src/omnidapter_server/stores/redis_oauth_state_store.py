@@ -13,6 +13,12 @@ from omnidapter_server.encryption import EncryptionService
 _KEY_PREFIX = "omnidapter:oauth_state:"
 
 
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 class RedisOAuthStateStore(OAuthStateStore):
     """Persists OAuth state in Redis with PKCE verifier encryption.
 
@@ -37,7 +43,7 @@ class RedisOAuthStateStore(OAuthStateStore):
             stored["_pkce_encrypted"] = True
 
         now = datetime.now(timezone.utc)
-        ttl_seconds = max(1, int((expires_at - now).total_seconds()))
+        ttl_seconds = max(1, int((_as_utc(expires_at) - now).total_seconds()))
 
         key = f"{_KEY_PREFIX}{state_id}"
         await self._redis.setex(key, ttl_seconds, json.dumps(stored))
