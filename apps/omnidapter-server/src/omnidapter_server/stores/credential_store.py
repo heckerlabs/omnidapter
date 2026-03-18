@@ -11,6 +11,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from omnidapter.core.errors import ConnectionNotFoundError
 from omnidapter.stores.credentials import CredentialStore, StoredCredential
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,8 +27,18 @@ class DatabaseCredentialStore(CredentialStore):
         self._session = session
         self._encryption = encryption
 
+    @staticmethod
+    def _parse_connection_uuid(connection_id: str) -> uuid.UUID | None:
+        try:
+            return uuid.UUID(connection_id)
+        except ValueError:
+            return None
+
     async def get_credentials(self, connection_id: str) -> StoredCredential | None:
-        conn_uuid = uuid.UUID(connection_id)
+        conn_uuid = self._parse_connection_uuid(connection_id)
+        if conn_uuid is None:
+            return None
+
         result = await self._session.execute(select(Connection).where(Connection.id == conn_uuid))
         conn = result.scalar_one_or_none()
         if conn is None or conn.credentials_encrypted is None:
@@ -38,7 +49,10 @@ class DatabaseCredentialStore(CredentialStore):
         return StoredCredential.model_validate(data)
 
     async def save_credentials(self, connection_id: str, credentials: StoredCredential) -> None:
-        conn_uuid = uuid.UUID(connection_id)
+        conn_uuid = self._parse_connection_uuid(connection_id)
+        if conn_uuid is None:
+            raise ConnectionNotFoundError(connection_id)
+
         raw = json.dumps(credentials.model_dump(mode="json"))
         encrypted = self._encryption.encrypt(raw)
 
@@ -55,13 +69,23 @@ class DatabaseCredentialStore(CredentialStore):
         if provider_account_id is not None:
             values["provider_account_id"] = provider_account_id
 
-        await self._session.execute(
-            update(Connection).where(Connection.id == conn_uuid).values(**values)
+        result = await self._session.execute(
+            update(Connection)
+            .where(Connection.id == conn_uuid)
+            .values(**values)
+            .returning(Connection.id)
         )
+
+        if result.scalar_one_or_none() is None:
+            raise ConnectionNotFoundError(connection_id)
+
         await self._session.commit()
 
     async def delete_credentials(self, connection_id: str) -> None:
-        conn_uuid = uuid.UUID(connection_id)
+        conn_uuid = self._parse_connection_uuid(connection_id)
+        if conn_uuid is None:
+            return
+
         await self._session.execute(
             update(Connection).where(Connection.id == conn_uuid).values(credentials_encrypted=None)
         )

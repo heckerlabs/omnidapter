@@ -34,6 +34,24 @@ async def test_save_state_encrypts_pkce_and_sets_ttl() -> None:
 
 
 @pytest.mark.asyncio
+async def test_save_state_accepts_naive_expiry_datetime() -> None:
+    redis_client = AsyncMock()
+
+    with patch("redis.asyncio.from_url", return_value=redis_client):
+        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock())
+
+    await store.save_state(
+        state_id="state_naive",
+        payload={"connection_id": "conn"},
+        expires_at=datetime.now() + timedelta(seconds=30),
+    )
+
+    args = redis_client.setex.await_args.args
+    assert args[0].endswith("state_naive")
+    assert args[1] > 0
+
+
+@pytest.mark.asyncio
 async def test_load_state_returns_none_when_missing() -> None:
     redis_client = AsyncMock()
     redis_client.get.return_value = None
