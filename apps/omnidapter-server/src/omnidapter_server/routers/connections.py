@@ -21,6 +21,7 @@ from omnidapter_server.dependencies import (
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.models.provider_config import ProviderConfig
+from omnidapter_server.origin_policy import parse_allowed_origin_domains, validate_redirect_url
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     ConnectionResponse,
@@ -89,6 +90,26 @@ async def get_connection(
     return conn
 
 
+def _validate_redirect_url_or_422(
+    redirect_url: str,
+    request: Request,
+    settings: Settings,
+) -> None:
+    allowed_domains = parse_allowed_origin_domains(settings.omnidapter_allowed_origin_domains)
+    try:
+        validate_redirect_url(
+            redirect_url,
+            request_host=request.url.hostname,
+            allowed_domain_patterns=allowed_domains,
+            env=settings.omnidapter_env,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_redirect_url", "message": str(exc)},
+        ) from exc
+
+
 @router.post("", status_code=201)
 async def create_connection(
     body: CreateConnectionRequest,
@@ -100,6 +121,8 @@ async def create_connection(
     request_id: str = Depends(get_request_id),
 ):
     """Create a new connection and begin the OAuth flow."""
+    _validate_redirect_url_or_422(body.redirect_url, request, settings)
+
     provider_config = await _get_provider_config(body.provider, session)
 
     # Enforce fallback connection limit when using the server's own OAuth app
@@ -236,6 +259,7 @@ async def delete_connection(
 async def reauthorize_connection(
     connection_id: str,
     body: ReauthorizeConnectionRequest,
+    request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
@@ -243,6 +267,7 @@ async def reauthorize_connection(
     request_id: str = Depends(get_request_id),
 ):
     conn = await get_connection(connection_id, session)
+    _validate_redirect_url_or_422(body.redirect_url, request, settings)
 
     if conn.status == ConnectionStatus.REVOKED:
         raise HTTPException(

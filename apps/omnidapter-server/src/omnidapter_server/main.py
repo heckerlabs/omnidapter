@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from omnidapter_server.config import get_settings
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
+from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
 from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
 
 app = FastAPI(
@@ -22,16 +23,14 @@ app = FastAPI(
 app.add_middleware(RequestIdMiddleware)
 
 settings = get_settings()
-cors_origins = [
-    origin.strip() for origin in settings.omnidapter_cors_origins.split(",") if origin.strip()
-]
-if not cors_origins:
-    cors_origins = ["*"]
+allowed_domain_patterns = parse_allowed_origin_domains(settings.omnidapter_allowed_origin_domains)
+cors_origins, allow_origin_regex, allow_credentials = build_cors_settings(allowed_domain_patterns)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials="*" not in cors_origins,
+    allow_origin_regex=allow_origin_regex,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

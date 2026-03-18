@@ -147,10 +147,9 @@ class OAuthHelper:
         )
 
         auth_logger.info(
-            "OAuth begin: provider=%r connection_id=%r state=%r",
+            "OAuth begin: provider=%r connection_id=%r",
             provider,
             connection_id,
-            state_id,
         )
 
         return OAuthBeginResult(

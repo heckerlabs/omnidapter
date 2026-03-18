@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import re
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,8 +14,40 @@ from omnidapter_server.dependencies import get_auth_context as _server_get_auth_
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
 
+from omnidapter_hosted.config import get_hosted_settings
 from omnidapter_hosted.dependencies import get_hosted_auth_context
 from omnidapter_hosted.routers import api_keys, memberships, tenants, users
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_allowed_origin_domains(raw: str) -> list[str]:
+    domains = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    if not domains:
+        domains = ["*"]
+    if domains == ["*"]:
+        logger.warning(
+            "OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS is not configured; "
+            "defaulting to '*'. This is permissive and should be restricted in production."
+        )
+    return domains
+
+
+def _build_cors_settings(allowed_domain_patterns: list[str]) -> tuple[list[str], str | None, bool]:
+    if "*" in allowed_domain_patterns:
+        return ["*"], None, False
+
+    regex_parts: list[str] = []
+    for pattern in allowed_domain_patterns:
+        if pattern.startswith("*."):
+            suffix = re.escape(pattern[2:])
+            regex_parts.append(rf"https?://(?:[A-Za-z0-9-]+\.)+{suffix}(?::\d+)?")
+        else:
+            regex_parts.append(rf"https?://{re.escape(pattern)}(?::\d+)?")
+
+    allow_origin_regex = "^(" + "|".join(regex_parts) + ")$"
+    return [], allow_origin_regex, True
+
 
 app = FastAPI(
     title="Omnidapter Hosted",
@@ -27,10 +62,15 @@ app.dependency_overrides[_server_get_auth_context] = get_hosted_auth_context
 
 # Middleware
 app.add_middleware(RequestIdMiddleware)
+settings = get_hosted_settings()
+allowed_domain_patterns = _parse_allowed_origin_domains(settings.omnidapter_allowed_origin_domains)
+cors_origins, allow_origin_regex, allow_credentials = _build_cors_settings(allowed_domain_patterns)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_origin_regex=allow_origin_regex,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

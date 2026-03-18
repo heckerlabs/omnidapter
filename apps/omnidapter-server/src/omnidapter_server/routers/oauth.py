@@ -17,6 +17,7 @@ from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.models.provider_config import ProviderConfig
+from omnidapter_server.origin_policy import parse_allowed_origin_domains, validate_redirect_url
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.connection_health import transition_to_active
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
@@ -41,6 +42,26 @@ def _append_query_params(url: str, **params: str) -> str:
     return urlunsplit(
         (parts.scheme, parts.netloc, parts.path, urlencode(query_params), parts.fragment)
     )
+
+
+def _validate_redirect_url_or_400(
+    redirect_url: str,
+    request: Request,
+    settings: Settings,
+) -> None:
+    allowed_domains = parse_allowed_origin_domains(settings.omnidapter_allowed_origin_domains)
+    try:
+        validate_redirect_url(
+            redirect_url,
+            request_host=request.url.hostname,
+            allowed_domain_patterns=allowed_domains,
+            env=settings.omnidapter_env,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_redirect_url", "message": str(exc)},
+        ) from exc
 
 
 @router.get("/{provider_key}/callback")
@@ -70,6 +91,7 @@ async def oauth_callback(
                 if conn:
                     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
                     if redirect_url:
+                        _validate_redirect_url_or_400(redirect_url, request, settings)
                         return RedirectResponse(
                             url=_append_query_params(
                                 redirect_url,
@@ -143,6 +165,7 @@ async def oauth_callback(
 
     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
     if redirect_url:
+        _validate_redirect_url_or_400(redirect_url, request, settings)
         return RedirectResponse(url=_append_query_params(redirect_url, connection_id=connection_id))
 
     return {"status": "connected", "connection_id": connection_id}

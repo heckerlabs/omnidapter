@@ -9,11 +9,9 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
 COPY packages/ packages/
 COPY apps/omnidapter-server/ apps/omnidapter-server/
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Install production dependencies and set up non-root user
 RUN uv sync --frozen --no-dev \
- && chmod +x /usr/local/bin/docker-entrypoint.sh \
  && useradd --system --no-create-home --shell /bin/false appuser \
  && chown -R appuser:appuser /app
 
@@ -22,4 +20,4 @@ USER appuser
 # Cloud Run and standard deployments both respect PORT
 EXPOSE 8000
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["uv", "run", "uvicorn", "omnidapter_server.main:app", "--host", "0.0.0.0", "--port", "8000"]
