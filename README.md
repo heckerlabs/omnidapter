@@ -69,6 +69,11 @@ uv run omnidapter-bootstrap --name "Default" --key-name "local"
 uv run omnidapter-server
 ```
 
+Docker Compose file locations:
+
+- `apps/omnidapter-server/docker-compose.yml` (self-hosted server)
+- `apps/omnidapter-hosted/docker-compose.yml` (hosted multi-tenant app)
+
 Then call it:
 
 ```bash
