@@ -18,7 +18,7 @@ This page covers practical self-hosting guidance for `omnidapter-server`.
 ## Critical environment variables
 
 - `OMNIDAPTER_DATABASE_URL`
-- `OMNIDAPTER_ENCRYPTION_KEY`
+- `OMNIDAPTER_ENCRYPTION_KEY` (required in production)
 - `OMNIDAPTER_BASE_URL`
 - `OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS`
 
