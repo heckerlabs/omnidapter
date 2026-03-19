@@ -203,7 +203,7 @@ async def test_reauthorize_connection_flow_unions_scopes() -> None:
             load_connection=AsyncMock(return_value=conn),
             load_provider_config=AsyncMock(return_value=SimpleNamespace(scopes=["b", "c"])),
             build_omni=AsyncMock(return_value=omni),
-    )
+        )
 
     assert result.authorization_url == "https://auth2"
     assert oauth_begin.await_args is not None
