@@ -19,7 +19,7 @@ uv sync
 At minimum set:
 
 - `OMNIDAPTER_DATABASE_URL`
-- `OMNIDAPTER_ENCRYPTION_KEY`
+- `OMNIDAPTER_ENCRYPTION_KEY` (optional only if `OMNIDAPTER_ENV=LOCAL`)
 - `OMNIDAPTER_BASE_URL`
 
 See [Configuration](configuration.md) for all settings.
@@ -40,6 +40,13 @@ uv run omnidapter-bootstrap --name "Default" --key-name "local"
 
 ```bash
 uv run omnidapter-server
+```
+
+Optional Docker Compose path:
+
+```bash
+cp apps/omnidapter-server/.env.example apps/omnidapter-server/.env
+docker compose -f apps/omnidapter-server/docker-compose.yml up -d --build
 ```
 
 Server endpoints:
