@@ -24,7 +24,7 @@ def get_engine():
         settings = get_settings()
         _engine = create_async_engine(
             settings.omnidapter_database_url,
-            echo=settings.omnidapter_env == "development",
+            echo=settings.omnidapter_env != "PROD",
         )
     return _engine
 

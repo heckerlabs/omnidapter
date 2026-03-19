@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from omnidapter_server.config import normalize_omnidapter_env
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -32,8 +34,13 @@ class HostedSettings(BaseSettings):
     omnidapter_encryption_key_previous: str = ""
     omnidapter_oauth_state_redis_url: str = ""
     omnidapter_base_url: str = "http://localhost:8000"
-    omnidapter_env: str = "development"
+    omnidapter_env: str = "DEV"
     omnidapter_allowed_origin_domains: str = "*"
+
+    @field_validator("omnidapter_env", mode="before")
+    @classmethod
+    def _normalize_env(cls, value: str | None) -> str:
+        return normalize_omnidapter_env(value)
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
 

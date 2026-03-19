@@ -9,4 +9,4 @@ os.environ.setdefault(
     "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
 )
 os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://localhost/omnidapter_test")
-os.environ.setdefault("OMNIDAPTER_ENV", "test")
+os.environ.setdefault("OMNIDAPTER_ENV", "DEV")

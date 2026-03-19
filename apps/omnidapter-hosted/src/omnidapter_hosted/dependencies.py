@@ -50,6 +50,7 @@ def get_encryption_service(
     return EncryptionService(
         current_key=settings.omnidapter_encryption_key,
         previous_key=settings.omnidapter_encryption_key_previous,
+        allow_plaintext_fallback=settings.omnidapter_env == "LOCAL",
     )
 
 

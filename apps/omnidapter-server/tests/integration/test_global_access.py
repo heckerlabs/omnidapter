@@ -59,7 +59,7 @@ async def second_client(
         return Settings(
             omnidapter_database_url="",
             omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="test",
+            omnidapter_env="DEV",
         )
 
     app.dependency_overrides[get_session] = override_session
@@ -156,7 +156,7 @@ async def test_unauthenticated_request_rejected(client: AsyncClient):
         return Settings(
             omnidapter_database_url="",
             omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="test",
+            omnidapter_env="DEV",
         )
 
     app.dependency_overrides[get_settings] = override_settings

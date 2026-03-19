@@ -2,7 +2,27 @@
 
 from __future__ import annotations
 
+import logging
+
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
+
+_ENV_ALIASES = {
+    "DEVELOPMENT": "DEV",
+    "PRODUCTION": "PROD",
+}
+_VALID_ENVS = frozenset({"DEV", "LOCAL", "PROD"})
+_warned_local_plaintext_mode = False
+
+
+def normalize_omnidapter_env(value: str | None) -> str:
+    normalized = (value or "DEV").strip().upper()
+    normalized = _ENV_ALIASES.get(normalized, normalized)
+    if normalized not in _VALID_ENVS:
+        raise ValueError("OMNIDAPTER_ENV must be one of DEV, LOCAL, PROD")
+    return normalized
 
 
 class Settings(BaseSettings):
@@ -35,8 +55,34 @@ class Settings(BaseSettings):
 
     # App
     omnidapter_base_url: str = "http://localhost:8000"
-    omnidapter_env: str = "development"
+    omnidapter_env: str = "DEV"
     omnidapter_allowed_origin_domains: str = "*"
+
+    @field_validator("omnidapter_env", mode="before")
+    @classmethod
+    def _normalize_env(cls, value: str | None) -> str:
+        return normalize_omnidapter_env(value)
+
+    @model_validator(mode="after")
+    def _warn_local_plaintext_mode(self) -> Settings:
+        global _warned_local_plaintext_mode
+
+        if self.omnidapter_env != "LOCAL" and not self.omnidapter_encryption_key.strip():
+            raise ValueError("OMNIDAPTER_ENCRYPTION_KEY is required unless OMNIDAPTER_ENV=LOCAL")
+
+        if (
+            self.omnidapter_env == "LOCAL"
+            and not self.omnidapter_encryption_key.strip()
+            and not _warned_local_plaintext_mode
+        ):
+            logger.warning(
+                "!!! SECURITY WARNING !!! OMNIDAPTER_ENCRYPTION_KEY is not set and "
+                "OMNIDAPTER_ENV=LOCAL. Sensitive credentials will be stored in plaintext. "
+                "Use LOCAL only for local development."
+            )
+            _warned_local_plaintext_mode = True
+
+        return self
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
 

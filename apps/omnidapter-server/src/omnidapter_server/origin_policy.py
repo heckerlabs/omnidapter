@@ -12,6 +12,13 @@ _LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 _warned_default = False
 
 
+def _is_prod_env(env: str) -> bool:
+    normalized = env.strip().upper()
+    if normalized == "PRODUCTION":
+        return True
+    return normalized == "PROD"
+
+
 def parse_allowed_origin_domains(raw: str) -> list[str]:
     """Parse comma-separated domain patterns.
 
@@ -102,5 +109,5 @@ def validate_redirect_url(
     if not is_host_allowed(parts.hostname, allowed_domain_patterns):
         raise ValueError("redirect_url host is not allowed")
 
-    if env != "development" and parts.scheme != "https" and parts.hostname not in _LOCAL_HOSTS:
-        raise ValueError("redirect_url must use https outside development")
+    if _is_prod_env(env) and parts.scheme != "https" and parts.hostname not in _LOCAL_HOSTS:
+        raise ValueError("redirect_url must use https when OMNIDAPTER_ENV=PROD")

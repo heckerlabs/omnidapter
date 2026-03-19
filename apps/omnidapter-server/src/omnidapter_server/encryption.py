@@ -103,17 +103,48 @@ def decrypt(
     raise ValueError(f"Failed to decrypt token: {last_err}")
 
 
+def _looks_like_encrypted_token(token: str) -> bool:
+    if not token.startswith(f"{_KEY_VERSION_CURRENT}{_SEPARATOR}") and not token.startswith(
+        f"{_KEY_VERSION_PREVIOUS}{_SEPARATOR}"
+    ):
+        return False
+
+    try:
+        _, encoded = token.split(_SEPARATOR, 1)
+        raw = _decode_urlsafe_base64(encoded)
+    except Exception:
+        return False
+
+    return len(raw) > 12
+
+
 class EncryptionService:
     """Encryption service that reads keys from settings."""
 
-    def __init__(self, current_key: str, previous_key: str = "") -> None:
+    def __init__(
+        self,
+        current_key: str,
+        previous_key: str = "",
+        *,
+        allow_plaintext_fallback: bool = False,
+    ) -> None:
         self._current_key = current_key
         self._previous_key = previous_key
+        self._allow_plaintext_fallback = allow_plaintext_fallback and not current_key.strip()
 
     def encrypt(self, plaintext: str) -> str:
+        if self._allow_plaintext_fallback:
+            return plaintext
         return encrypt(plaintext, self._current_key)
 
     def decrypt(self, token: str) -> str:
+        if self._allow_plaintext_fallback:
+            if _looks_like_encrypted_token(token):
+                raise ValueError(
+                    "Encrypted token detected, but OMNIDAPTER_ENCRYPTION_KEY is not set "
+                    "in LOCAL mode"
+                )
+            return token
         return decrypt(token, self._current_key, self._previous_key)
 
     @classmethod
@@ -124,4 +155,5 @@ class EncryptionService:
         return cls(
             current_key=s.omnidapter_encryption_key,
             previous_key=s.omnidapter_encryption_key_previous,
+            allow_plaintext_fallback=s.omnidapter_env == "LOCAL",
         )
