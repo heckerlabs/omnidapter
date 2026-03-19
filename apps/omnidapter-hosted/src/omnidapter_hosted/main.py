@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Import server's auth dependency so we can override it
+from omnidapter_server.config import get_settings as _server_get_settings
 from omnidapter_server.dependencies import get_auth_context as _server_get_auth_context
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.routers import providers
@@ -68,6 +69,7 @@ app = FastAPI(
 
 # Override server's auth with hosted auth (resolves tenant + rate limits)
 app.dependency_overrides[_server_get_auth_context] = get_hosted_auth_context
+app.dependency_overrides[_server_get_settings] = get_hosted_settings
 
 # Middleware
 app.add_middleware(RequestIdMiddleware)
@@ -118,4 +120,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def run() -> None:
     import uvicorn
 
-    uvicorn.run("omnidapter_hosted.main:app", host="0.0.0.0", port=8000, reload=True)
+    settings = get_hosted_settings()
+    uvicorn.run(
+        "omnidapter_hosted.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True,
+    )

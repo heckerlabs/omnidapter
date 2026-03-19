@@ -15,6 +15,8 @@ from omnidapter_hosted.main import (
     run,
     unhandled_exception_handler,
 )
+from omnidapter_server.config import Settings as ServerSettings
+from omnidapter_server.config import get_settings as server_get_settings
 from omnidapter_server.dependencies import get_auth_context as server_get_auth_context
 from starlette.requests import Request
 
@@ -32,8 +34,33 @@ def test_get_hosted_settings_is_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     hosted_config._settings = None
 
 
+def test_hosted_settings_extends_server_settings() -> None:
+    assert issubclass(hosted_config.HostedSettings, ServerSettings)
+
+
 def test_server_auth_dependency_is_overridden() -> None:
     assert app.dependency_overrides[server_get_auth_context] is get_hosted_auth_context
+
+
+def test_server_settings_dependency_is_overridden() -> None:
+    assert app.dependency_overrides[server_get_settings] is hosted_config.get_hosted_settings
+
+
+def test_openapi_exposes_bearer_auth_scheme() -> None:
+    schema = app.openapi()
+
+    security_schemes = schema["components"]["securitySchemes"]
+    bearer = security_schemes["BearerAuth"]
+
+    assert bearer["type"] == "http"
+    assert bearer["scheme"] == "bearer"
+
+
+def test_openapi_protected_hosted_endpoint_uses_bearer_auth() -> None:
+    schema = app.openapi()
+
+    connections_get = schema["paths"]["/v1/connections"]["get"]
+    assert {"BearerAuth": []} in connections_get["security"]
 
 
 @pytest.mark.asyncio

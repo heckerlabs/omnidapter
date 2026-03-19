@@ -1,6 +1,6 @@
 # Configuration
 
-All settings are environment-driven (`OMNIDAPTER_*`).
+Settings are environment-driven (`OMNIDAPTER_*`) plus runtime bind vars (`HOST`, `PORT`).
 
 ## Required
 
@@ -36,6 +36,8 @@ Priority order:
 
 ## Runtime Behavior
 
+- `HOST` (default `0.0.0.0`)
+- `PORT` (default `8000`)
 - `OMNIDAPTER_FALLBACK_CONNECTION_LIMIT` (default `5`)
 - `OMNIDAPTER_REAUTH_THRESHOLD` (default `3`)
 - `OMNIDAPTER_ENV` (default `DEV`; values: `DEV`, `LOCAL`, `PROD`)

@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_server.config import Settings, get_settings
@@ -15,6 +16,11 @@ from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import authenticate_api_key, update_last_used
 
 logger = logging.getLogger(__name__)
+_bearer_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="BearerAuth",
+    description="Use `Authorization: Bearer <API_KEY>`",
+)
 
 
 def get_encryption_service(
@@ -35,17 +41,23 @@ class AuthContext:
 
 
 async def get_auth_context(
-    authorization: Annotated[str | None, Header()] = None,
+    request: Request,
+    bearer_credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Security(_bearer_scheme),
+    ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> AuthContext:
     """Extract and validate API key from Authorization header."""
+    authorization = request.headers.get("Authorization")
+
     if not authorization:
         raise HTTPException(
             status_code=401,
             detail={"code": "invalid_api_key", "message": "Missing Authorization header"},
         )
 
-    if not authorization.startswith("Bearer "):
+    if bearer_credentials is None:
         raise HTTPException(
             status_code=401,
             detail={
@@ -54,7 +66,7 @@ async def get_auth_context(
             },
         )
 
-    raw_key = authorization[7:]
+    raw_key = bearer_credentials.credentials
     api_key = await authenticate_api_key(raw_key, session)
 
     if api_key is None:

@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     omnidapter_reauth_threshold: int = 3
 
     # App
+    host: str = "0.0.0.0"
+    port: int = 8000
     omnidapter_base_url: str = "http://localhost:8000"
     omnidapter_env: str = "DEV"
     omnidapter_allowed_origin_domains: str = "*"
@@ -84,7 +86,12 @@ class Settings(BaseSettings):
 
         return self
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+        "extra": "ignore",
+    }
 
 
 _settings: Settings | None = None

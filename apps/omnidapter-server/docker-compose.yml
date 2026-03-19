@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: omnidapter
       POSTGRES_USER: omnidapter
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_ME}
+      POSTGRES_PASSWORD: omnidapter
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -15,21 +15,37 @@ services:
       retries: 10
       start_period: 10s
 
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/omnidapter-server/Dockerfile
+    restart: "no"
+    environment:
+      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
+      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
+      OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "-c", "cd apps/omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head"]
+
   api:
     build:
       context: ../..
       dockerfile: apps/omnidapter-server/Dockerfile
     restart: unless-stopped
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "${PORT:-8000}:${PORT:-8000}"
     environment:
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:${DB_PASSWORD:-CHANGE_ME}@db:5432/omnidapter
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8000}
+      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
       OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
-      OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:8000}
+      OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:${PORT:-8000}}
       OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
       OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
-      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       # OAuth provider credentials (at least one required)
       OMNIDAPTER_GOOGLE_CLIENT_ID: ${OMNIDAPTER_GOOGLE_CLIENT_ID:-}
       OMNIDAPTER_GOOGLE_CLIENT_SECRET: ${OMNIDAPTER_GOOGLE_CLIENT_SECRET:-}
@@ -41,16 +57,11 @@ services:
       # Optional server behavior
       OMNIDAPTER_FALLBACK_CONNECTION_LIMIT: ${OMNIDAPTER_FALLBACK_CONNECTION_LIMIT:-5}
       OMNIDAPTER_REAUTH_THRESHOLD: ${OMNIDAPTER_REAUTH_THRESHOLD:-3}
-      # OAuth state store (optional)
-      OMNIDAPTER_OAUTH_STATE_REDIS_URL: ${OMNIDAPTER_OAUTH_STATE_REDIS_URL:-}
-      OMNIDAPTER_OAUTH_STATE_DB_URL: ${OMNIDAPTER_OAUTH_STATE_DB_URL:-}
     depends_on:
       db:
         condition: service_healthy
-    command: >-
-      sh -c "if [ \"$${RUN_MIGRATIONS}\" = \"true\" ]; then
-      (cd apps/omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head); fi
-      && exec /app/.venv/bin/uvicorn omnidapter_server.main:app --host 0.0.0.0 --port 8000"
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

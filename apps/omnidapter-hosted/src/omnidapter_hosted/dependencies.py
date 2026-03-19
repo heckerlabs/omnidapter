@@ -5,7 +5,8 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from omnidapter_server.config import Settings as ServerSettings
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
@@ -16,6 +17,12 @@ from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.services.auth import authenticate_hosted_key, update_key_last_used
 from omnidapter_hosted.services.billing import check_rate_limit
+
+_bearer_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="BearerAuth",
+    description="Use `Authorization: Bearer <API_KEY>`",
+)
 
 
 class HostedAuthContext:
@@ -39,9 +46,7 @@ class HostedAuthContext:
 
 
 def get_server_settings() -> ServerSettings:
-    from omnidapter_server.config import get_settings
-
-    return get_settings()
+    return get_hosted_settings()
 
 
 def get_encryption_service(
@@ -56,17 +61,23 @@ def get_encryption_service(
 
 async def get_hosted_auth_context(
     request: Request,
-    authorization: Annotated[str | None, Header()] = None,
+    bearer_credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Security(_bearer_scheme),
+    ] = None,
     session: AsyncSession = Depends(get_session),
     hosted_settings: HostedSettings = Depends(get_hosted_settings),
 ) -> HostedAuthContext:
     """Authenticate hosted API key and enforce rate limits."""
+    authorization = request.headers.get("Authorization")
+
     if not authorization:
         raise HTTPException(
             status_code=401,
             detail={"code": "invalid_api_key", "message": "Missing Authorization header"},
         )
-    if not authorization.startswith("Bearer "):
+
+    if bearer_credentials is None:
         raise HTTPException(
             status_code=401,
             detail={
@@ -75,7 +86,7 @@ async def get_hosted_auth_context(
             },
         )
 
-    raw_key = authorization[7:]
+    raw_key = bearer_credentials.credentials
     result = await authenticate_hosted_key(raw_key, session)
 
     if result is None:

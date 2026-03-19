@@ -21,5 +21,13 @@ Use this ID for troubleshooting and log correlation.
 
 ## Key lifecycle
 
-Use `omnidapter-bootstrap` initially to create a key.
+Use `omnidapter-bootstrap` initially to create a key:
+
+```bash
+uv run omnidapter-bootstrap --name "local"
+```
+
+Bootstrap inserts a row in `api_keys` with key name/prefix/hash and prints the
+raw key once. Store that raw key securely; it is not retrievable later.
+
 Key last-used timestamps are updated on authenticated requests.

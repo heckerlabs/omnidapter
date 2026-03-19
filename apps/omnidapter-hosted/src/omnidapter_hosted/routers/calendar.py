@@ -14,7 +14,6 @@ from omnidapter import (
     Omnidapter,
     UpdateEventRequest,
 )
-from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
@@ -29,6 +28,7 @@ from omnidapter_server.stores.factory import build_oauth_state_store
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from omnidapter_hosted.config import HostedSettings, get_hosted_settings
 from omnidapter_hosted.dependencies import (
     HostedAuthContext,
     get_encryption_service,
@@ -44,7 +44,7 @@ router = APIRouter(tags=["calendar"])
 async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
-    settings: Settings,
+    settings: HostedSettings,
     tenant_id: uuid.UUID,
     provider_key: str,
 ) -> Omnidapter:
@@ -111,7 +111,7 @@ async def list_calendars(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
     result = await execute_calendar_operation(
@@ -139,7 +139,7 @@ async def list_events(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
     calendar_id: str = Query(...),
     start: datetime | None = Query(None),
@@ -183,7 +183,7 @@ async def get_event(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
     calendar_id: str = Query(...),
 ):
@@ -213,7 +213,7 @@ async def create_event(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
     result = await execute_calendar_operation(
@@ -243,7 +243,7 @@ async def update_event(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
     result = await execute_calendar_operation(
@@ -272,7 +272,7 @@ async def delete_event(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     calendar_id: str = Query(...),
 ):
     await execute_calendar_operation(
@@ -299,7 +299,7 @@ async def get_availability(
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
     calendar_id: str = Query(...),
     start: datetime = Query(...),

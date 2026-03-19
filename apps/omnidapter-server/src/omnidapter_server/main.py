@@ -63,4 +63,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 def run() -> None:
     import uvicorn
 
-    uvicorn.run("omnidapter_server.main:app", host="0.0.0.0", port=8000, reload=True)
+    settings = get_settings()
+    uvicorn.run(
+        "omnidapter_server.main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True,
+    )

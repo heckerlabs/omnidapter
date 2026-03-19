@@ -21,7 +21,7 @@ ENV UV_CACHE_DIR=/home/appuser/.cache/uv
 
 USER appuser
 
-# Cloud Run and standard deployments both respect PORT
+# Allow runtime host/port override via HOST and PORT
 EXPOSE 8000
 
-CMD ["/app/.venv/bin/uvicorn", "omnidapter_server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec /app/.venv/bin/uvicorn omnidapter_server.main:app --host ${HOST:-0.0.0.0} --port ${PORT:-8000}"]
