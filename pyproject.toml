@@ -6,8 +6,8 @@ requires-python = ">=3.10"
 [tool.uv.workspace]
 members = ["packages/*", "apps/*"]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
@@ -17,7 +17,60 @@ dev-dependencies = [
     "ruff>=0.4",
     "pyright>=1.1.408",
     "mypy>=1.10",
+    "poethepoet>=0.31.1",
 ]
+
+[tool.poe.tasks.format]
+help = "Format code with Ruff"
+cmd = "ruff format ."
+
+[tool.poe.tasks.lint]
+help = "Run Ruff lint checks"
+cmd = "ruff check ."
+
+[tool.poe.tasks.typecheck]
+help = "Run Pyright type checks"
+cmd = "pyright"
+
+[tool.poe.tasks.build]
+help = "Build all workspace packages"
+cmd = "uv build --all-packages"
+
+[tool.poe.tasks.test]
+help = "Run full test suite"
+cmd = "pytest"
+
+[tool.poe.tasks.check]
+help = "Run format, lint, typecheck, tests, and builds"
+sequence = ["format", "lint", "typecheck", "build", "test"]
+
+[tool.poe.tasks.server-up]
+help = "Start local server compose stack"
+cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up -d --build"
+
+[tool.poe.tasks.server-down]
+help = "Stop local server compose stack"
+cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml down"
+
+[tool.poe.tasks.server-logs]
+help = "Tail server API logs"
+cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml logs -f api"
+
+# [tool.poe.tasks.server-bootstrap]
+# help = "Create local API key in server compose"
+# cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml run --rm -e OMNIDAPTER_ENV=LOCAL api /app/.venv/bin/omnidapter-bootstrap --name local"
+
+[tool.poe.tasks.hosted-up]
+help = "Start local hosted compose stack"
+cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml up -d --build"
+
+[tool.poe.tasks.hosted-down]
+help = "Stop local hosted compose stack"
+cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml down"
+
+[tool.poe.tasks.hosted-logs]
+help = "Tail hosted API logs"
+cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml logs -f api"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

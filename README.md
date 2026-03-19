@@ -95,10 +95,17 @@ Server docs:
 ## Development
 
 ```bash
-uv run ruff check .
-uv run pyright
-uv run pytest
+uv run poe --help
+uv run poe check
 ```
+
+`uv run poe check` runs format, lint, typecheck, tests, and package builds.
+
+Useful task shortcuts:
+
+- `uv run poe server-up`
+- `uv run poe server-bootstrap`
+- `uv run poe hosted-up`
 
 ## License
 
