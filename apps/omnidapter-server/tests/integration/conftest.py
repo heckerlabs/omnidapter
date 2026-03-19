@@ -17,6 +17,7 @@ from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.main import app
 from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import generate_api_key
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 TEST_DB_URL = os.environ.get(
@@ -72,13 +73,28 @@ async def setup_database():
 
 @pytest_asyncio.fixture
 async def session(setup_database) -> AsyncIterator[AsyncSession]:
-    """Transactional session that rolls back after each test."""
+    """Transactional session isolated per test, including commit paths."""
     engine = get_test_engine()
-    async with engine.begin() as conn:
+    async with engine.connect() as conn:
+        outer_tx = await conn.begin()
         sess = AsyncSession(bind=conn, expire_on_commit=False)
+
+        await conn.begin_nested()
+
+        @event.listens_for(sess.sync_session, "after_transaction_end")
+        def _restart_savepoint(sync_session, transaction) -> None:  # type: ignore[no-untyped-def]
+            parent = getattr(transaction, "_parent", None)
+            if (
+                transaction.nested
+                and (parent is None or not parent.nested)
+                and conn.sync_connection is not None
+            ):
+                conn.sync_connection.begin_nested()
+
         yield sess
-        await sess.rollback()
+        event.remove(sess.sync_session, "after_transaction_end", _restart_savepoint)
         await sess.close()
+        await outer_tx.rollback()
 
 
 @pytest.fixture
