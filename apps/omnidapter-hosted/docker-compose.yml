@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: omnidapter
+      POSTGRES_USER: omnidapter
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_ME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnidapter -d omnidapter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/omnidapter-hosted/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:${DB_PASSWORD:-CHANGE_ME}@db:5432/omnidapter
+      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
+      OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
+      OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:8000}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-PROD}
+      OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
+      OMNIDAPTER_OAUTH_STATE_REDIS_URL: ${OMNIDAPTER_OAUTH_STATE_REDIS_URL:-redis://redis:6379/0}
+      HOSTED_RATE_LIMIT_REDIS_URL: ${HOSTED_RATE_LIMIT_REDIS_URL:-redis://redis:6379/1}
+      OMNIDAPTER_OAUTH_STATE_DB_URL: ${OMNIDAPTER_OAUTH_STATE_DB_URL:-}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
+      # Optional OAuth fallback app credentials
+      OMNIDAPTER_GOOGLE_CLIENT_ID: ${OMNIDAPTER_GOOGLE_CLIENT_ID:-}
+      OMNIDAPTER_GOOGLE_CLIENT_SECRET: ${OMNIDAPTER_GOOGLE_CLIENT_SECRET:-}
+      OMNIDAPTER_MICROSOFT_CLIENT_ID: ${OMNIDAPTER_MICROSOFT_CLIENT_ID:-}
+      OMNIDAPTER_MICROSOFT_CLIENT_SECRET: ${OMNIDAPTER_MICROSOFT_CLIENT_SECRET:-}
+      OMNIDAPTER_ZOHO_CLIENT_ID: ${OMNIDAPTER_ZOHO_CLIENT_ID:-}
+      OMNIDAPTER_ZOHO_CLIENT_SECRET: ${OMNIDAPTER_ZOHO_CLIENT_SECRET:-}
+      # Hosted-specific integrations
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      WORKOS_API_KEY: ${WORKOS_API_KEY:-}
+      WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID:-}
+      # Hosted runtime behavior
+      HOSTED_RATE_LIMIT_FREE: ${HOSTED_RATE_LIMIT_FREE:-60}
+      HOSTED_RATE_LIMIT_PAID: ${HOSTED_RATE_LIMIT_PAID:-600}
+      HOSTED_FREE_TIER_CALLS: ${HOSTED_FREE_TIER_CALLS:-1000}
+      OMNIDAPTER_APPLE_ENABLED: ${OMNIDAPTER_APPLE_ENABLED:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: >-
+      sh -c "if [ \"$${RUN_MIGRATIONS}\" = \"true\" ]; then
+      (cd apps/omnidapter-hosted && /app/.venv/bin/alembic -c alembic.ini upgrade head); fi
+      && exec /app/.venv/bin/uvicorn omnidapter_hosted.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  pgdata:
