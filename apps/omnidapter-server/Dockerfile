@@ -10,14 +10,18 @@ COPY pyproject.toml uv.lock ./
 COPY packages/ packages/
 COPY apps/omnidapter-server/ apps/omnidapter-server/
 
-# Install production dependencies and set up non-root user
-RUN uv sync --frozen --no-dev \
- && useradd --system --no-create-home --shell /bin/false appuser \
- && chown -R appuser:appuser /app
+# Install production dependencies for server package and set up non-root user
+RUN uv sync --frozen --no-dev --package omnidapter-server \
+ && useradd --system --create-home --home-dir /home/appuser --shell /bin/false appuser \
+ && mkdir -p /home/appuser/.cache/uv \
+ && chown -R appuser:appuser /app /home/appuser
+
+ENV HOME=/home/appuser
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
 
 USER appuser
 
 # Cloud Run and standard deployments both respect PORT
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "omnidapter_server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/.venv/bin/uvicorn", "omnidapter_server.main:app", "--host", "0.0.0.0", "--port", "8000"]

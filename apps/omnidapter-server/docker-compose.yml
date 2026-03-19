@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: omnidapter
       POSTGRES_USER: omnidapter
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_ME}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,16 +17,17 @@ services:
 
   api:
     build:
-      context: .
+      context: ../..
       dockerfile: apps/omnidapter-server/Dockerfile
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:${DB_PASSWORD:?DB_PASSWORD is required}@db:5432/omnidapter
-      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:?OMNIDAPTER_ENCRYPTION_KEY is required}
+      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:${DB_PASSWORD:-CHANGE_ME}@db:5432/omnidapter
+      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
+      OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
       OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:8000}
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-production}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
       OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}
       # OAuth provider credentials (at least one required)
@@ -36,6 +37,7 @@ services:
       OMNIDAPTER_MICROSOFT_CLIENT_SECRET: ${OMNIDAPTER_MICROSOFT_CLIENT_SECRET:-}
       OMNIDAPTER_ZOHO_CLIENT_ID: ${OMNIDAPTER_ZOHO_CLIENT_ID:-}
       OMNIDAPTER_ZOHO_CLIENT_SECRET: ${OMNIDAPTER_ZOHO_CLIENT_SECRET:-}
+      OMNIDAPTER_APPLE_ENABLED: ${OMNIDAPTER_APPLE_ENABLED:-}
       # Optional server behavior
       OMNIDAPTER_FALLBACK_CONNECTION_LIMIT: ${OMNIDAPTER_FALLBACK_CONNECTION_LIMIT:-5}
       OMNIDAPTER_REAUTH_THRESHOLD: ${OMNIDAPTER_REAUTH_THRESHOLD:-3}
@@ -46,8 +48,9 @@ services:
       db:
         condition: service_healthy
     command: >-
-      sh -c "if [ \"$${RUN_MIGRATIONS}\" = \"true\" ]; then uv run alembic upgrade head; fi
-      && exec uv run uvicorn omnidapter_server.main:app --host 0.0.0.0 --port 8000"
+      sh -c "if [ \"$${RUN_MIGRATIONS}\" = \"true\" ]; then
+      (cd apps/omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head); fi
+      && exec /app/.venv/bin/uvicorn omnidapter_server.main:app --host 0.0.0.0 --port 8000"
 
 volumes:
   pgdata:
