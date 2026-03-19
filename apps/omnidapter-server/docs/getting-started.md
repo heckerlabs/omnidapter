@@ -33,14 +33,19 @@ uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini
 ## 4) Bootstrap first API key
 
 ```bash
-uv run omnidapter-bootstrap --name "Default" --key-name "local"
+uv run omnidapter-bootstrap --name "local"
 ```
+
+This creates one API key record in the `api_keys` table, stores only a hashed key,
+and prints the raw key once to stdout for you to copy.
 
 ## 5) Start server
 
 ```bash
 uv run omnidapter-server
 ```
+
+`HOST` and `PORT` env vars control the bind address for this command.
 
 Optional Docker Compose path:
 

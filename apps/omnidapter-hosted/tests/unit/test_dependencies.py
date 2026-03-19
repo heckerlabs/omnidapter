@@ -9,6 +9,7 @@ from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from omnidapter_hosted.config import HostedSettings
 from omnidapter_hosted.dependencies import (
     HostedAuthContext,
@@ -52,8 +53,11 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
     )
 
 
-def _request() -> Request:
-    return Request({"type": "http", "method": "GET", "path": "/", "headers": []})
+def _request(authorization: str | None = None) -> Request:
+    headers: list[tuple[bytes, bytes]] = []
+    if authorization is not None:
+        headers.append((b"authorization", authorization.encode()))
+    return Request({"type": "http", "method": "GET", "path": "/", "headers": headers})
 
 
 def test_hosted_auth_context_properties() -> None:
@@ -88,7 +92,7 @@ async def test_get_hosted_auth_context_missing_authorization() -> None:
     with pytest.raises(HTTPException) as exc_info:
         await get_hosted_auth_context(
             request=_request(),
-            authorization=None,
+            bearer_credentials=None,
             session=AsyncMock(),
             hosted_settings=HostedSettings(),
         )
@@ -102,8 +106,8 @@ async def test_get_hosted_auth_context_missing_authorization() -> None:
 async def test_get_hosted_auth_context_invalid_authorization_scheme() -> None:
     with pytest.raises(HTTPException) as exc_info:
         await get_hosted_auth_context(
-            request=_request(),
-            authorization="Token abc",
+            request=_request("Token abc"),
+            bearer_credentials=None,
             session=AsyncMock(),
             hosted_settings=HostedSettings(),
         )
@@ -123,8 +127,11 @@ async def test_get_hosted_auth_context_invalid_key() -> None:
         pytest.raises(HTTPException) as exc_info,
     ):
         await get_hosted_auth_context(
-            request=_request(),
-            authorization="Bearer omni_live_invalid",
+            request=_request("Bearer omni_live_invalid"),
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer",
+                credentials="omni_live_invalid",
+            ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(),
         )
@@ -134,7 +141,7 @@ async def test_get_hosted_auth_context_invalid_key() -> None:
 
 @pytest.mark.asyncio
 async def test_get_hosted_auth_context_rate_limited() -> None:
-    req = _request()
+    req = _request("Bearer omni_live_valid")
     tenant = _tenant()
     api_key = _api_key(tenant.id)
 
@@ -155,7 +162,10 @@ async def test_get_hosted_auth_context_rate_limited() -> None:
     ):
         await get_hosted_auth_context(
             request=req,
-            authorization="Bearer omni_live_valid",
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer",
+                credentials="omni_live_valid",
+            ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(hosted_rate_limit_free=60, hosted_rate_limit_paid=600),
         )
@@ -168,7 +178,7 @@ async def test_get_hosted_auth_context_rate_limited() -> None:
 
 @pytest.mark.asyncio
 async def test_get_hosted_auth_context_success() -> None:
-    req = _request()
+    req = _request("Bearer omni_live_valid")
     tenant = _tenant()
     api_key = _api_key(tenant.id)
     update_last_used = AsyncMock()
@@ -189,7 +199,10 @@ async def test_get_hosted_auth_context_success() -> None:
     ):
         ctx = await get_hosted_auth_context(
             request=req,
-            authorization="Bearer omni_live_valid",
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer",
+                credentials="omni_live_valid",
+            ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(hosted_rate_limit_free=60, hosted_rate_limit_paid=600),
         )

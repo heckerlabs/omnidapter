@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request
 from omnidapter import Omnidapter
-from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
@@ -19,6 +18,7 @@ from omnidapter_server.stores.factory import build_oauth_state_store
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from omnidapter_hosted.config import HostedSettings, get_hosted_settings
 from omnidapter_hosted.dependencies import get_encryption_service
 from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
 from omnidapter_hosted.services.provider_registry import build_hosted_provider_registry
@@ -87,7 +87,7 @@ async def _build_omni(
     connection: Connection,
     session: AsyncSession,
     encryption: EncryptionService,
-    settings: Settings,
+    settings: HostedSettings,
 ) -> Omnidapter:
     tenant_id = await _load_owner_tenant_id(connection.id, session)
     if tenant_id is None:
@@ -120,7 +120,7 @@ async def oauth_callback(
     request: Request,
     session: AsyncSession = Depends(get_session),
     encryption: EncryptionService = Depends(get_encryption_service),
-    settings: Settings = Depends(get_settings),
+    settings: HostedSettings = Depends(get_hosted_settings),
     code: str | None = Query(None),
     state: str | None = Query(None),
     error: str | None = Query(None),

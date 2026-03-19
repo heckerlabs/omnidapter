@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from omnidapter_server.config import normalize_omnidapter_env
-from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from omnidapter_server.config import Settings
 
 
-class HostedSettings(BaseSettings):
-    """Hosted-specific configuration on top of server settings."""
+class HostedSettings(Settings):
+    """Hosted-specific configuration extending server settings."""
 
     # Inherits server DB + encryption config via env vars
 
@@ -27,22 +25,6 @@ class HostedSettings(BaseSettings):
 
     # Free tier call limit per tenant per month (calendar API calls)
     hosted_free_tier_calls: int = 1000
-
-    # Reuse server database URL
-    omnidapter_database_url: str = "postgresql+asyncpg://localhost/omnidapter"
-    omnidapter_encryption_key: str = ""
-    omnidapter_encryption_key_previous: str = ""
-    omnidapter_oauth_state_redis_url: str = ""
-    omnidapter_base_url: str = "http://localhost:8000"
-    omnidapter_env: str = "DEV"
-    omnidapter_allowed_origin_domains: str = "*"
-
-    @field_validator("omnidapter_env", mode="before")
-    @classmethod
-    def _normalize_env(cls, value: str | None) -> str:
-        return normalize_omnidapter_env(value)
-
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": False}
 
 
 _settings: HostedSettings | None = None

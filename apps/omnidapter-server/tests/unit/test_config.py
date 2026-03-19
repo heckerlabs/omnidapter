@@ -13,6 +13,21 @@ from pydantic import ValidationError
 def test_settings_defaults_to_dev() -> None:
     settings = Settings(omnidapter_encryption_key="dummy")
     assert settings.omnidapter_env == "DEV"
+    assert settings.host == "0.0.0.0"
+    assert settings.port == 8000
+
+
+def test_settings_accept_custom_bind_host_and_port() -> None:
+    settings = Settings.model_validate(
+        {
+            "omnidapter_encryption_key": "dummy",
+            "host": "127.0.0.1",
+            "port": "9001",
+        }
+    )
+
+    assert settings.host == "127.0.0.1"
+    assert settings.port == 9001
 
 
 @pytest.mark.parametrize(
@@ -41,6 +56,18 @@ def test_settings_require_encryption_key_outside_local() -> None:
         match="OMNIDAPTER_ENCRYPTION_KEY is required unless OMNIDAPTER_ENV=LOCAL",
     ):
         Settings(omnidapter_env="PROD", omnidapter_encryption_key="")
+
+
+def test_settings_ignore_extra_fields() -> None:
+    settings = Settings.model_validate(
+        {
+            "omnidapter_encryption_key": "dummy",
+            "unexpected_setting": "value",
+        }
+    )
+
+    assert settings.omnidapter_encryption_key == "dummy"
+    assert not hasattr(settings, "unexpected_setting")
 
 
 def test_settings_warn_local_without_encryption_key(caplog: pytest.LogCaptureFixture) -> None:

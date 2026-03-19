@@ -65,7 +65,7 @@ Core docs:
 ```bash
 uv sync
 uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini upgrade head
-uv run omnidapter-bootstrap --name "Default" --key-name "local"
+uv run omnidapter-bootstrap --name "local"
 uv run omnidapter-server
 ```
 
