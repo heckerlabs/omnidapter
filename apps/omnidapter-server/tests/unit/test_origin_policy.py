@@ -47,7 +47,7 @@ def test_validate_redirect_url_accepts_allowed_https_url() -> None:
         "https://app.example.com/callback",
         request_host="api.example.com",
         allowed_domain_patterns=["*.example.com"],
-        env="production",
+        env="PROD",
     )
 
 
@@ -57,17 +57,17 @@ def test_validate_redirect_url_rejects_disallowed_host() -> None:
             "https://evil.com/callback",
             request_host="api.example.com",
             allowed_domain_patterns=["*.example.com"],
-            env="production",
+            env="PROD",
         )
 
 
-def test_validate_redirect_url_requires_https_outside_development() -> None:
+def test_validate_redirect_url_requires_https_in_prod() -> None:
     with pytest.raises(ValueError, match="must use https"):
         validate_redirect_url(
             "http://app.example.com/callback",
             request_host="api.example.com",
             allowed_domain_patterns=["*.example.com"],
-            env="production",
+            env="PROD",
         )
 
 
@@ -76,5 +76,5 @@ def test_validate_redirect_url_allows_http_for_localhost() -> None:
         "http://localhost:3000/callback",
         request_host="localhost",
         allowed_domain_patterns=["localhost"],
-        env="production",
+        env="PROD",
     )

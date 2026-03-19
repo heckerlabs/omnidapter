@@ -137,7 +137,7 @@ async def client(session: AsyncSession, api_key: tuple[str, APIKey]) -> AsyncIte
         return Settings(
             omnidapter_database_url=TEST_DB_URL,
             omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="test",
+            omnidapter_env="DEV",
         )
 
     app.dependency_overrides[get_session] = override_session

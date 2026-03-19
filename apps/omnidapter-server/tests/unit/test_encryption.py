@@ -108,3 +108,29 @@ def test_encryption_long_string(key):
     token = encrypt(plaintext, key)
     recovered = decrypt(token, key)
     assert recovered == plaintext
+
+
+def test_encryption_service_plaintext_fallback_without_key() -> None:
+    svc = EncryptionService(current_key="", allow_plaintext_fallback=True)
+    plaintext = '{"access_token":"abc"}'
+
+    token = svc.encrypt(plaintext)
+    recovered = svc.decrypt(token)
+
+    assert token == plaintext
+    assert recovered == plaintext
+
+
+def test_encryption_service_plaintext_fallback_rejects_encrypted_tokens(key: str) -> None:
+    svc = EncryptionService(current_key="", allow_plaintext_fallback=True)
+    token = encrypt("sensitive", key)
+
+    with pytest.raises(ValueError, match="Encrypted token detected"):
+        svc.decrypt(token)
+
+
+def test_encryption_service_plaintext_fallback_allows_non_encrypted_v1_prefix_text() -> None:
+    svc = EncryptionService(current_key="", allow_plaintext_fallback=True)
+    plaintext = "v1:not-base64-secret"
+
+    assert svc.decrypt(plaintext) == plaintext
