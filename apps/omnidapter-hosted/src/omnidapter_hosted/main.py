@@ -12,11 +12,20 @@ from fastapi.responses import JSONResponse
 # Import server's auth dependency so we can override it
 from omnidapter_server.dependencies import get_auth_context as _server_get_auth_context
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
-from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
+from omnidapter_server.routers import providers
 
 from omnidapter_hosted.config import get_hosted_settings
 from omnidapter_hosted.dependencies import get_hosted_auth_context
-from omnidapter_hosted.routers import api_keys, memberships, tenants, users
+from omnidapter_hosted.routers import (
+    api_keys,
+    calendar,
+    connections,
+    memberships,
+    oauth,
+    provider_configs,
+    tenants,
+    users,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,21 +84,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Server routers that don't need tenant scoping (use as-is with overridden auth)
+# Server router that is metadata-only and does not expose tenant resources
 app.include_router(providers.router, prefix="/v1")
-app.include_router(provider_configs.router, prefix="/v1")
-app.include_router(oauth.router)
 
 # Hosted routers (tenant-scoped)
 app.include_router(tenants.router, prefix="/v1")
 app.include_router(users.router, prefix="/v1")
 app.include_router(memberships.router, prefix="/v1")
 app.include_router(api_keys.router, prefix="/v1")
-
-# NOTE: connections and calendar routes use the server implementation with overridden auth.
-# Full tenant-scoped connection routing is a planned enhancement.
+app.include_router(provider_configs.router, prefix="/v1")
 app.include_router(connections.router, prefix="/v1")
 app.include_router(calendar.router, prefix="/v1")
+app.include_router(oauth.router)
 
 
 @app.get("/health")

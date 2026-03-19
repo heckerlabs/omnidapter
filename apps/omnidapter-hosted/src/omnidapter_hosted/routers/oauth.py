@@ -1,20 +1,14 @@
-"""OAuth callback endpoints."""
+"""Hosted OAuth callback endpoints with tenant-scoped provider config resolution."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, Request
 from omnidapter import Omnidapter
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.database import get_session
-from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
 from omnidapter_server.models.oauth_state import OAuthState
-from omnidapter_server.models.provider_config import ProviderConfig
-from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.oauth_flows import (
     OAuthCallbackParams,
     append_query_params,
@@ -22,15 +16,14 @@ from omnidapter_server.services.oauth_flows import (
 )
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from omnidapter_hosted.dependencies import get_encryption_service
+from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
+from omnidapter_hosted.services.provider_registry import build_hosted_provider_registry
 
 router = APIRouter(prefix="/oauth", tags=["oauth"])
-
-
-async def _get_provider_config(provider_key: str, session: AsyncSession) -> ProviderConfig | None:
-    result = await session.execute(
-        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
-    )
-    return result.scalar_one_or_none()
 
 
 async def _load_oauth_state(state_token: str, session: AsyncSession) -> OAuthState | None:
@@ -44,7 +37,49 @@ async def _load_connection_for_state(
     conn_result = await session.execute(
         select(Connection).where(Connection.id == state_row.connection_id)
     )
-    return conn_result.scalar_one_or_none()
+    conn = conn_result.scalar_one_or_none()
+    if conn is None:
+        return None
+
+    owner_result = await session.execute(
+        select(HostedConnectionOwner).where(
+            HostedConnectionOwner.connection_id == state_row.connection_id
+        )
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner is None:
+        return None
+    return conn
+
+
+async def _load_owner_tenant_id(
+    connection_id,
+    session: AsyncSession,
+):
+    owner_result = await session.execute(
+        select(HostedConnectionOwner).where(HostedConnectionOwner.connection_id == connection_id)
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner is None:
+        return None
+    return owner.tenant_id
+
+
+async def _load_connection_with_owner(
+    *,
+    session: AsyncSession,
+    connection_id,
+) -> tuple[Connection | None, HostedConnectionOwner | None]:
+    conn_result = await session.execute(select(Connection).where(Connection.id == connection_id))
+    conn = conn_result.scalar_one_or_none()
+    if conn is None:
+        return None, None
+
+    owner_result = await session.execute(
+        select(HostedConnectionOwner).where(HostedConnectionOwner.connection_id == connection_id)
+    )
+    owner = owner_result.scalar_one_or_none()
+    return conn, owner
 
 
 async def _build_omni(
@@ -54,12 +89,17 @@ async def _build_omni(
     encryption: EncryptionService,
     settings: Settings,
 ) -> Omnidapter:
-    provider_config = await _get_provider_config(provider_key, session)
+    tenant_id = await _load_owner_tenant_id(connection.id, session)
+    if tenant_id is None:
+        raise ValueError("Connection owner not found")
+
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
-    registry = build_provider_registry(
-        settings,
-        provider_config=provider_config,
+    registry = await build_hosted_provider_registry(
+        tenant_id=tenant_id,
+        provider_key=provider_key,
+        session=session,
+        settings=settings,
         encryption=encryption,
     )
 
