@@ -1,4 +1,4 @@
-"""Connection management endpoints."""
+"""Hosted connection endpoints with tenant isolation."""
 
 from __future__ import annotations
 
@@ -7,21 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 from omnidapter import Omnidapter
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.database import get_session
-from omnidapter_server.dependencies import (
-    AuthContext,
-    get_auth_context,
-    get_encryption_service,
-    get_request_id,
-)
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.provider_config import ProviderConfig
-from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     ConnectionResponse,
     CreateConnectionRequest,
@@ -37,6 +26,18 @@ from omnidapter_server.services.connection_flows import (
 from omnidapter_server.services.connection_health import transition_to_revoked
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from omnidapter_hosted.dependencies import (
+    HostedAuthContext,
+    get_encryption_service,
+    get_hosted_auth_context,
+    get_request_id,
+)
+from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
+from omnidapter_hosted.services.provider_registry import build_hosted_provider_registry
+from omnidapter_hosted.services.tenant_resources import get_tenant_provider_config
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -45,17 +46,19 @@ async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
     settings: Settings,
+    tenant_id: uuid.UUID,
     provider_key: str,
-    provider_config: ProviderConfig | None = None,
+    provider_config: object | None,
 ) -> Omnidapter:
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
-    registry = build_provider_registry(
-        settings,
-        provider_config=provider_config,
+    registry = await build_hosted_provider_registry(
+        tenant_id=tenant_id,
+        provider_key=provider_key,
+        session=session,
+        settings=settings,
         encryption=encryption,
     )
-
     return Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
@@ -63,26 +66,44 @@ async def _build_omni(
     )
 
 
-async def _get_provider_config(
-    provider_key: str,
+async def _persist_owner(
+    conn: Connection,
     session: AsyncSession,
-) -> ProviderConfig | None:
+    tenant_id: uuid.UUID,
+) -> None:
+    session.add(
+        HostedConnectionOwner(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            connection_id=conn.id,
+        )
+    )
+
+
+async def _load_connection_by_uuid(
+    conn_uuid: uuid.UUID,
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> Connection | None:
     result = await session.execute(
-        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
+        select(Connection)
+        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
+        .where(Connection.id == conn_uuid, HostedConnectionOwner.tenant_id == tenant_id)
     )
     return result.scalar_one_or_none()
 
 
-async def _load_connection_by_uuid(
-    conn_uuid: uuid.UUID, session: AsyncSession
-) -> Connection | None:
-    result = await session.execute(select(Connection).where(Connection.id == conn_uuid))
-    return result.scalar_one_or_none()
-
-
-async def _count_active_connections(provider_key: str, session: AsyncSession) -> int:
+async def _count_active_connections(
+    provider_key: str,
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+) -> int:
     result = await session.execute(
-        select(func.count()).where(
+        select(func.count())
+        .select_from(Connection)
+        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
+        .where(
+            HostedConnectionOwner.tenant_id == tenant_id,
             Connection.provider_key == provider_key,
             Connection.status != ConnectionStatus.REVOKED,
         )
@@ -96,8 +117,13 @@ async def _load_paginated_connections(
     provider: str | None,
     limit: int,
     offset: int,
+    tenant_id: uuid.UUID,
 ) -> tuple[int, list[Connection]]:
-    query = select(Connection)
+    query = (
+        select(Connection)
+        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
+        .where(HostedConnectionOwner.tenant_id == tenant_id)
+    )
     if status:
         query = query.where(Connection.status == status)
     if provider:
@@ -110,43 +136,61 @@ async def _load_paginated_connections(
     return total, list(result.scalars().all())
 
 
-async def get_connection(
-    connection_id: str,
-    session: AsyncSession,
+async def _load_connection(
+    connection_id: str, session: AsyncSession, tenant_id: uuid.UUID
 ) -> Connection:
-    """Fetch a connection by ID. Raises 404 if not found."""
     return await get_connection_or_404(
         connection_id=connection_id,
         session=session,
-        load_connection_by_uuid=_load_connection_by_uuid,
+        load_connection_by_uuid=lambda conn_uuid, s: _load_connection_by_uuid(
+            conn_uuid, s, tenant_id
+        ),
     )
+
+
+async def _get_owned_connection_or_404(
+    *,
+    connection_id: str,
+    tenant_id: uuid.UUID,
+    session: AsyncSession,
+) -> Connection:
+    return await _load_connection(connection_id, session, tenant_id)
 
 
 @router.post("", status_code=201)
 async def create_connection(
     body: CreateConnectionRequest,
     request: Request,
-    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
     request_id: str = Depends(get_request_id),
 ):
-    """Create a new connection and begin the OAuth flow."""
     flow_result = await create_connection_flow(
         body=body,
         request=request,
         session=session,
         settings=settings,
-        load_provider_config=_get_provider_config,
-        count_active_connections=_count_active_connections,
+        load_provider_config=lambda provider_key, s: get_tenant_provider_config(
+            session=s,
+            tenant_id=auth.tenant_id,
+            provider_key=provider_key,
+        ),
+        count_active_connections=lambda provider_key, s: _count_active_connections(
+            provider_key,
+            s,
+            auth.tenant_id,
+        ),
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
             encryption,
             settings,
+            auth.tenant_id,
             provider_key,
             provider_config,
         ),
+        persist_post_create=lambda conn, s: _persist_owner(conn, s, auth.tenant_id),
     )
     return {
         "data": CreateConnectionResponse(
@@ -160,7 +204,7 @@ async def create_connection(
 
 @router.get("")
 async def list_connections(
-    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
     status: str | None = Query(None),
@@ -174,7 +218,16 @@ async def list_connections(
         provider=provider,
         limit=limit,
         offset=offset,
-        load_paginated_connections=_load_paginated_connections,
+        load_paginated_connections=lambda s, st, p, page_limit, page_offset: (
+            _load_paginated_connections(
+                s,
+                st,
+                p,
+                page_limit,
+                page_offset,
+                auth.tenant_id,
+            )
+        ),
     )
     return {
         "data": [ConnectionResponse.from_model(c) for c in connections],
@@ -193,11 +246,11 @@ async def list_connections(
 @router.get("/{connection_id}")
 async def get_connection_endpoint(
     connection_id: str,
-    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    conn = await get_connection(connection_id, session)
+    conn = await _load_connection(connection_id, session, auth.tenant_id)
     return {
         "data": ConnectionResponse.from_model(conn),
         "meta": {"request_id": request_id},
@@ -207,10 +260,10 @@ async def get_connection_endpoint(
 @router.delete("/{connection_id}", status_code=204)
 async def delete_connection(
     connection_id: str,
-    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     session: AsyncSession = Depends(get_session),
 ):
-    conn = await get_connection(connection_id, session)
+    conn = await _load_connection(connection_id, session, auth.tenant_id)
     await transition_to_revoked(conn.id, session, reason="Deleted by API")
 
 
@@ -219,7 +272,7 @@ async def reauthorize_connection(
     connection_id: str,
     body: ReauthorizeConnectionRequest,
     request: Request,
-    auth: Annotated[AuthContext, Depends(get_auth_context)],
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
     settings: Settings = Depends(get_settings),
@@ -231,16 +284,22 @@ async def reauthorize_connection(
         request=request,
         session=session,
         settings=settings,
-        load_connection=get_connection,
-        load_provider_config=_get_provider_config,
+        load_connection=lambda conn_id, s: _load_connection(conn_id, s, auth.tenant_id),
+        load_provider_config=lambda provider_key, s: get_tenant_provider_config(
+            session=s,
+            tenant_id=auth.tenant_id,
+            provider_key=provider_key,
+        ),
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
             encryption,
             settings,
+            auth.tenant_id,
             provider_key,
             provider_config,
         ),
     )
+
     return {
         "data": {
             "connection_id": flow_result.connection_id,

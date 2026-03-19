@@ -122,11 +122,64 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
     )
 
+    # hosted_connection_owners table (tenant ownership mapping for shared connections)
+    op.create_table(
+        "hosted_connection_owners",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("connection_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
+        sa.ForeignKeyConstraint(["connection_id"], ["connections.id"]),
+        sa.UniqueConstraint("connection_id", name="uq_hosted_connection_owner_connection"),
+    )
+
+    # hosted_provider_configs table (tenant-scoped OAuth app credentials)
+    op.create_table(
+        "hosted_provider_configs",
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column("tenant_id", postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column("provider_key", sa.String(50), nullable=False),
+        sa.Column("auth_kind", sa.String(50), nullable=False, server_default="oauth2"),
+        sa.Column("client_id_encrypted", sa.Text(), nullable=True),
+        sa.Column("client_secret_encrypted", sa.Text(), nullable=True),
+        sa.Column("scopes", postgresql.ARRAY(sa.String()), nullable=True),
+        sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
+        sa.UniqueConstraint(
+            "tenant_id",
+            "provider_key",
+            name="uq_hosted_provider_config_tenant_provider",
+        ),
+    )
+
     # Indexes
     op.create_index("ix_hosted_api_keys_tenant", "hosted_api_keys", ["tenant_id"])
     op.create_index("ix_hosted_api_keys_prefix", "hosted_api_keys", ["key_prefix"])
     op.create_index(
         "ix_hosted_usage_tenant_created", "hosted_usage_records", ["tenant_id", "created_at"]
+    )
+    op.create_index("ix_hosted_connection_owners_tenant", "hosted_connection_owners", ["tenant_id"])
+    op.create_index(
+        "ix_hosted_provider_configs_tenant_provider",
+        "hosted_provider_configs",
+        ["tenant_id", "provider_key"],
     )
     op.create_index("ix_memberships_tenant", "memberships", ["tenant_id"])
     op.create_index("ix_users_email", "users", ["email"])
@@ -134,6 +187,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("hosted_usage_records")
+    op.drop_table("hosted_provider_configs")
+    op.drop_table("hosted_connection_owners")
     op.drop_table("hosted_api_keys")
     op.drop_table("memberships")
     op.drop_table("users")
