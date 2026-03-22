@@ -17,6 +17,9 @@ class HostedSettings(Settings):
     # WorkOS (user auth)
     workos_api_key: str = ""
     workos_client_id: str = ""
+    # 32-character secret used to encrypt the sealed session cookie
+    # Generate with: python -c "import secrets; print(secrets.token_hex(16))"
+    workos_cookie_password: str = ""
 
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60

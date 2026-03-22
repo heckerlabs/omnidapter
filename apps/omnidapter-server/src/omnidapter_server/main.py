@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,7 +14,70 @@ from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
 from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
 
+logger = logging.getLogger(__name__)
+
+
+async def _seed_initial_api_key() -> None:
+    """If OMNIDAPTER_INITIAL_API_KEY is set, create the key in the DB if not present."""
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from omnidapter_server.config import get_settings
+    from omnidapter_server.models.api_key import APIKey
+    from omnidapter_server.services.auth import generate_api_key
+
+    settings = get_settings()
+    raw_key = settings.omnidapter_initial_api_key.strip()
+    if not raw_key:
+        return
+
+    if not (raw_key.startswith("omni_live_") or raw_key.startswith("omni_test_")):
+        logger.warning(
+            "OMNIDAPTER_INITIAL_API_KEY has invalid prefix — must start with "
+            "'omni_live_' or 'omni_test_'. Skipping seed."
+        )
+        return
+
+    key_prefix = raw_key[:12]
+    engine = create_async_engine(settings.omnidapter_database_url)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    try:
+        async with factory() as session:
+            result = await session.execute(
+                select(APIKey).where(APIKey.key_prefix == key_prefix)
+            )
+            if result.scalar_one_or_none() is not None:
+                return  # already seeded
+
+            import bcrypt
+            import uuid
+
+            key_hash = bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
+            is_test = raw_key.startswith("omni_test_")
+            api_key = APIKey(
+                id=uuid.uuid4(),
+                name="initial",
+                key_hash=key_hash,
+                key_prefix=key_prefix,
+                is_active=True,
+                is_test=is_test,
+            )
+            session.add(api_key)
+            await session.commit()
+            logger.info("Seeded initial API key (prefix=%s)", key_prefix)
+    finally:
+        await engine.dispose()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await _seed_initial_api_key()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Omnidapter Server",
     description="Self-hosted REST API wrapping the Omnidapter calendar integration library",
     version="0.3.0",
