@@ -44,33 +44,17 @@ cmd = "pytest"
 help = "Run format, lint, typecheck, tests, and builds"
 sequence = ["format", "lint", "typecheck", "build", "test"]
 
-[tool.poe.tasks.server-up]
-help = "Start local server compose stack"
-cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up -d --build"
+[tool.poe.tasks.server-infra]
+help = "Start backend infra: db, migration"
+cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up --build"
 
-[tool.poe.tasks.server-down]
-help = "Stop local server compose stack"
-cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml down"
+[tool.poe.tasks.server-dev]
+help = "Start Omnidapter Server"
+cmd = "uv run --env-file apps/omnidapter-server/.env omnidapter-server"
 
-[tool.poe.tasks.server-logs]
-help = "Tail server API logs"
-cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml logs -f api"
-
-# [tool.poe.tasks.server-bootstrap]
-# help = "Create local API key in server compose"
-# cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml run --rm -e OMNIDAPTER_ENV=LOCAL api /app/.venv/bin/omnidapter-bootstrap --name local"
-
-[tool.poe.tasks.hosted-up]
-help = "Start local hosted compose stack"
-cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml up -d --build"
-
-[tool.poe.tasks.hosted-down]
-help = "Stop local hosted compose stack"
-cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml down"
-
-[tool.poe.tasks.hosted-logs]
-help = "Tail hosted API logs"
-cmd = "docker-compose -f apps/omnidapter-hosted/docker-compose.yml logs -f api"
+[tool.poe.tasks.server-bootstrap]
+help = "Create local API key. Make sure infra is running"
+cmd = "uv run --env-file apps/omnidapter-server/.env omnidapter-bootstrap"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

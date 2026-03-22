@@ -26,7 +26,7 @@ services:
     restart: "no"
     environment:
       OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-LOCAL}
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
       OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
     depends_on:
@@ -38,7 +38,7 @@ services:
     build:
       context: ../..
       dockerfile: apps/omnidapter-hosted/Dockerfile
-    restart: unless-stopped
+    restart: no
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
     environment:
@@ -48,7 +48,7 @@ services:
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
       OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
       OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:${PORT:-8000}}
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-PROD}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-LOCAL}
       OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
       OMNIDAPTER_OAUTH_STATE_REDIS_URL: redis://redis:6379/0
       HOSTED_RATE_LIMIT_REDIS_URL: redis://redis:6379/1
