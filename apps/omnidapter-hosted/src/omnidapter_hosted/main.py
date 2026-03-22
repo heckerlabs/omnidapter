@@ -19,6 +19,7 @@ from omnidapter_hosted.config import get_hosted_settings
 from omnidapter_hosted.dependencies import get_hosted_auth_context
 from omnidapter_hosted.routers import (
     api_keys,
+    auth,
     calendar,
     connections,
     memberships,
@@ -58,7 +59,6 @@ def _build_cors_settings(allowed_domain_patterns: list[str]) -> tuple[list[str],
     allow_origin_regex = "^(" + "|".join(regex_parts) + ")$"
     return [], allow_origin_regex, True
 
-
 app = FastAPI(
     title="Omnidapter Hosted",
     description="Multi-tenant hosted API with billing and team management",
@@ -88,6 +88,9 @@ app.add_middleware(
 
 # Server router that is metadata-only and does not expose tenant resources
 app.include_router(providers.router, prefix="/v1")
+
+# Auth router — no API key required, uses WorkOS session cookie
+app.include_router(auth.router, prefix="/v1")
 
 # Hosted routers (tenant-scoped)
 app.include_router(tenants.router, prefix="/v1")

@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     omnidapter_env: str = "DEV"
     omnidapter_allowed_origin_domains: str = "*"
 
+    # Seed an initial API key on startup (set to a raw key like "omni_live_...")
+    # If set and no matching prefix exists, the key is created automatically.
+    omnidapter_initial_api_key: str = ""
+
     @field_validator("omnidapter_env", mode="before")
     @classmethod
     def _normalize_env(cls, value: str | None) -> str:
