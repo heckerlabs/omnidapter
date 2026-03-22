@@ -95,6 +95,108 @@ async def test_list_calendars(
 
 
 @pytest.mark.asyncio
+async def test_get_calendar(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """GET /calendar/calendars/{calendar_id} returns a calendar."""
+    mock_calendar = _make_calendar()
+
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.get_calendar = AsyncMock(return_value=mock_calendar)
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.get(
+            f"/v1/connections/{active_connection.id}/calendar/calendars/primary"
+        )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["calendar_id"] == "primary"
+
+
+@pytest.mark.asyncio
+async def test_create_calendar(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """POST /calendar/calendars creates a calendar."""
+    mock_calendar = _make_calendar()
+
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.create_calendar = AsyncMock(return_value=mock_calendar)
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.post(
+            f"/v1/connections/{active_connection.id}/calendar/calendars",
+            json={"summary": "New Calendar"}
+        )
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["summary"] == "Test Calendar"
+
+
+@pytest.mark.asyncio
+async def test_update_calendar(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """PATCH /calendar/calendars/{calendar_id} updates a calendar."""
+    mock_calendar = _make_calendar()
+
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.update_calendar = AsyncMock(return_value=mock_calendar)
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.patch(
+            f"/v1/connections/{active_connection.id}/calendar/calendars/primary",
+            json={"summary": "Updated Calendar"}
+        )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_delete_calendar(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """DELETE /calendar/calendars/{calendar_id} deletes a calendar."""
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.delete_calendar = AsyncMock()
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.delete(
+            f"/v1/connections/{active_connection.id}/calendar/calendars/primary"
+        )
+
+    assert response.status_code == 204
+
 async def test_list_events(
     client: AsyncClient,
     session: AsyncSession,
