@@ -51,8 +51,10 @@ from omnidapter.services.calendar.models import (
     Recurrence,
 )
 from omnidapter.services.calendar.requests import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 from omnidapter.stores.credentials import CredentialStore, StoredCredential
@@ -106,7 +108,9 @@ __all__ = [
     "Organizer",
     "Recurrence",
     "ConferenceData",
+    "CreateCalendarRequest",
     "CreateEventRequest",
+    "UpdateCalendarRequest",
     "UpdateEventRequest",
     "GetAvailabilityRequest",
     # Version
