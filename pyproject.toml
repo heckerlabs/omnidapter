@@ -52,10 +52,6 @@ cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up --build"
 help = "Start Omnidapter Server"
 cmd = "uv run --env-file apps/omnidapter-server/.env omnidapter-server"
 
-[tool.poe.tasks.server-bootstrap]
-help = "Create local API key. Make sure infra is running"
-cmd = "uv run --env-file apps/omnidapter-server/.env omnidapter-bootstrap"
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
