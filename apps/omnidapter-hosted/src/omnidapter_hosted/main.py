@@ -59,6 +59,7 @@ def _build_cors_settings(allowed_domain_patterns: list[str]) -> tuple[list[str],
     allow_origin_regex = "^(" + "|".join(regex_parts) + ")$"
     return [], allow_origin_regex, True
 
+
 app = FastAPI(
     title="Omnidapter Hosted",
     description="Multi-tenant hosted API with billing and team management",

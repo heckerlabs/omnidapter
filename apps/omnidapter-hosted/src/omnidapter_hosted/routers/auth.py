@@ -6,12 +6,16 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from omnidapter_server.database import get_session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from workos import AsyncWorkOSClient
-from workos.types.user_management.session import SessionConfig
+from workos.types.user_management.session import (
+    AuthenticateWithSessionCookieSuccessResponse,
+    RefreshWithSessionCookieSuccessResponse,
+    SessionConfig,
+)
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
 from omnidapter_hosted.dependencies import get_request_id
@@ -72,9 +76,7 @@ async def _get_or_provision_user(
 
     if user is None:
         # Could be a user created before WorkOS was added — match by email.
-        result = await session.execute(
-            select(HostedUser).where(HostedUser.email == email)
-        )
+        result = await session.execute(select(HostedUser).where(HostedUser.email == email))
         user = result.scalar_one_or_none()
         if user is not None:
             user.workos_user_id = workos_user_id
@@ -94,6 +96,12 @@ async def _get_or_provision_user(
                 select(HostedMembership).where(HostedMembership.user_id == user.id)
             )
             membership = result.scalar_one_or_none()
+
+        if membership is None:
+            raise HTTPException(
+                status_code=500,
+                detail={"code": "no_membership", "message": "User has no membership"},
+            )
 
         tenant_result = await session.execute(
             select(Tenant).where(Tenant.id == membership.tenant_id)
@@ -162,7 +170,7 @@ async def login(
     _require_workos(settings)
     client = _workos_client(settings)
     callback_uri = redirect_uri or f"{settings.omnidapter_base_url}/auth/callback"
-    url = await client.user_management.get_authorization_url(
+    url = client.user_management.get_authorization_url(
         redirect_uri=callback_uri,
         provider="authkit",
     )
@@ -220,14 +228,16 @@ async def callback(
         content={"data": data, "meta": {"request_id": request_id}},
         status_code=200,
     )
-    response.set_cookie(
-        key=_COOKIE_NAME,
-        value=auth_response.sealed_session,
-        httponly=True,
-        secure=settings.omnidapter_env == "production",
-        samesite="lax",
-        max_age=_COOKIE_MAX_AGE,
-    )
+    sealed_session = auth_response.sealed_session
+    if sealed_session is not None:
+        response.set_cookie(
+            key=_COOKIE_NAME,
+            value=sealed_session,
+            httponly=True,
+            secure=settings.omnidapter_env == "production",
+            samesite="lax",
+            max_age=_COOKIE_MAX_AGE,
+        )
     return response
 
 
@@ -250,12 +260,12 @@ async def me(
         )
 
     client = _workos_client(settings)
-    ws = client.user_management.load_sealed_session(
+    ws = await client.user_management.load_sealed_session(
         sealed_session=wos_session,
         cookie_password=settings.workos_cookie_password,
     )
 
-    auth = await ws.authenticate()
+    auth = ws.authenticate()
 
     new_sealed: str | None = None
     if not auth.authenticated:
@@ -264,21 +274,29 @@ async def me(
         if not refresh.authenticated:
             raise HTTPException(
                 status_code=401,
-                detail={"code": "session_expired", "message": "Session expired — please log in again"},
+                detail={
+                    "code": "session_expired",
+                    "message": "Session expired — please log in again",
+                },
             )
+        assert isinstance(refresh, RefreshWithSessionCookieSuccessResponse)
         new_sealed = refresh.sealed_session
         # Re-authenticate with the freshly sealed session to get the user.
-        ws2 = client.user_management.load_sealed_session(
+        ws2 = await client.user_management.load_sealed_session(
             sealed_session=new_sealed,
             cookie_password=settings.workos_cookie_password,
         )
-        auth = await ws2.authenticate()
+        auth = ws2.authenticate()
         if not auth.authenticated:
             raise HTTPException(
                 status_code=401,
-                detail={"code": "session_expired", "message": "Session expired — please log in again"},
+                detail={
+                    "code": "session_expired",
+                    "message": "Session expired — please log in again",
+                },
             )
 
+    assert isinstance(auth, AuthenticateWithSessionCookieSuccessResponse)
     workos_user_id = auth.user.id
     result = await session.execute(
         select(HostedUser).where(HostedUser.workos_user_id == workos_user_id)
@@ -312,9 +330,7 @@ async def me(
     response_data: dict = {
         "user": {"id": str(user.id), "email": user.email, "name": user.name},
         "tenant": (
-            {"id": str(tenant.id), "name": tenant.name, "plan": tenant.plan}
-            if tenant
-            else None
+            {"id": str(tenant.id), "name": tenant.name, "plan": tenant.plan} if tenant else None
         ),
     }
 

@@ -141,7 +141,7 @@ async def test_create_calendar(
 
         response = await client.post(
             f"/v1/connections/{active_connection.id}/calendar/calendars",
-            json={"summary": "New Calendar"}
+            json={"summary": "New Calendar"},
         )
 
     assert response.status_code == 201
@@ -169,7 +169,7 @@ async def test_update_calendar(
 
         response = await client.patch(
             f"/v1/connections/{active_connection.id}/calendar/calendars/primary",
-            json={"summary": "Updated Calendar"}
+            json={"summary": "Updated Calendar"},
         )
 
     assert response.status_code == 200
@@ -196,6 +196,7 @@ async def test_delete_calendar(
         )
 
     assert response.status_code == 204
+
 
 async def test_list_events(
     client: AsyncClient,
