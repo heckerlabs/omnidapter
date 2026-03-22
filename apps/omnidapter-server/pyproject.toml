@@ -21,7 +21,6 @@ dependencies = [
 
 [project.scripts]
 omnidapter-server = "omnidapter_server.main:run"
-omnidapter-bootstrap = "omnidapter_server.scripts.bootstrap:main"
 
 [tool.uv.sources]
 omnidapter = { workspace = true }
