@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -24,7 +24,6 @@ async def _seed_initial_api_key() -> None:
 
     from omnidapter_server.config import get_settings
     from omnidapter_server.models.api_key import APIKey
-    from omnidapter_server.services.auth import generate_api_key
 
     settings = get_settings()
     raw_key = settings.omnidapter_initial_api_key.strip()
@@ -44,14 +43,13 @@ async def _seed_initial_api_key() -> None:
 
     try:
         async with factory() as session:
-            result = await session.execute(
-                select(APIKey).where(APIKey.key_prefix == key_prefix)
-            )
+            result = await session.execute(select(APIKey).where(APIKey.key_prefix == key_prefix))
             if result.scalar_one_or_none() is not None:
                 return  # already seeded
 
-            import bcrypt
             import uuid
+
+            import bcrypt
 
             key_hash = bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
             is_test = raw_key.startswith("omni_test_")
