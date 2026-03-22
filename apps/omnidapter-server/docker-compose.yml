@@ -2,6 +2,8 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: omnidapter
       POSTGRES_USER: omnidapter
@@ -22,7 +24,7 @@ services:
     restart: "no"
     environment:
       OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
+      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-LOCAL}
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
       OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
     depends_on:
@@ -34,7 +36,8 @@ services:
     build:
       context: ../..
       dockerfile: apps/omnidapter-server/Dockerfile
-    restart: unless-stopped
+    profiles: ["production"]
+    restart: no
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
     environment:
