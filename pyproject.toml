@@ -4,7 +4,7 @@ version = "0.0.0"
 requires-python = ">=3.10"
 
 [tool.uv.workspace]
-members = ["packages/*", "apps/*"]
+members = ["omnidapter-*"]
 
 [dependency-groups]
 dev = [
@@ -46,11 +46,11 @@ sequence = ["format", "lint", "typecheck", "build", "test"]
 
 [tool.poe.tasks.test-integration-core]
 help = "Run Omnidapter Core integration tests"
-cmd = "uv run --env-file packages/omnidapter-core/tests/integration/.env pytest packages/omnidapter-core/tests/integration"
+cmd = "uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration"
 
 [tool.poe.tasks.test-integration-server]
 help = "Run Omnidapter Server integration tests. Run `docker-compose --profile test up` to start dev db."
-cmd = "uv run --env-file apps/omnidapter-server/.env pytest apps/omnidapter-server/tests/integration"
+cmd = "uv run --env-file omnidapter-server/.env pytest omnidapter-server/tests/integration"
 
 [tool.poe.tasks.test-integration]
 help = "Run Integration Tests"
@@ -58,16 +58,16 @@ sequence = ["test-integration-core", "test-integration-server"]
 
 [tool.poe.tasks.server-infra]
 help = "Start backend infra: db, migration"
-cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up --build"
+cmd = "docker-compose -f omnidapter-server/docker-compose.yml up --build"
 
 [tool.poe.tasks.server-dev]
 help = "Start Omnidapter Server"
-cmd = "uv run --env-file apps/omnidapter-server/.env omnidapter-server"
+cmd = "uv run --env-file omnidapter-server/.env omnidapter-server"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
-testpaths = ["packages/omnidapter-core/tests", "apps/omnidapter-server/tests", "apps/omnidapter-hosted/tests"]
+testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests"]
 markers = [
     "integration: marks tests requiring live provider credentials; set OMNIDAPTER_INTEGRATION=1 to enable",
 ]
@@ -81,16 +81,16 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
-"apps/omnidapter-server/alembic/versions/*.py" = ["I001", "UP007", "UP035"]
+"omnidapter-server/alembic/versions/*.py" = ["I001", "UP007", "UP035"]
 
 [tool.ruff.format]
-exclude = ["apps/omnidapter-server/alembic/versions/*.py"]
+exclude = ["omnidapter-server/alembic/versions/*.py"]
 
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
 extraPaths = [
-    "apps/omnidapter-server/src",
-    "apps/omnidapter-hosted/src",
-    "packages/omnidapter-core/src"
+    "omnidapter-server/src",
+    "omnidapter-hosted/src",
+    "omnidapter-core/src"
 ]

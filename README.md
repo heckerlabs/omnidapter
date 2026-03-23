@@ -18,19 +18,18 @@ one API surface.
 
 ## Choose Your Path
 
-- I want a Python SDK: start with `packages/omnidapter-core/README.md`
-- I want a self-hosted API: start with `apps/omnidapter-server/docs/README.md`
+- I want a Python SDK: start with `omnidapter-core/README.md`
+- I want a self-hosted API: start with `omnidapter-server/docs/README.md`
 
 ## What You Get In This Repository
 
-- `packages/omnidapter-core` - `omnidapter` Python library
-- `apps/omnidapter-server` - self-hosted FastAPI service that wraps core
+- `omnidapter-core` - `omnidapter` Python library
+- `omnidapter-server` - self-hosted FastAPI service that wraps core
 
 ```text
-packages/
-  omnidapter-core/
-apps/
-  omnidapter-server/
+omnidapter-core/
+omnidapter-server/
+omnidapter-hosted/
 ```
 
 ## 60-Second Quick Start (Library)
@@ -55,24 +54,24 @@ calendars = await cal.list_calendars()
 
 Core docs:
 
-- `packages/omnidapter-core/README.md`
-- `packages/omnidapter-core/docs/providers.md`
-- `packages/omnidapter-core/docs/calendar.md`
-- `packages/omnidapter-core/docs/credential-stores.md`
+- `omnidapter-core/README.md`
+- `omnidapter-core/docs/providers.md`
+- `omnidapter-core/docs/calendar.md`
+- `omnidapter-core/docs/credential-stores.md`
 
 ## 60-Second Quick Start (Self-Hosted API)
 
 ```bash
 uv sync
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini upgrade head
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
 uv run omnidapter-bootstrap --name "local"
 uv run omnidapter-server
 ```
 
 Docker Compose file locations:
 
-- `apps/omnidapter-server/docker-compose.yml` (self-hosted server)
-- `apps/omnidapter-hosted/docker-compose.yml` (hosted multi-tenant app)
+- `omnidapter-server/docker-compose.yml` (self-hosted server)
+- `omnidapter-hosted/docker-compose.yml` (hosted multi-tenant app)
 
 Then call it:
 
@@ -83,7 +82,7 @@ curl -H "Authorization: Bearer <API_KEY>" \
 
 Server docs:
 
-- `apps/omnidapter-server/docs/README.md`
+- `omnidapter-server/docs/README.md`
 
 ## How It Stays Simple
 
