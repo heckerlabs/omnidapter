@@ -9,7 +9,7 @@ Layers:
 1. Routers (`src/omnidapter_server/routers`) - HTTP interface
 2. Service flows (`src/omnidapter_server/services`) - business orchestration
 3. Models/stores - persistence and credential/state handling
-4. Core library (`packages/omnidapter-core`) - provider abstractions and transport
+4. Core library (`omnidapter-core`) - provider abstractions and transport
 
 ## Main Components
 
@@ -25,7 +25,6 @@ Layers:
 - `api_keys`
 - `connections`
 - `provider_configs`
-- `oauth_states`
 
 ## Request Lifecycle
 

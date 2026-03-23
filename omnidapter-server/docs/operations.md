@@ -26,7 +26,7 @@ uv run pytest
 uv build
 ```
 
-Run in `apps/omnidapter-server` or via workspace tooling.
+Run in `omnidapter-server` or via workspace tooling.
 
 ## Deployment basics
 

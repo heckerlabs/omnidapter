@@ -1,6 +1,6 @@
 # Omnidapter Server Docs
 
-Comprehensive documentation for `apps/omnidapter-server`.
+Comprehensive documentation for `omnidapter-server`.
 
 This folder is structured to work as a docs site (for example via GitHub Pages).
 
