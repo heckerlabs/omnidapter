@@ -40,10 +40,6 @@ class HostedAuthContext:
     def plan(self) -> str:
         return self.tenant.plan
 
-    @property
-    def is_test(self) -> bool:
-        return self.api_key.is_test
-
 
 def get_server_settings() -> ServerSettings:
     return get_hosted_settings()

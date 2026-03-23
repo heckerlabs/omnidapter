@@ -45,9 +45,8 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
         tenant_id=tenant_id,
         name="primary",
         key_hash="hash",
-        key_prefix="omni_live_ab",
+        key_prefix="omni_key_abcd",
         is_active=True,
-        is_test=False,
         created_at=_now(),
         last_used_at=None,
     )
@@ -67,7 +66,6 @@ def test_hosted_auth_context_properties() -> None:
 
     assert ctx.tenant_id == tenant.id
     assert ctx.plan == tenant.plan
-    assert ctx.is_test is False
 
 
 def test_get_encryption_service_from_server_settings() -> None:
@@ -127,10 +125,10 @@ async def test_get_hosted_auth_context_invalid_key() -> None:
         pytest.raises(HTTPException) as exc_info,
     ):
         await get_hosted_auth_context(
-            request=_request("Bearer omni_live_invalid"),
+            request=_request("Bearer omni_invalid"),
             bearer_credentials=HTTPAuthorizationCredentials(
                 scheme="Bearer",
-                credentials="omni_live_invalid",
+                credentials="omni_invalid",
             ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(),
@@ -141,7 +139,7 @@ async def test_get_hosted_auth_context_invalid_key() -> None:
 
 @pytest.mark.asyncio
 async def test_get_hosted_auth_context_rate_limited() -> None:
-    req = _request("Bearer omni_live_valid")
+    req = _request("Bearer omni_valid")
     tenant = _tenant()
     api_key = _api_key(tenant.id)
 
@@ -164,7 +162,7 @@ async def test_get_hosted_auth_context_rate_limited() -> None:
             request=req,
             bearer_credentials=HTTPAuthorizationCredentials(
                 scheme="Bearer",
-                credentials="omni_live_valid",
+                credentials="omni_valid",
             ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(hosted_rate_limit_free=60, hosted_rate_limit_paid=600),
@@ -178,7 +176,7 @@ async def test_get_hosted_auth_context_rate_limited() -> None:
 
 @pytest.mark.asyncio
 async def test_get_hosted_auth_context_success() -> None:
-    req = _request("Bearer omni_live_valid")
+    req = _request("Bearer omni_valid")
     tenant = _tenant()
     api_key = _api_key(tenant.id)
     update_last_used = AsyncMock()
@@ -201,7 +199,7 @@ async def test_get_hosted_auth_context_success() -> None:
             request=req,
             bearer_credentials=HTTPAuthorizationCredentials(
                 scheme="Bearer",
-                credentials="omni_live_valid",
+                credentials="omni_valid",
             ),
             session=AsyncMock(),
             hosted_settings=HostedSettings(hosted_rate_limit_free=60, hosted_rate_limit_paid=600),

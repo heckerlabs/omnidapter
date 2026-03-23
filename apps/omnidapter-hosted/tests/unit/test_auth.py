@@ -49,23 +49,17 @@ def _api_key(tenant_id: uuid.UUID, key_hash: str = "hash") -> HostedAPIKey:
         tenant_id=tenant_id,
         name="key",
         key_hash=key_hash,
-        key_prefix="omni_live_ab",
+        key_prefix="omni_key_abcd",
         is_active=True,
-        is_test=False,
         created_at=datetime.now(timezone.utc),
         last_used_at=None,
     )
 
 
-def test_generate_live_key():
-    raw_key, key_hash, key_prefix = generate_hosted_api_key(is_test=False)
-    assert raw_key.startswith("omni_live_")
+def test_generate_key_format():
+    raw_key, key_hash, key_prefix = generate_hosted_api_key()
+    assert raw_key.startswith("omni_")
     assert len(raw_key) > 10
-
-
-def test_generate_test_key():
-    raw_key, key_hash, key_prefix = generate_hosted_api_key(is_test=True)
-    assert raw_key.startswith("omni_test_")
 
 
 def test_key_prefix_length():
@@ -81,7 +75,7 @@ def test_verify_correct_key():
 
 def test_verify_wrong_key():
     _, key_hash, _ = generate_hosted_api_key()
-    assert verify_hosted_api_key("omni_live_wrongkeyvalue12345678901", key_hash) is False
+    assert verify_hosted_api_key("omni_wrongkeyvalue12345678901", key_hash) is False
 
 
 def test_verify_tampered_hash():
@@ -90,7 +84,7 @@ def test_verify_tampered_hash():
 
 
 def test_verify_invalid_hash():
-    assert verify_hosted_api_key("omni_live_anything", "not_a_valid_hash") is False
+    assert verify_hosted_api_key("omni_anything", "not_a_valid_hash") is False
 
 
 def test_verify_empty():
@@ -108,9 +102,9 @@ def test_hash_differs_per_key():
     assert hash1 != hash2
 
 
-def test_default_is_live():
+def test_default_prefix():
     raw_key, _, _ = generate_hosted_api_key()
-    assert raw_key.startswith("omni_live_")
+    assert raw_key.startswith("omni_")
 
 
 @pytest.mark.asyncio
@@ -124,14 +118,14 @@ async def test_authenticate_hosted_key_no_matching_candidate_returns_none() -> N
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_ScalarResult(many=[]))
 
-    result = await authenticate_hosted_key("omni_live_abcdefghijklmnopqrstuvwxyz123456", session)
+    result = await authenticate_hosted_key("omni_abcdefghijklmnopqrstuvwxyz123456", session)
     assert result is None
 
 
 @pytest.mark.asyncio
 async def test_authenticate_hosted_key_valid_returns_key_and_tenant() -> None:
     tenant = _tenant(active=True)
-    raw_key, key_hash, _ = generate_hosted_api_key(is_test=False)
+    raw_key, key_hash, _ = generate_hosted_api_key()
     key = _api_key(tenant.id, key_hash=key_hash)
     session = AsyncMock()
     session.execute = AsyncMock(side_effect=[_ScalarResult(many=[key]), _ScalarResult(one=tenant)])
@@ -146,7 +140,7 @@ async def test_authenticate_hosted_key_valid_returns_key_and_tenant() -> None:
 @pytest.mark.asyncio
 async def test_authenticate_hosted_key_inactive_tenant_returns_none() -> None:
     tenant = _tenant(active=False)
-    raw_key, key_hash, _ = generate_hosted_api_key(is_test=False)
+    raw_key, key_hash, _ = generate_hosted_api_key()
     key = _api_key(tenant.id, key_hash=key_hash)
     session = AsyncMock()
     session.execute = AsyncMock(side_effect=[_ScalarResult(many=[key]), _ScalarResult(one=tenant)])

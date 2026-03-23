@@ -138,7 +138,7 @@ async def _get_or_provision_user(
     session.add(membership)
     await session.flush()
 
-    raw_key, key_hash, key_prefix = generate_hosted_api_key(is_test=False)
+    raw_key, key_hash, key_prefix = generate_hosted_api_key()
     api_key = HostedAPIKey(
         id=uuid.uuid4(),
         tenant_id=tenant.id,
@@ -146,7 +146,6 @@ async def _get_or_provision_user(
         key_hash=key_hash,
         key_prefix=key_prefix,
         is_active=True,
-        is_test=False,
     )
     session.add(api_key)
     await session.commit()
