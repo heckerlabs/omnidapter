@@ -80,6 +80,12 @@ target-version = "py310"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["E501", "B008"]
 
+[tool.ruff.lint.per-file-ignores]
+"apps/omnidapter-server/alembic/versions/*.py" = ["I001", "UP007", "UP035"]
+
+[tool.ruff.format]
+exclude = ["apps/omnidapter-server/alembic/versions/*.py"]
+
 [tool.pyright]
 venvPath = "."
 venv = ".venv"

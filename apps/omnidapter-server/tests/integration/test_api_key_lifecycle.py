@@ -35,19 +35,11 @@ async def test_api_key_created_with_hash(session: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_api_key_prefix_uses_live_prefix(session: AsyncSession):
-    """Live API keys use omni_live_ prefix."""
-    raw_key, key_hash, key_prefix = generate_api_key(is_test=False)
-    assert raw_key.startswith("omni_live_")
-    assert key_prefix.startswith("omni_live_")
-
-
-@pytest.mark.asyncio
-async def test_api_key_prefix_uses_test_prefix(session: AsyncSession):
-    """Test API keys use omni_test_ prefix."""
-    raw_key, key_hash, key_prefix = generate_api_key(is_test=True)
-    assert raw_key.startswith("omni_test_")
-    assert key_prefix.startswith("omni_test_")
+async def test_api_key_uses_single_prefix_format(session: AsyncSession):
+    """API keys use a single prefix format."""
+    raw_key, _, key_prefix = generate_api_key()
+    assert raw_key.startswith("omni_")
+    assert key_prefix.startswith("omni_")
 
 
 @pytest.mark.asyncio
@@ -87,12 +79,12 @@ async def test_authenticate_inactive_key_returns_none(session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_authenticate_invalid_key_returns_none(session: AsyncSession):
-    result = await authenticate_api_key("omni_live_invalidkeyabcde12345678", session)
+    result = await authenticate_api_key("omni_invalidkeyabcde12345678", session)
     assert result is None
 
 
 @pytest.mark.asyncio
-async def test_authenticate_wrong_prefix_returns_none(session: AsyncSession):
+async def test_authenticate_unknown_key_returns_none(session: AsyncSession):
     result = await authenticate_api_key("wrong_prefix_key", session)
     assert result is None
 

@@ -28,7 +28,6 @@ async def second_api_key(session: AsyncSession) -> tuple[str, APIKey]:
         key_hash=key_hash,
         key_prefix=key_prefix,
         is_active=True,
-        is_test=False,
     )
     session.add(key)
     await session.flush()
@@ -141,13 +140,6 @@ async def test_unauthenticated_request_rejected(client: AsyncClient):
     from omnidapter_server.dependencies import get_encryption_service
     from omnidapter_server.encryption import EncryptionService
     from omnidapter_server.main import app
-
-    # We need a fresh client with no auth header
-    async def override_session():
-        from tests.integration.conftest import get_test_factory  # noqa: PLC0415
-
-        async with get_test_factory()() as s:
-            yield s
 
     def override_encryption():
         return EncryptionService(current_key=TEST_ENCRYPTION_KEY)

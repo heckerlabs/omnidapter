@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -14,6 +15,7 @@ _ENV_ALIASES = {
     "PRODUCTION": "PROD",
 }
 _VALID_ENVS = frozenset({"DEV", "LOCAL", "PROD"})
+_VALID_AUTH_MODES = frozenset({"required", "disabled"})
 _warned_local_plaintext_mode = False
 
 
@@ -22,6 +24,13 @@ def normalize_omnidapter_env(value: str | None) -> str:
     normalized = _ENV_ALIASES.get(normalized, normalized)
     if normalized not in _VALID_ENVS:
         raise ValueError("OMNIDAPTER_ENV must be one of DEV, LOCAL, PROD")
+    return normalized
+
+
+def normalize_omnidapter_auth_mode(value: str | None) -> str:
+    normalized = (value or "required").strip().lower()
+    if normalized not in _VALID_AUTH_MODES:
+        raise ValueError("OMNIDAPTER_AUTH_MODE must be one of required, disabled")
     return normalized
 
 
@@ -58,16 +67,21 @@ class Settings(BaseSettings):
     port: int = 8000
     omnidapter_base_url: str = "http://localhost:8000"
     omnidapter_env: str = "DEV"
+    omnidapter_auth_mode: Literal["required", "disabled"] = "required"
     omnidapter_allowed_origin_domains: str = "*"
 
-    # Seed an initial API key on startup (set to a raw key like "omni_live_...")
-    # If set and no matching prefix exists, the key is created automatically.
-    omnidapter_initial_api_key: str = ""
+    # Managed API key for server authentication.
+    omnidapter_api_key: str = ""
 
     @field_validator("omnidapter_env", mode="before")
     @classmethod
     def _normalize_env(cls, value: str | None) -> str:
         return normalize_omnidapter_env(value)
+
+    @field_validator("omnidapter_auth_mode", mode="before")
+    @classmethod
+    def _normalize_auth_mode(cls, value: str | None) -> str:
+        return normalize_omnidapter_auth_mode(value)
 
     @model_validator(mode="after")
     def _warn_local_plaintext_mode(self) -> Settings:
@@ -87,6 +101,11 @@ class Settings(BaseSettings):
                 "Use LOCAL only for local development."
             )
             _warned_local_plaintext_mode = True
+
+        if self.omnidapter_auth_mode == "disabled" and self.omnidapter_env != "LOCAL":
+            raise ValueError(
+                "OMNIDAPTER_AUTH_MODE=disabled is only allowed when OMNIDAPTER_ENV=LOCAL"
+            )
 
         return self
 

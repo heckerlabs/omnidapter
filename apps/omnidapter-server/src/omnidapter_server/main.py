@@ -17,24 +17,22 @@ from omnidapter_server.routers import calendar, connections, oauth, provider_con
 logger = logging.getLogger(__name__)
 
 
-async def _seed_initial_api_key() -> None:
-    """If OMNIDAPTER_INITIAL_API_KEY is set, create the key in the DB if not present."""
+async def _sync_managed_api_key() -> None:
+    """Ensure managed API key exists (and rotates if changed)."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     from omnidapter_server.config import get_settings
     from omnidapter_server.models.api_key import APIKey
+    from omnidapter_server.services.auth import hash_api_key, verify_api_key
 
     settings = get_settings()
-    raw_key = settings.omnidapter_initial_api_key.strip()
-    if not raw_key:
-        return
+    raw_key = settings.omnidapter_api_key.strip()
 
-    if not (raw_key.startswith("omni_live_") or raw_key.startswith("omni_test_")):
-        logger.warning(
-            "OMNIDAPTER_INITIAL_API_KEY has invalid prefix — must start with "
-            "'omni_live_' or 'omni_test_'. Skipping seed."
-        )
+    if settings.omnidapter_auth_mode == "required" and not raw_key:
+        raise RuntimeError("OMNIDAPTER_API_KEY is required when OMNIDAPTER_AUTH_MODE=required")
+
+    if not raw_key:
         return
 
     key_prefix = raw_key[:12]
@@ -43,34 +41,46 @@ async def _seed_initial_api_key() -> None:
 
     try:
         async with factory() as session:
-            result = await session.execute(select(APIKey).where(APIKey.key_prefix == key_prefix))
-            if result.scalar_one_or_none() is not None:
-                return  # already seeded
+            result = await session.execute(
+                select(APIKey)
+                .where(APIKey.name.in_(("managed", "initial")))
+                .order_by(APIKey.created_at.desc())
+            )
+            existing = result.scalars().first()
+
+            if existing is not None and verify_api_key(raw_key, existing.key_hash):
+                if not existing.is_active:
+                    existing.is_active = True
+                    await session.commit()
+                return
 
             import uuid
 
-            import bcrypt
-
-            key_hash = bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
-            is_test = raw_key.startswith("omni_test_")
-            api_key = APIKey(
-                id=uuid.uuid4(),
-                name="initial",
-                key_hash=key_hash,
-                key_prefix=key_prefix,
-                is_active=True,
-                is_test=is_test,
-            )
-            session.add(api_key)
-            await session.commit()
-            logger.info("Seeded initial API key (prefix=%s)", key_prefix)
+            if existing is None:
+                api_key = APIKey(
+                    id=uuid.uuid4(),
+                    name="managed",
+                    key_hash=hash_api_key(raw_key),
+                    key_prefix=key_prefix,
+                    is_active=True,
+                )
+                session.add(api_key)
+                await session.commit()
+                logger.info("Seeded managed API key (prefix=%s)", key_prefix)
+            else:
+                existing.name = "managed"
+                existing.key_hash = hash_api_key(raw_key)
+                existing.key_prefix = key_prefix
+                existing.is_active = True
+                await session.commit()
+                logger.info("Rotated managed API key (prefix=%s)", key_prefix)
     finally:
         await engine.dispose()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await _seed_initial_api_key()
+    await _sync_managed_api_key()
     yield
 
 

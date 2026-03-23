@@ -25,7 +25,7 @@ class ProviderConfig(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-    provider_key: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    provider_key: Mapped[str] = mapped_column(String(50), nullable=False)
     auth_kind: Mapped[str] = mapped_column(String(50), nullable=False, default="oauth2")
     client_id_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     client_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
