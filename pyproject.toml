@@ -44,6 +44,18 @@ cmd = "pytest"
 help = "Run format, lint, typecheck, tests, and builds"
 sequence = ["format", "lint", "typecheck", "build", "test"]
 
+[tool.poe.tasks.test-integration-core]
+help = "Run Omnidapter Core integration tests"
+cmd = "uv run --env-file packages/omnidapter-core/tests/integration/.env pytest packages/omnidapter-core/tests/integration"
+
+[tool.poe.tasks.test-integration-server]
+help = "Run Omnidapter Server integration tests. Run `docker-compose --profile test up` to start dev db."
+cmd = "uv run --env-file apps/omnidapter-server/.env pytest apps/omnidapter-server/tests/integration"
+
+[tool.poe.tasks.test-integration]
+help = "Run Integration Tests"
+sequence = ["test-integration-core", "test-integration-server"]
+
 [tool.poe.tasks.server-infra]
 help = "Start backend infra: db, migration"
 cmd = "docker-compose -f apps/omnidapter-server/docker-compose.yml up --build"
