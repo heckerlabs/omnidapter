@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query, Request
 from omnidapter import Omnidapter
 from sqlalchemy import select
@@ -12,7 +14,6 @@ from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
-from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.models.provider_config import ProviderConfig
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.oauth_flows import (
@@ -33,17 +34,13 @@ async def _get_provider_config(provider_key: str, session: AsyncSession) -> Prov
     return result.scalar_one_or_none()
 
 
-async def _load_oauth_state(state_token: str, session: AsyncSession) -> OAuthState | None:
-    result = await session.execute(select(OAuthState).where(OAuthState.state_token == state_token))
-    return result.scalar_one_or_none()
+async def _load_connection_by_id(connection_id: str, session: AsyncSession) -> Connection | None:
+    try:
+        conn_uuid = uuid.UUID(connection_id)
+    except ValueError:
+        return None
 
-
-async def _load_connection_for_state(
-    state_row: OAuthState, session: AsyncSession
-) -> Connection | None:
-    conn_result = await session.execute(
-        select(Connection).where(Connection.id == state_row.connection_id)
-    )
+    conn_result = await session.execute(select(Connection).where(Connection.id == conn_uuid))
     return conn_result.scalar_one_or_none()
 
 
@@ -53,10 +50,10 @@ async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
     settings: Settings,
+    oauth_state_store,
 ) -> Omnidapter:
     provider_config = await _get_provider_config(provider_key, session)
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
-    state_store = build_oauth_state_store(settings, session, encryption)
     registry = build_provider_registry(
         settings,
         provider_config=provider_config,
@@ -65,7 +62,7 @@ async def _build_omni(
 
     return Omnidapter(
         credential_store=cred_store,
-        oauth_state_store=state_store,
+        oauth_state_store=oauth_state_store,
         registry=registry,
     )
 
@@ -87,6 +84,8 @@ async def oauth_callback(
     error_description: str | None = Query(None),
 ):
     """Handle OAuth callback from provider."""
+    state_store = build_oauth_state_store(settings, session, encryption)
+
     return await oauth_callback_flow(
         params=OAuthCallbackParams(
             provider_key=provider_key,
@@ -98,13 +97,14 @@ async def oauth_callback(
         request=request,
         session=session,
         settings=settings,
-        load_oauth_state=_load_oauth_state,
-        load_connection_for_state=_load_connection_for_state,
+        load_oauth_state=state_store.load_state,
+        load_connection_by_id=_load_connection_by_id,
         build_omni=lambda flow_provider_key, conn, flow_session: _build_omni(
             flow_provider_key,
             conn,
             flow_session,
             encryption,
             settings,
+            state_store,
         ),
     )

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Query, Request
 from omnidapter import Omnidapter
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
-from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.services.oauth_flows import (
     OAuthCallbackParams,
     append_query_params,
@@ -26,25 +27,19 @@ from omnidapter_hosted.services.provider_registry import build_hosted_provider_r
 router = APIRouter(prefix="/oauth", tags=["oauth"])
 
 
-async def _load_oauth_state(state_token: str, session: AsyncSession) -> OAuthState | None:
-    result = await session.execute(select(OAuthState).where(OAuthState.state_token == state_token))
-    return result.scalar_one_or_none()
+async def _load_connection_by_id(connection_id: str, session: AsyncSession) -> Connection | None:
+    try:
+        conn_uuid = uuid.UUID(connection_id)
+    except ValueError:
+        return None
 
-
-async def _load_connection_for_state(
-    state_row: OAuthState, session: AsyncSession
-) -> Connection | None:
-    conn_result = await session.execute(
-        select(Connection).where(Connection.id == state_row.connection_id)
-    )
+    conn_result = await session.execute(select(Connection).where(Connection.id == conn_uuid))
     conn = conn_result.scalar_one_or_none()
     if conn is None:
         return None
 
     owner_result = await session.execute(
-        select(HostedConnectionOwner).where(
-            HostedConnectionOwner.connection_id == state_row.connection_id
-        )
+        select(HostedConnectionOwner).where(HostedConnectionOwner.connection_id == conn_uuid)
     )
     owner = owner_result.scalar_one_or_none()
     if owner is None:
@@ -88,13 +83,13 @@ async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
     settings: HostedSettings,
+    oauth_state_store,
 ) -> Omnidapter:
     tenant_id = await _load_owner_tenant_id(connection.id, session)
     if tenant_id is None:
         raise ValueError("Connection owner not found")
 
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
-    state_store = build_oauth_state_store(settings, session, encryption)
     registry = await build_hosted_provider_registry(
         tenant_id=tenant_id,
         provider_key=provider_key,
@@ -105,7 +100,7 @@ async def _build_omni(
 
     return Omnidapter(
         credential_store=cred_store,
-        oauth_state_store=state_store,
+        oauth_state_store=oauth_state_store,
         registry=registry,
     )
 
@@ -127,6 +122,8 @@ async def oauth_callback(
     error_description: str | None = Query(None),
 ):
     """Handle OAuth callback from provider."""
+    state_store = build_oauth_state_store(settings, session, encryption)
+
     return await oauth_callback_flow(
         params=OAuthCallbackParams(
             provider_key=provider_key,
@@ -138,13 +135,14 @@ async def oauth_callback(
         request=request,
         session=session,
         settings=settings,
-        load_oauth_state=_load_oauth_state,
-        load_connection_for_state=_load_connection_for_state,
+        load_oauth_state=state_store.load_state,
+        load_connection_by_id=_load_connection_by_id,
         build_omni=lambda flow_provider_key, conn, flow_session: _build_omni(
             flow_provider_key,
             conn,
             flow_session,
             encryption,
             settings,
+            state_store,
         ),
     )

@@ -13,6 +13,7 @@ from omnidapter_server.encryption import EncryptionService
 logger = logging.getLogger(__name__)
 
 _warned_inmemory = False
+_inmemory_store: InMemoryOAuthStateStore | None = None
 
 
 def build_oauth_state_store(
@@ -20,14 +21,11 @@ def build_oauth_state_store(
     session: AsyncSession,
     encryption: EncryptionService,
 ) -> OAuthStateStore:
-    """Build the appropriate OAuth state store based on settings priority:
+    """Build OAuth state store.
 
-    1. OMNIDAPTER_OAUTH_STATE_REDIS_URL  -> RedisOAuthStateStore
-    2. OMNIDAPTER_OAUTH_STATE_DB_URL     -> DatabaseURLOAuthStateStore
-    3. omnidapter_database_url set       -> DatabaseOAuthStateStore (uses main db url)
-    4. fallback                          -> InMemoryOAuthStateStore (warns)
+    Redis is preferred when configured. Otherwise fall back to in-memory and warn.
     """
-    global _warned_inmemory
+    global _warned_inmemory, _inmemory_store
 
     if settings.omnidapter_oauth_state_redis_url:
         from omnidapter_server.stores.redis_oauth_state_store import RedisOAuthStateStore
@@ -37,25 +35,14 @@ def build_oauth_state_store(
             encryption=encryption,
         )
 
-    if settings.omnidapter_oauth_state_db_url:
-        from omnidapter_server.stores.oauth_state_store import DatabaseURLOAuthStateStore
-
-        return DatabaseURLOAuthStateStore(
-            database_url=settings.omnidapter_oauth_state_db_url,
-            encryption=encryption,
-        )
-
-    if settings.omnidapter_database_url:
-        from omnidapter_server.stores.oauth_state_store import DatabaseOAuthStateStore
-
-        return DatabaseOAuthStateStore(session=session, encryption=encryption)
-
     if not _warned_inmemory:
         logger.warning(
             "Using in-memory OAuth state store. "
-            "This is NOT suitable for multi-worker or production deployments. "
-            "Set OMNIDAPTER_OAUTH_STATE_REDIS_URL or OMNIDAPTER_DATABASE_URL."
+            "This is NOT suitable for multi-worker deployments. "
+            "Set OMNIDAPTER_OAUTH_STATE_REDIS_URL for shared state."
         )
         _warned_inmemory = True
 
-    return InMemoryOAuthStateStore()
+    if _inmemory_store is None:
+        _inmemory_store = InMemoryOAuthStateStore()
+    return _inmemory_store

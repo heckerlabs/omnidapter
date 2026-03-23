@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import HTTPException, Request
@@ -14,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_server.config import Settings
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.origin_policy import parse_allowed_origin_domains, validate_redirect_url
 from omnidapter_server.services.connection_health import transition_to_active
 
@@ -28,8 +28,8 @@ class OAuthCallbackParams:
     error_description: str | None
 
 
-StateLoader = Callable[[str, AsyncSession], Awaitable[OAuthState | None]]
-ConnectionByStateLoader = Callable[[OAuthState, AsyncSession], Awaitable[Connection | None]]
+StateLoader = Callable[[str], Awaitable[dict[str, Any] | None]]
+ConnectionByIdLoader = Callable[[str, AsyncSession], Awaitable[Connection | None]]
 OmniBuilder = Callable[[str, Connection, AsyncSession], Awaitable[Omnidapter]]
 
 
@@ -72,14 +72,15 @@ async def oauth_callback_flow(
     session: AsyncSession,
     settings: Settings,
     load_oauth_state: StateLoader,
-    load_connection_for_state: ConnectionByStateLoader,
+    load_connection_by_id: ConnectionByIdLoader,
     build_omni: OmniBuilder,
 ):
     if params.error:
         if params.state:
-            state_row = await load_oauth_state(params.state, session)
-            if state_row:
-                conn = await load_connection_for_state(state_row, session)
+            state_payload = await load_oauth_state(params.state)
+            connection_id = str(state_payload.get("connection_id", "")) if state_payload else ""
+            if connection_id:
+                conn = await load_connection_by_id(connection_id, session)
                 if conn:
                     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
                     if redirect_url:
@@ -104,11 +105,12 @@ async def oauth_callback_flow(
     if not params.code or not params.state:
         raise HTTPException(status_code=400, detail="Missing code or state parameter")
 
-    state_row = await load_oauth_state(params.state, session)
-    if state_row is None:
+    state_payload = await load_oauth_state(params.state)
+    connection_id = str(state_payload.get("connection_id", "")) if state_payload else ""
+    if not connection_id:
         raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
 
-    conn = await load_connection_for_state(state_row, session)
+    conn = await load_connection_by_id(connection_id, session)
     if conn is None:
         raise HTTPException(status_code=400, detail="Connection not found")
 
@@ -118,7 +120,7 @@ async def oauth_callback_flow(
     try:
         stored_credential = await omni.oauth.complete(
             provider=params.provider_key,
-            connection_id=str(state_row.connection_id),
+            connection_id=str(conn.id),
             code=params.code,
             state=params.state,
             redirect_uri=callback_url,
@@ -128,14 +130,14 @@ async def oauth_callback_flow(
     except Exception as exc:
         await session.execute(
             update(Connection)
-            .where(Connection.id == state_row.connection_id)
+            .where(Connection.id == conn.id)
             .values(status=ConnectionStatus.REVOKED, status_reason=str(exc))
         )
         await session.commit()
         raise HTTPException(status_code=400, detail=f"OAuth completion failed: {exc}") from exc
 
     await transition_to_active(
-        connection_id=state_row.connection_id,
+        connection_id=conn.id,
         session=session,
         granted_scopes=stored_credential.granted_scopes,
         provider_account_id=stored_credential.provider_account_id,
@@ -144,8 +146,6 @@ async def oauth_callback_flow(
     redirect_url = (conn.provider_config or {}).get("redirect_url", "")
     if redirect_url:
         validate_redirect_url_or_400(redirect_url=redirect_url, request=request, settings=settings)
-        return RedirectResponse(
-            url=append_query_params(redirect_url, connection_id=str(state_row.connection_id))
-        )
+        return RedirectResponse(url=append_query_params(redirect_url, connection_id=str(conn.id)))
 
-    return {"status": "connected", "connection_id": str(state_row.connection_id)}
+    return {"status": "connected", "connection_id": str(conn.id)}

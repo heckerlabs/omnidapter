@@ -44,9 +44,8 @@ class Settings(BaseSettings):
     omnidapter_encryption_key: str = ""
     omnidapter_encryption_key_previous: str = ""  # for key rotation
 
-    # OAuth state store — priority: Redis > DB > in-memory (warns on in-memory)
+    # OAuth state store — Redis preferred, in-memory fallback with warning
     omnidapter_oauth_state_redis_url: str = ""
-    omnidapter_oauth_state_db_url: str = ""  # defaults to omnidapter_database_url if empty
 
     # Fallback OAuth apps
     omnidapter_google_client_id: str = ""
