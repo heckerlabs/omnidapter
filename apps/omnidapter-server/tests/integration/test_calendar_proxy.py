@@ -169,7 +169,7 @@ async def test_update_calendar(
 
         response = await client.patch(
             f"/v1/connections/{active_connection.id}/calendar/calendars/primary",
-            json={"summary": "Updated Calendar"},
+            json={"calendar_id": "primary", "summary": "Updated Calendar"},
         )
 
     assert response.status_code == 200

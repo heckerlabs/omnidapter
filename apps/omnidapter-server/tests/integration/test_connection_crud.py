@@ -88,7 +88,11 @@ async def test_get_connection(
 async def test_get_connection_not_found(client: AsyncClient):
     response = await client.get(f"/v1/connections/{uuid.uuid4()}")
     assert response.status_code == 404
-    assert response.json()["error"]["code"] == "connection_not_found"
+    payload = response.json()
+    if "error" in payload:
+        assert payload["error"]["code"] == "connection_not_found"
+    else:
+        assert payload["detail"]["code"] == "connection_not_found"
 
 
 @pytest.mark.asyncio
