@@ -12,18 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.tenant import Tenant
 
-_LIVE_PREFIX = "omni_live_"
-_TEST_PREFIX = "omni_test_"
 _RAW_KEY_LENGTH = 32
 
 
-def generate_hosted_api_key(is_test: bool = False) -> tuple[str, str, str]:
-    """Generate a new hosted API key (live or test).
+def generate_hosted_api_key() -> tuple[str, str, str]:
+    """Generate a new hosted API key.
 
     Returns:
         (raw_key, key_hash, key_prefix)
     """
-    prefix = _TEST_PREFIX if is_test else _LIVE_PREFIX
+    prefix = "omni_"
     alphabet = string.ascii_letters + string.digits
     random_part = "".join(secrets.choice(alphabet) for _ in range(_RAW_KEY_LENGTH))
     raw_key = f"{prefix}{random_part}"
@@ -45,7 +43,7 @@ async def authenticate_hosted_key(
     session: AsyncSession,
 ) -> tuple[HostedAPIKey, Tenant] | None:
     """Authenticate a hosted API key and return (HostedAPIKey, Tenant) or None."""
-    if not (raw_key.startswith(_LIVE_PREFIX) or raw_key.startswith(_TEST_PREFIX)):
+    if not raw_key.startswith("omni_"):
         return None
 
     prefix = raw_key[:12]

@@ -75,9 +75,8 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
         tenant_id=tenant_id,
         name="main",
         key_hash="hash",
-        key_prefix="omni_live_ab",
+        key_prefix="omni_key_abcd",
         is_active=True,
-        is_test=False,
         created_at=_now(),
         last_used_at=None,
     )
@@ -115,17 +114,17 @@ async def test_create_api_key() -> None:
 
     with patch(
         "omnidapter_hosted.routers.api_keys.generate_hosted_api_key",
-        return_value=("omni_live_raw", "hashed", "omni_live_ra"),
+        return_value=("omni_raw", "hashed", "omni_raw__12"),
     ):
         response = await create_api_key(
-            body=CreateAPIKeyRequest(name="prod", is_test=False),
+            body=CreateAPIKeyRequest(name="prod"),
             auth=auth,
             session=session,
             request_id="req_2",
         )
 
     assert response["meta"]["request_id"] == "req_2"
-    assert response["data"]["raw_key"] == "omni_live_raw"
+    assert response["data"]["raw_key"] == "omni_raw"
     session.add.assert_called_once()
     session.commit.assert_awaited_once()
 

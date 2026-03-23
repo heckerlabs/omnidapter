@@ -27,7 +27,6 @@ class APIKeyResponse(BaseModel):
     name: str
     key_prefix: str
     is_active: bool
-    is_test: bool
     last_used_at: str | None
     created_at: str
 
@@ -38,7 +37,6 @@ class APIKeyResponse(BaseModel):
             name=k.name,
             key_prefix=k.key_prefix,
             is_active=k.is_active,
-            is_test=k.is_test,
             last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
             created_at=k.created_at.isoformat(),
         )
@@ -50,7 +48,6 @@ class CreateAPIKeyResponse(APIKeyResponse):
 
 class CreateAPIKeyRequest(BaseModel):
     name: str
-    is_test: bool = False
 
 
 @router.get("")
@@ -76,7 +73,7 @@ async def create_api_key(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    raw_key, key_hash, key_prefix = generate_hosted_api_key(is_test=body.is_test)
+    raw_key, key_hash, key_prefix = generate_hosted_api_key()
     api_key = HostedAPIKey(
         id=uuid.uuid4(),
         tenant_id=auth.tenant_id,
@@ -84,7 +81,6 @@ async def create_api_key(
         key_hash=key_hash,
         key_prefix=key_prefix,
         is_active=True,
-        is_test=body.is_test,
     )
     session.add(api_key)
     await session.commit()

@@ -98,7 +98,6 @@ def upgrade() -> None:
         sa.Column("key_prefix", sa.String(20), nullable=False),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("is_test", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.ForeignKeyConstraint(["tenant_id"], ["tenants.id"]),
     )
 

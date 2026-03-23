@@ -52,9 +52,8 @@ def _auth() -> HostedAuthContext:
         tenant_id=tenant.id,
         name="key",
         key_hash="hash",
-        key_prefix="omni_live_ab",
+        key_prefix="omni_key_abcd",
         is_active=True,
-        is_test=False,
         created_at=_now(),
         last_used_at=None,
     )
