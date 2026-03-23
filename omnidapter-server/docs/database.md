@@ -7,7 +7,6 @@
 - `api_keys`
 - `connections`
 - `provider_configs`
-- `oauth_states`
 
 ## Migrations
 
