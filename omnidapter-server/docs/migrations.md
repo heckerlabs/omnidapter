@@ -5,19 +5,19 @@
 ## Apply latest migrations
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini upgrade head
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
 ```
 
 ## Show current revision
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini current
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini current
 ```
 
 ## Create a new migration
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini revision -m "describe change"
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini revision -m "describe change"
 ```
 
 If your change is autogeneratable, use `--autogenerate` and then review the output carefully.
@@ -25,7 +25,7 @@ If your change is autogeneratable, use `--autogenerate` and then review the outp
 ## Rollback one revision
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini downgrade -1
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini downgrade -1
 ```
 
 ## Production guidance

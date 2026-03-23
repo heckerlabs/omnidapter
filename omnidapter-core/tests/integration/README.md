@@ -13,47 +13,47 @@ uv sync --all-packages
 Create your env file from the template:
 
 ```bash
-cp packages/omnidapter/tests/integration/.env.example packages/omnidapter/tests/integration/.env
+cp omnidapter-core/tests/integration/.env.example omnidapter-core/tests/integration/.env
 ```
 
-Fill in credentials/tokens in `packages/omnidapter/tests/integration/.env`.
+Fill in credentials/tokens in `omnidapter-core/tests/integration/.env`.
 
 ## 2) Run tests with env file
 
 All integration tests:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration
 ```
 
 Google only:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration/test_google.py
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_google.py
 ```
 
 Microsoft only:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration/test_microsoft.py
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_microsoft.py
 ```
 
 Zoho only:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration/test_zoho.py
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_zoho.py
 ```
 
 CalDAV only:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration/test_caldav.py
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_caldav.py
 ```
 
 Apple only:
 
 ```bash
-uv run --env-file packages/omnidapter/tests/integration/.env pytest packages/omnidapter/tests/integration/test_apple.py
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_apple.py
 ```
 
 ## Required env vars by provider

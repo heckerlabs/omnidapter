@@ -21,7 +21,7 @@ packages = ["src/omnidapter"]
 include = ["src/"]
 
 [tool.pyright]
-venvPath = "../.."
+venvPath = ".."
 venv = ".venv"
 extraPaths = ["src"]
 include = ["src", "tests"]

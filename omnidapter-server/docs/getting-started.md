@@ -27,7 +27,7 @@ See [Configuration](configuration.md) for all settings.
 ## 3) Run migrations
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini upgrade head
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
 ```
 
 ## 4) Bootstrap first API key
@@ -50,8 +50,8 @@ uv run omnidapter-server
 Optional Docker Compose path:
 
 ```bash
-cp apps/omnidapter-server/.env.example apps/omnidapter-server/.env
-docker compose -f apps/omnidapter-server/docker-compose.yml up -d --build
+cp omnidapter-server/.env.example omnidapter-server/.env
+docker compose -f omnidapter-server/docker-compose.yml up -d --build
 ```
 
 Server endpoints:

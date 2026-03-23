@@ -39,8 +39,8 @@ services:
 
   migrate:
     build:
-      context: ../..
-      dockerfile: apps/omnidapter-server/Dockerfile
+      context: ..
+      dockerfile: omnidapter-server/Dockerfile
     restart: "no"
     environment:
       OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
@@ -50,12 +50,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["sh", "-c", "cd apps/omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head"]
+    command: ["sh", "-c", "cd omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head"]
 
   api:
     build:
-      context: ../..
-      dockerfile: apps/omnidapter-server/Dockerfile
+      context: ..
+      dockerfile: omnidapter-server/Dockerfile
     profiles: ["production"]
     restart: no
     ports:

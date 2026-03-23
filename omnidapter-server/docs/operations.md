@@ -5,7 +5,7 @@
 Apply:
 
 ```bash
-uv run --package omnidapter-server alembic -c apps/omnidapter-server/alembic.ini upgrade head
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
 ```
 
 Detailed guidance: [Migrations](migrations.md)
