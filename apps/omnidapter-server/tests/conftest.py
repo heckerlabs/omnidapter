@@ -11,3 +11,4 @@ os.environ.setdefault(
 )
 os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://localhost/omnidapter_test")
 os.environ.setdefault("OMNIDAPTER_ENV", "DEV")
+os.environ.setdefault("OMNIDAPTER_API_KEY", "omni_test_suite_initial_key_123456")

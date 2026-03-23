@@ -21,7 +21,6 @@ class APIKey(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    key_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
+    key_prefix: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_test: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

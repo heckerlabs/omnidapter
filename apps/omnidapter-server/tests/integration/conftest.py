@@ -24,9 +24,11 @@ TEST_DB_URL = os.environ.get("OMNIDAPTER_TEST_DATABASE_URL")
 _SKIP_INTEGRATION = os.environ.get("OMNIDAPTER_INTEGRATION") != "1" or TEST_DB_URL is None
 TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
+
 
 @pytest.fixture(scope="session", autouse=True)
 def skip_if_no_integration():
@@ -94,7 +96,6 @@ async def api_key(session: AsyncSession) -> tuple[str, APIKey]:
         key_hash=key_hash,
         key_prefix=key_prefix,
         is_active=True,
-        is_test=False,
     )
     session.add(key)
     await session.flush()

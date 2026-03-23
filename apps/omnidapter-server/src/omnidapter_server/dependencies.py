@@ -36,12 +36,13 @@ def get_encryption_service(
 class AuthContext:
     """Resolved authentication context for a request."""
 
-    def __init__(self, api_key: APIKey) -> None:
+    def __init__(self, api_key: APIKey | None) -> None:
         self.api_key = api_key
 
 
 async def get_auth_context(
     request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
         Security(_bearer_scheme),
@@ -49,6 +50,9 @@ async def get_auth_context(
     session: AsyncSession = Depends(get_session),
 ) -> AuthContext:
     """Extract and validate API key from Authorization header."""
+    if settings.omnidapter_auth_mode == "disabled":
+        return AuthContext(api_key=None)
+
     authorization = request.headers.get("Authorization")
 
     if not authorization:

@@ -10,7 +10,8 @@ from omnidapter_server.config import Settings
 from pydantic import ValidationError
 
 
-def test_settings_defaults_to_dev() -> None:
+def test_settings_defaults_to_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OMNIDAPTER_ENV", raising=False)
     settings = Settings(omnidapter_encryption_key="dummy")
     assert settings.omnidapter_env == "DEV"
     assert settings.host == "0.0.0.0"
@@ -81,3 +82,24 @@ def test_settings_warn_local_without_encryption_key(caplog: pytest.LogCaptureFix
     assert "plaintext" in caplog.text.lower()
 
     config_module._warned_local_plaintext_mode = False
+
+
+def test_settings_reject_auth_disabled_outside_local() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="OMNIDAPTER_AUTH_MODE=disabled is only allowed when OMNIDAPTER_ENV=LOCAL",
+    ):
+        Settings(
+            omnidapter_env="DEV",
+            omnidapter_auth_mode="disabled",
+            omnidapter_encryption_key="dummy",
+        )
+
+
+def test_settings_allow_auth_disabled_in_local() -> None:
+    settings = Settings(
+        omnidapter_env="LOCAL",
+        omnidapter_auth_mode="disabled",
+        omnidapter_encryption_key="",
+    )
+    assert settings.omnidapter_auth_mode == "disabled"

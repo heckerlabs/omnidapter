@@ -14,18 +14,23 @@ from omnidapter_server.models.api_key import APIKey
 _RAW_KEY_LENGTH = 32
 
 
-def generate_api_key(is_test: bool = False) -> tuple[str, str, str]:
+def hash_api_key(raw_key: str) -> str:
+    """Hash a raw API key for storage."""
+    return bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
+
+
+def generate_api_key() -> tuple[str, str, str]:
     """Generate a new API key.
 
     Returns:
         (raw_key, key_hash, key_prefix)
     """
-    prefix = "omni_test_" if is_test else "omni_live_"
+    prefix = "omni_"
     alphabet = string.ascii_letters + string.digits
     random_part = "".join(secrets.choice(alphabet) for _ in range(_RAW_KEY_LENGTH))
     raw_key = f"{prefix}{random_part}"
     key_prefix = raw_key[:12]
-    key_hash = bcrypt.hashpw(raw_key.encode(), bcrypt.gensalt()).decode()
+    key_hash = hash_api_key(raw_key)
     return raw_key, key_hash, key_prefix
 
 
@@ -42,7 +47,7 @@ async def authenticate_api_key(
     session: AsyncSession,
 ) -> APIKey | None:
     """Authenticate an API key and return the APIKey or None."""
-    if not (raw_key.startswith("omni_live_") or raw_key.startswith("omni_test_")):
+    if not raw_key:
         return None
 
     prefix = raw_key[:12]
