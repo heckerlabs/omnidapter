@@ -19,11 +19,9 @@ Settings are environment-driven (`OMNIDAPTER_*`) plus runtime bind vars (`HOST`,
 
 ## OAuth State Store
 
-Priority order:
-
-1. Redis (`OMNIDAPTER_OAUTH_STATE_REDIS_URL`)
-2. DB (`OMNIDAPTER_OAUTH_STATE_DB_URL`)
-3. In-memory fallback (DEV/LOCAL only)
+- Redis (`OMNIDAPTER_OAUTH_STATE_REDIS_URL`) is preferred
+- In-memory is used when Redis URL is unset (warning logged)
+- In-memory is not suitable for multi-worker deployments
 
 ## Fallback Provider OAuth Credentials
 

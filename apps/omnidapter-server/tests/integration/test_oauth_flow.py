@@ -9,7 +9,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from omnidapter_server.main import app
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.oauth_state import OAuthState
 from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.integration
@@ -100,7 +99,7 @@ async def test_oauth_callback_transitions_to_active(
     encryption,
 ):
     """Callback with valid code/state transitions connection to active."""
-    # Create connection + OAuth state manually
+    # Create pending connection
     conn = Connection(
         id=uuid.uuid4(),
         provider_key="google",
@@ -111,24 +110,7 @@ async def test_oauth_callback_transitions_to_active(
     session.add(conn)
     await session.flush()
 
-    from datetime import datetime, timedelta, timezone
-
     state_token = "teststate_abc123"
-    oauth_state = OAuthState(
-        id=uuid.uuid4(),
-        provider_key="google",
-        connection_id=conn.id,
-        state_token=state_token,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
-        redirect_uri="http://testserver/oauth/google/callback",
-        metadata_={
-            "connection_id": str(conn.id),
-            "provider": "google",
-            "redirect_uri": "http://testserver/oauth/google/callback",
-        },
-    )
-    session.add(oauth_state)
-    await session.flush()
 
     # Mock the Omnidapter.oauth.complete
     from omnidapter import OAuth2Credentials
@@ -146,7 +128,23 @@ async def test_oauth_callback_transitions_to_active(
         provider_account_id="user@gmail.com",
     )
 
-    with patch("omnidapter_server.routers.oauth.Omnidapter") as MockOmni:
+    mock_state_store = MagicMock()
+    mock_state_store.load_state = AsyncMock(
+        return_value={
+            "connection_id": str(conn.id),
+            "provider": "google",
+            "redirect_uri": "http://testserver/oauth/google/callback",
+            "code_verifier": None,
+        }
+    )
+
+    with (
+        patch("omnidapter_server.routers.oauth.Omnidapter") as MockOmni,
+        patch(
+            "omnidapter_server.routers.oauth.build_oauth_state_store",
+            return_value=mock_state_store,
+        ),
+    ):
         mock_instance = MagicMock()
         mock_instance.oauth.complete = AsyncMock(return_value=mock_credential)
         MockOmni.return_value = mock_instance

@@ -14,7 +14,6 @@ from fastapi.responses import RedirectResponse
 from omnidapter import OAuthStateError
 from omnidapter_server.config import Settings
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.oauth_state import OAuthState
 from omnidapter_server.services.oauth_flows import (
     OAuthCallbackParams,
     append_query_params,
@@ -28,14 +27,13 @@ def _request() -> Request:
     return Request({"type": "http", "method": "GET", "path": "/", "headers": []})
 
 
-def _state(connection_id: uuid.UUID) -> OAuthState:
-    return OAuthState(
-        id=uuid.uuid4(),
-        state_token="st_1",
-        connection_id=connection_id,
-        provider_key="google",
-        expires_at=datetime.now(timezone.utc),
-    )
+def _state(connection_id: uuid.UUID) -> dict[str, str]:
+    return {
+        "state_token": "st_1",
+        "connection_id": str(connection_id),
+        "provider": "google",
+        "expires_at": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 def _connection() -> Connection:
@@ -84,7 +82,7 @@ async def test_oauth_callback_flow_error_with_redirect_returns_redirect_response
             params=OAuthCallbackParams(
                 provider_key="google",
                 code=None,
-                state=state.state_token,
+                state=state["state_token"],
                 error="access_denied",
                 error_description="denied",
             ),
@@ -92,7 +90,7 @@ async def test_oauth_callback_flow_error_with_redirect_returns_redirect_response
             session=AsyncMock(),
             settings=Settings(),
             load_oauth_state=AsyncMock(return_value=state),
-            load_connection_for_state=AsyncMock(return_value=conn),
+            load_connection_by_id=AsyncMock(return_value=conn),
             build_omni=AsyncMock(),
         )
 
@@ -115,7 +113,7 @@ async def test_oauth_callback_flow_missing_code_or_state() -> None:
             session=AsyncMock(),
             settings=Settings(),
             load_oauth_state=AsyncMock(),
-            load_connection_for_state=AsyncMock(),
+            load_connection_by_id=AsyncMock(),
             build_omni=AsyncMock(),
         )
     assert exc_info.value.status_code == 400
@@ -133,7 +131,7 @@ async def test_oauth_callback_flow_oauth_state_error() -> None:
             params=OAuthCallbackParams(
                 provider_key="google",
                 code="code",
-                state=state.state_token,
+                state=state["state_token"],
                 error=None,
                 error_description=None,
             ),
@@ -141,7 +139,7 @@ async def test_oauth_callback_flow_oauth_state_error() -> None:
             session=AsyncMock(),
             settings=Settings(),
             load_oauth_state=AsyncMock(return_value=state),
-            load_connection_for_state=AsyncMock(return_value=conn),
+            load_connection_by_id=AsyncMock(return_value=conn),
             build_omni=AsyncMock(return_value=omni),
         )
     assert exc_info.value.status_code == 400
@@ -161,7 +159,7 @@ async def test_oauth_callback_flow_generic_error_revokes_connection() -> None:
             params=OAuthCallbackParams(
                 provider_key="google",
                 code="code",
-                state=state.state_token,
+                state=state["state_token"],
                 error=None,
                 error_description=None,
             ),
@@ -169,7 +167,7 @@ async def test_oauth_callback_flow_generic_error_revokes_connection() -> None:
             session=session,
             settings=Settings(),
             load_oauth_state=AsyncMock(return_value=state),
-            load_connection_for_state=AsyncMock(return_value=conn),
+            load_connection_by_id=AsyncMock(return_value=conn),
             build_omni=AsyncMock(return_value=omni),
         )
 
@@ -190,7 +188,7 @@ async def test_oauth_callback_flow_success_without_redirect() -> None:
             params=OAuthCallbackParams(
                 provider_key="google",
                 code="code",
-                state=state.state_token,
+                state=state["state_token"],
                 error=None,
                 error_description=None,
             ),
@@ -198,7 +196,7 @@ async def test_oauth_callback_flow_success_without_redirect() -> None:
             session=AsyncMock(),
             settings=Settings(),
             load_oauth_state=AsyncMock(return_value=state),
-            load_connection_for_state=AsyncMock(return_value=conn),
+            load_connection_by_id=AsyncMock(return_value=conn),
             build_omni=AsyncMock(return_value=omni),
         )
 
