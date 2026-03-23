@@ -17,6 +17,26 @@ services:
       retries: 10
       start_period: 10s
 
+  test-db:
+    # run with `docker-compose --profile test up`
+    profiles: ["test"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: omnidapter_test
+      POSTGRES_USER: omnidapter
+      POSTGRES_PASSWORD: omnidapter
+    volumes:
+      - pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnidapter -d omnidapter_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   migrate:
     build:
       context: ../..
@@ -68,3 +88,4 @@ services:
 
 volumes:
   pgdata:
+  pgdata_test:

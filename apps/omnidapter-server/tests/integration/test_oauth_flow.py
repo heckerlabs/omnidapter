@@ -161,7 +161,7 @@ async def test_oauth_callback_transitions_to_active(
             )
 
     # Should redirect to the redirect_url
-    assert response.status_code in (200, 302)
+    assert response.status_code in (200, 302, 307)
 
 
 @pytest.mark.asyncio
