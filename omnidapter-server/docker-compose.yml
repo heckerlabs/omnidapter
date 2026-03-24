@@ -17,26 +17,6 @@ services:
       retries: 10
       start_period: 10s
 
-  test-db:
-    # run with `docker-compose --profile test up`
-    profiles: ["test"]
-    image: postgres:16-alpine
-    restart: unless-stopped
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_DB: omnidapter_test
-      POSTGRES_USER: omnidapter
-      POSTGRES_PASSWORD: omnidapter
-    volumes:
-      - pgdata_test:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U omnidapter -d omnidapter_test"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
   migrate:
     build:
       context: ..
@@ -52,6 +32,17 @@ services:
         condition: service_healthy
     command: ["sh", "-c", "cd omnidapter-server && /app/.venv/bin/alembic -c alembic.ini upgrade head"]
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ..
@@ -64,6 +55,7 @@ services:
       HOST: ${HOST:-0.0.0.0}
       PORT: ${PORT:-8000}
       OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
+      OMNIDAPTER_OAUTH_STATE_REDIS_URL: redis://redis:6379/0
       OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
       OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
       OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:${PORT:-8000}}
@@ -83,9 +75,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
 
 volumes:
   pgdata:
-  pgdata_test:

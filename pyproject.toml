@@ -49,8 +49,15 @@ help = "Run Omnidapter Core integration tests"
 cmd = "uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration"
 
 [tool.poe.tasks.test-integration-server]
-help = "Run Omnidapter Server integration tests. Run `docker-compose --profile test up` to start dev db."
-cmd = "uv run --env-file omnidapter-server/.env pytest omnidapter-server/tests/integration"
+help = "Run server tests with inline postgres"
+sequence = [
+  { cmd = "docker run --name omnidapter-test-db --rm -e POSTGRES_PASSWORD=omnidapter -e POSTGRES_DB=omnidapter_test -p 5433:5432 -d postgres:16-alpine" },
+  { cmd = "sh -c 'until docker exec omnidapter-test-db pg_isready; do sleep 1; done'" },
+  { cmd = "uv run alembic -c alembic.ini upgrade head", cwd = "omnidapter-server", env = { OMNIDAPTER_DATABASE_URL = "postgresql+asyncpg://postgres:omnidapter@localhost:5433/omnidapter_test" } },
+  { cmd = "uv run pytest tests/integration", cwd = "omnidapter-server", env = { OMNIDAPTER_INTEGRATION = "1", OMNIDAPTER_TEST_DATABASE_URL = "postgresql+asyncpg://postgres:omnidapter@localhost:5433/omnidapter_test" } },
+  { cmd = "docker stop omnidapter-test-db" }
+]
+ignore_fail = "return_non_zero"
 
 [tool.poe.tasks.test-integration]
 help = "Run Integration Tests"
