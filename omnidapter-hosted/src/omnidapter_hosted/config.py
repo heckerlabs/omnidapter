@@ -17,9 +17,16 @@ class HostedSettings(Settings):
     # WorkOS (user auth)
     workos_api_key: str = ""
     workos_client_id: str = ""
-    # 32-character secret used to encrypt the sealed session cookie
-    # Generate with: python -c "import secrets; print(secrets.token_hex(16))"
-    workos_cookie_password: str = ""
+
+    # JWT signing secret for dashboard sessions (HS256).
+    # Auto-generated on startup if empty, but will rotate on each restart — set explicitly in prod.
+    # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+    jwt_secret: str = ""
+    # Dashboard session TTL in seconds (default 24 hours)
+    jwt_ttl_seconds: int = 86400
+
+    # Link token TTL in seconds (default 30 minutes)
+    link_token_ttl_seconds: int = 1800
 
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60

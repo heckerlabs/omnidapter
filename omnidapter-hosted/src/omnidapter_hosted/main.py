@@ -18,15 +18,14 @@ from omnidapter_server.routers import providers
 from omnidapter_hosted.config import get_hosted_settings
 from omnidapter_hosted.dependencies import get_hosted_auth_context
 from omnidapter_hosted.routers import (
-    api_keys,
     auth,
     calendar,
+    connect,
     connections,
-    memberships,
+    dashboard,
+    link_tokens,
     oauth,
     provider_configs,
-    tenants,
-    users,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,20 +86,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Server router that is metadata-only and does not expose tenant resources
+# Provider metadata (no tenant data, auth via API key through dependency override)
 app.include_router(providers.router, prefix="/v1")
 
-# Auth router — no API key required, uses WorkOS session cookie
+# Auth — WorkOS login/callback, JWT-based /me, stateless logout
 app.include_router(auth.router, prefix="/v1")
 
-# Hosted routers (tenant-scoped)
-app.include_router(tenants.router, prefix="/v1")
-app.include_router(users.router, prefix="/v1")
-app.include_router(memberships.router, prefix="/v1")
-app.include_router(api_keys.router, prefix="/v1")
-app.include_router(provider_configs.router, prefix="/v1")
+# Dashboard — JWT Bearer auth, all management UI routes
+app.include_router(dashboard.router, prefix="/v1")
+
+# Integration API — omni_* API key auth
 app.include_router(connections.router, prefix="/v1")
 app.include_router(calendar.router, prefix="/v1")
+app.include_router(provider_configs.router, prefix="/v1")
+
+# Link token issuance — API key auth
+app.include_router(link_tokens.router, prefix="/v1")
+
+# Connect UI — link token auth
+app.include_router(connect.router)
+
+# OAuth callback (stateless, state-validated)
 app.include_router(oauth.router)
 
 

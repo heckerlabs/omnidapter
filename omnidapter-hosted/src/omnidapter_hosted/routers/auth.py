@@ -1,24 +1,27 @@
-"""WorkOS AuthKit endpoints — login, callback, session refresh, logout, and /me."""
+"""WorkOS AuthKit endpoints — login, callback, me, and logout.
+
+Uses stateless JWT Bearer tokens instead of session cookies.
+"""
 
 from __future__ import annotations
 
 import logging
+import secrets
 import uuid
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+import jwt
+from fastapi import APIRouter, Depends, HTTPException
 from omnidapter_server.database import get_session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from workos import AsyncWorkOSClient
-from workos.types.user_management.session import (
-    AuthenticateWithSessionCookieSuccessResponse,
-    RefreshWithSessionCookieSuccessResponse,
-    SessionConfig,
-)
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
-from omnidapter_hosted.dependencies import get_request_id
+from omnidapter_hosted.dependencies import (
+    DashboardAuthContext,
+    get_dashboard_auth_context,
+    get_request_id,
+)
 from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant
@@ -29,8 +32,22 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-_COOKIE_NAME = "wos_session"
-_COOKIE_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
+# Module-level fallback secret — replaced by JWT_SECRET env var in production.
+# Rotates on restart if env var is not set; warn loudly.
+_fallback_jwt_secret: str | None = None
+
+
+def _get_jwt_secret(settings: HostedSettings) -> str:
+    global _fallback_jwt_secret
+    if settings.jwt_secret:
+        return settings.jwt_secret
+    if _fallback_jwt_secret is None:
+        _fallback_jwt_secret = secrets.token_hex(32)
+        logger.warning(
+            "JWT_SECRET is not configured — using a randomly generated secret. "
+            "Dashboard sessions will be invalidated on restart. Set JWT_SECRET in production."
+        )
+    return _fallback_jwt_secret
 
 
 def _workos_client(settings: HostedSettings) -> AsyncWorkOSClient:
@@ -46,14 +63,25 @@ def _require_workos(settings: HostedSettings) -> None:
             status_code=503,
             detail={"code": "workos_not_configured", "message": "WorkOS is not configured"},
         )
-    if not settings.workos_cookie_password or len(settings.workos_cookie_password) < 32:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "workos_not_configured",
-                "message": "WORKOS_COOKIE_PASSWORD must be at least 32 characters",
-            },
-        )
+
+
+def _issue_jwt(
+    user_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    role: str,
+    settings: HostedSettings,
+) -> str:
+    import time
+
+    secret = _get_jwt_secret(settings)
+    payload = {
+        "sub": str(user_id),
+        "tenant_id": str(tenant_id),
+        "role": role,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + settings.jwt_ttl_seconds,
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 async def _get_or_provision_user(
@@ -62,20 +90,17 @@ async def _get_or_provision_user(
     first_name: str | None,
     last_name: str | None,
     session: AsyncSession,
-) -> tuple[HostedUser, Tenant, HostedAPIKey | None]:
-    """Return (user, tenant, initial_api_key).
+) -> tuple[HostedUser, Tenant, HostedMembership, HostedAPIKey | None]:
+    """Return (user, tenant, membership, initial_api_key).
 
-    initial_api_key is only non-None on the very first signup — callers should
-    return the raw key to the user once and never again.
+    initial_api_key is only non-None on the very first signup.
     """
-    # Look up existing user by workos_user_id first, then fall back to email.
     result = await session.execute(
         select(HostedUser).where(HostedUser.workos_user_id == workos_user_id)
     )
     user = result.scalar_one_or_none()
 
     if user is None:
-        # Could be a user created before WorkOS was added — match by email.
         result = await session.execute(select(HostedUser).where(HostedUser.email == email))
         user = result.scalar_one_or_none()
         if user is not None:
@@ -83,7 +108,6 @@ async def _get_or_provision_user(
             await session.flush()
 
     if user is not None:
-        # Existing user — look up their owner membership to find the tenant.
         result = await session.execute(
             select(HostedMembership)
             .where(HostedMembership.user_id == user.id)
@@ -91,7 +115,6 @@ async def _get_or_provision_user(
         )
         membership = result.scalar_one_or_none()
         if membership is None:
-            # Shouldn't happen, but pick any membership.
             result = await session.execute(
                 select(HostedMembership).where(HostedMembership.user_id == user.id)
             )
@@ -107,25 +130,16 @@ async def _get_or_provision_user(
             select(Tenant).where(Tenant.id == membership.tenant_id)
         )
         tenant = tenant_result.scalar_one()
-        return user, tenant, None
+        return user, tenant, membership, None
 
     # --- First sign-in: provision user + tenant + membership + initial API key ---
     name = " ".join(filter(None, [first_name, last_name])) or email.split("@")[0]
 
-    user = HostedUser(
-        id=uuid.uuid4(),
-        email=email,
-        name=name,
-        workos_user_id=workos_user_id,
-    )
+    user = HostedUser(id=uuid.uuid4(), email=email, name=name, workos_user_id=workos_user_id)
     session.add(user)
     await session.flush()
 
-    tenant = Tenant(
-        id=uuid.uuid4(),
-        name=name,
-        is_active=True,
-    )
+    tenant = Tenant(id=uuid.uuid4(), name=name, is_active=True)
     session.add(tenant)
     await session.flush()
 
@@ -151,10 +165,10 @@ async def _get_or_provision_user(
     await session.commit()
     await session.refresh(user)
     await session.refresh(tenant)
-    api_key.raw_key = raw_key  # type: ignore[attr-defined]  # transient attribute
+    api_key.raw_key = raw_key  # type: ignore[attr-defined]
 
     logger.info("Provisioned new user %s with tenant %s", user.id, tenant.id)
-    return user, tenant, api_key
+    return user, tenant, membership, api_key
 
 
 @router.get("/login")
@@ -162,10 +176,7 @@ async def login(
     redirect_uri: str | None = None,
     settings: HostedSettings = Depends(get_hosted_settings),
 ):
-    """Return the WorkOS AuthKit authorization URL.
-
-    The client should redirect the user's browser to the returned URL.
-    """
+    """Return the WorkOS AuthKit authorization URL."""
     _require_workos(settings)
     client = _workos_client(settings)
     callback_uri = redirect_uri or f"{settings.omnidapter_base_url}/v1/auth/callback"
@@ -179,28 +190,21 @@ async def login(
 @router.get("/callback")
 async def callback(
     code: str,
-    request: Request,
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
-    """Exchange the WorkOS authorization code for a sealed session cookie.
+    """Exchange the WorkOS authorization code for a JWT access token.
 
-    On first login the response also includes the raw API key (shown once).
+    Returns the raw API key only on first signup.
     """
     _require_workos(settings)
     client = _workos_client(settings)
 
-    auth_response = await client.user_management.authenticate_with_code(
-        code=code,
-        session=SessionConfig(
-            seal_session=True,
-            cookie_password=settings.workos_cookie_password,
-        ),
-    )
-
+    auth_response = await client.user_management.authenticate_with_code(code=code)
     wu = auth_response.user
-    user, tenant, initial_key = await _get_or_provision_user(
+
+    user, tenant, membership, initial_key = await _get_or_provision_user(
         workos_user_id=wu.id,
         email=wu.email,
         first_name=wu.first_name,
@@ -208,153 +212,41 @@ async def callback(
         session=session,
     )
 
+    access_token = _issue_jwt(user.id, tenant.id, membership.role, settings)
+
     data: dict = {
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "name": user.name,
-        },
-        "tenant": {
-            "id": str(tenant.id),
-            "name": tenant.name,
-            "plan": tenant.plan,
-        },
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": str(user.id), "email": user.email, "name": user.name},
+        "tenant": {"id": str(tenant.id), "name": tenant.name, "plan": tenant.plan},
     }
     if initial_key is not None:
-        data["initial_api_key"] = getattr(initial_key, "raw_key", None)
+        data["api_key"] = getattr(initial_key, "raw_key", None)
 
-    response = JSONResponse(
-        content={"data": data, "meta": {"request_id": request_id}},
-        status_code=200,
-    )
-    sealed_session = auth_response.sealed_session
-    if sealed_session is not None:
-        response.set_cookie(
-            key=_COOKIE_NAME,
-            value=sealed_session,
-            httponly=True,
-            secure=settings.omnidapter_env == "production",
-            samesite="lax",
-            max_age=_COOKIE_MAX_AGE,
-        )
-    return response
+    return {"data": data, "meta": {"request_id": request_id}}
 
 
 @router.get("/me")
 async def me(
-    session: AsyncSession = Depends(get_session),
-    settings: HostedSettings = Depends(get_hosted_settings),
+    auth: DashboardAuthContext = Depends(get_dashboard_auth_context),
     request_id: str = Depends(get_request_id),
-    wos_session: str | None = Cookie(default=None),
 ):
-    """Return the currently authenticated user and their tenant.
-
-    Automatically refreshes an expired session and rotates the cookie.
-    """
-    _require_workos(settings)
-    if not wos_session:
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "unauthenticated", "message": "No session cookie"},
-        )
-
-    client = _workos_client(settings)
-    ws = await client.user_management.load_sealed_session(
-        sealed_session=wos_session,
-        cookie_password=settings.workos_cookie_password,
-    )
-
-    auth = ws.authenticate()
-
-    new_sealed: str | None = None
-    if not auth.authenticated:
-        # Try to refresh.
-        refresh = await ws.refresh(cookie_password=settings.workos_cookie_password)
-        if not refresh.authenticated:
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "code": "session_expired",
-                    "message": "Session expired — please log in again",
-                },
-            )
-        assert isinstance(refresh, RefreshWithSessionCookieSuccessResponse)
-        new_sealed = refresh.sealed_session
-        # Re-authenticate with the freshly sealed session to get the user.
-        ws2 = await client.user_management.load_sealed_session(
-            sealed_session=new_sealed,
-            cookie_password=settings.workos_cookie_password,
-        )
-        auth = ws2.authenticate()
-        if not auth.authenticated:
-            raise HTTPException(
-                status_code=401,
-                detail={
-                    "code": "session_expired",
-                    "message": "Session expired — please log in again",
-                },
-            )
-
-    assert isinstance(auth, AuthenticateWithSessionCookieSuccessResponse)
-    workos_user_id = auth.user.id
-    result = await session.execute(
-        select(HostedUser).where(HostedUser.workos_user_id == workos_user_id)
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "user_not_found", "message": "User not found in database"},
-        )
-
-    result = await session.execute(
-        select(HostedMembership)
-        .where(HostedMembership.user_id == user.id)
-        .where(HostedMembership.role == MemberRole.OWNER)
-    )
-    membership = result.scalar_one_or_none()
-    if membership is None:
-        result = await session.execute(
-            select(HostedMembership).where(HostedMembership.user_id == user.id)
-        )
-        membership = result.scalar_one_or_none()
-
-    tenant = None
-    if membership:
-        tenant_result = await session.execute(
-            select(Tenant).where(Tenant.id == membership.tenant_id)
-        )
-        tenant = tenant_result.scalar_one_or_none()
-
-    response_data: dict = {
-        "user": {"id": str(user.id), "email": user.email, "name": user.name},
-        "tenant": (
-            {"id": str(tenant.id), "name": tenant.name, "plan": tenant.plan} if tenant else None
-        ),
+    """Return the currently authenticated user and tenant."""
+    return {
+        "data": {
+            "user": {"id": str(auth.user.id), "email": auth.user.email, "name": auth.user.name},
+            "tenant": {
+                "id": str(auth.tenant.id),
+                "name": auth.tenant.name,
+                "plan": auth.tenant.plan,
+            },
+            "role": auth.membership.role,
+        },
+        "meta": {"request_id": request_id},
     }
-
-    response = JSONResponse(
-        content={"data": response_data, "meta": {"request_id": request_id}},
-        status_code=200,
-    )
-    if new_sealed:
-        response.set_cookie(
-            key=_COOKIE_NAME,
-            value=new_sealed,
-            httponly=True,
-            secure=settings.omnidapter_env == "production",
-            samesite="lax",
-            max_age=_COOKIE_MAX_AGE,
-        )
-    return response
 
 
 @router.post("/logout")
 async def logout(request_id: str = Depends(get_request_id)):
-    """Clear the session cookie."""
-    response = JSONResponse(
-        content={"data": {"logged_out": True}, "meta": {"request_id": request_id}},
-        status_code=200,
-    )
-    response.delete_cookie(key=_COOKIE_NAME)
-    return response
+    """Stateless logout — client discards the Bearer token."""
+    return {"data": {"logged_out": True}, "meta": {"request_id": request_id}}
