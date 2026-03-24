@@ -1,205 +1,110 @@
 # Omnidapter
 
-Provider-agnostic async calendar integration library for Python. Connect to Google Calendar, Microsoft Outlook, Zoho Calendar, or Apple Calendar with a single unified API.
+Provider-agnostic calendar integrations for Python and self-hosted APIs.
 
-## Installation
+Omnidapter is open source (MIT-licensed).
+
+If you are tired of writing one integration for Google, another for Microsoft,
+then patching edge cases forever, Omnidapter gives you one consistent model and
+one API surface.
+
+## Why Use Omnidapter
+
+- One unified calendar interface across major providers
+- Built-in OAuth lifecycle management (begin, callback completion, refresh)
+- Clean separation of credential storage from provider logic
+- Self-hosted REST API available when you do not want SDK coupling
+- Strong test coverage and explicit capability checks for provider differences
+
+## Choose Your Path
+
+- I want a Python SDK: start with `omnidapter-core/README.md`
+- I want a self-hosted API: start with `omnidapter-server/docs/README.md`
+
+## What You Get In This Repository
+
+- `omnidapter-core` - `omnidapter` Python library
+- `omnidapter-server` - self-hosted FastAPI service that wraps core
+
+```text
+omnidapter-core/
+omnidapter-server/
+omnidapter-hosted/
+```
+
+## 60-Second Quick Start (Library)
 
 ```bash
 pip install omnidapter
 ```
 
-## Quick start
-
 ```python
 from omnidapter import Omnidapter
 
 omni = Omnidapter(
-    credential_store=my_store,
-    oauth_state_store=my_state_store,
+    credential_store=my_credential_store,
+    oauth_state_store=my_oauth_state_store,
 )
 
 conn = await omni.connection("conn_123")
 cal = conn.calendar()
 
-# List calendars
 calendars = await cal.list_calendars()
-
-# Stream events
-async for event in cal.list_events("primary"):
-    print(event.summary, event.start)
-
-# Create an event
-from omnidapter.services.calendar.requests import CreateEventRequest
-from datetime import datetime, timezone
-
-event = await cal.create_event(CreateEventRequest(
-    calendar_id="primary",
-    summary="Team sync",
-    start=datetime(2026, 3, 15, 10, 0, tzinfo=timezone.utc),
-    end=datetime(2026, 3, 15, 11, 0, tzinfo=timezone.utc),
-))
 ```
 
-## Providers
+Core docs:
 
-| Provider | Key | Auth | Notes |
-|---|---|---|---|
-| Google Calendar | `google` | OAuth 2.0 + PKCE | |
-| Microsoft / Outlook | `microsoft` | OAuth 2.0 + PKCE | |
-| Zoho Calendar | `zoho` | OAuth 2.0 | |
-| Apple / iCloud | `apple` | Basic (app-specific password) | Pre-configured CalDAV endpoint |
-| CalDAV | `caldav` | Basic | Not registered by default. Bring your own server URL. |
+- `omnidapter-core/README.md`
+- `omnidapter-core/docs/providers.md`
+- `omnidapter-core/docs/calendar.md`
+- `omnidapter-core/docs/credential-stores.md`
 
-Built-in registration is environment-aware by default (`auto_register_by_env=True`):
-- OAuth providers are auto-registered only when both env vars are present:
-  - Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-  - Microsoft: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`
-  - Zoho: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`
-- Apple is auto-registered only when `OMNIDAPTER_ENABLE_APPLE` is truthy (`1`, `true`, `yes`, `on`).
+## 60-Second Quick Start (Self-Hosted API)
 
-Set `auto_register_by_env=False` to register all built-ins regardless of env vars, or register providers manually for full control.
-
-## Capabilities
-
-| Capability | Google | Microsoft | Zoho | Apple | CalDAV* |
-|---|:---:|:---:|:---:|:---:|:---:|
-| List calendars | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Get calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
-| Create calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
-| Update calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
-| Delete calendar | ✓ | ✓ | ✓ | ✓ | ✓** |
-| List events | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Get event | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Create event | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Update event | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Delete event | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Free/busy availability | ✓ | ✓ | — | — | — |
-| Conference links | ✓ | ✓ | — | — | — |
-| Recurrence (RRULE) | ✓ | ✓ | — | ✓ | ✓ |
-| Attendees | ✓ | ✓ | ✓ | ✓ | ✓ |
-
-*CalDAV requires manual registration via `omni.register_provider(CalDAVProvider())`.
-
-Footnote `**`: CalDAV calendar collection CRUD depends on server policy. Some CalDAV servers reject `MKCALENDAR`/`MKCOL` (for example, Zoho's CalDAV sync endpoint), so top-level calendar create/delete may fail with `403/405/501` even when event CRUD works.
-
-## OAuth flows
-
-```python
-# Step 1: Generate authorization URL
-result = await omni.oauth.begin(
-    provider="google",
-    connection_id=str(uuid.uuid4()),
-    redirect_uri="https://yourapp.com/oauth/google/callback",
-)
-# Redirect user to result.authorization_url
-
-# Step 2: Handle callback
-await omni.oauth.complete(
-    provider="google",
-    connection_id=connection_id,
-    code=request.query["code"],
-    state=request.query["state"],
-    redirect_uri="https://yourapp.com/oauth/google/callback",
-)
-# Credentials persisted automatically
+```bash
+uv sync
+uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
+uv run omnidapter-bootstrap --name "local"
+uv run omnidapter-server
 ```
 
-Tokens are refreshed automatically before expiry. Set `auto_refresh=False` to disable.
+Docker Compose file locations:
 
-## Apple / iCloud
+- `omnidapter-server/docker-compose.yml` (self-hosted server)
+- `omnidapter-hosted/docker-compose.yml` (hosted multi-tenant app)
 
-No OAuth. Use an [app-specific password](https://support.apple.com/en-us/102654):
+Then call it:
 
-```python
-from omnidapter.auth.models import BasicCredentials
-from omnidapter.core.metadata import AuthKind
-from omnidapter.stores.credentials import StoredCredential
-
-stored = StoredCredential(
-    provider_key="apple",
-    auth_kind=AuthKind.BASIC,
-    credentials=BasicCredentials(
-        username="user@icloud.com",
-        password="abcd-efgh-ijkl-mnop",
-    ),
-)
-await omni.credential_store.save_credentials("conn_123", stored)
+```bash
+curl -H "Authorization: Bearer <API_KEY>" \
+  http://localhost:8000/v1/providers
 ```
 
-## CalDAV (self-hosted)
+Server docs:
 
-```python
-from omnidapter.providers.caldav.provider import CalDAVProvider
+- `omnidapter-server/docs/README.md`
 
-omni.register_provider(CalDAVProvider())
+## How It Stays Simple
 
-stored = StoredCredential(
-    provider_key="caldav",
-    auth_kind=AuthKind.BASIC,
-    credentials=BasicCredentials(username="user", password="pass"),
-    provider_config={"server_url": "https://dav.fastmail.com/"},
-)
+- Core handles provider-specific transport and mapping
+- You own credentials and OAuth state persistence strategy
+- Server wraps the same core flows with consistent JSON contracts
+- Capability checks make unsupported provider operations explicit
 
-# Note: server-side method support varies. Some CalDAV servers disable
-# MKCALENDAR/MKCOL and therefore do not allow creating calendars over CalDAV.
+## Development
+
+```bash
+uv run poe --help
+uv run poe check
 ```
 
-## Credential stores
+`uv run poe check` runs format, lint, typecheck, tests, and package builds.
 
-The default in-memory stores are for development only. For production, implement `CredentialStore` and `OAuthStateStore`:
+Useful task shortcuts:
 
-```python
-from omnidapter.stores.credentials import CredentialStore, StoredCredential
-
-class MyCredentialStore(CredentialStore):
-    async def get_credentials(self, connection_id: str) -> StoredCredential | None: ...
-    async def save_credentials(self, connection_id: str, credentials: StoredCredential) -> None: ...
-    async def delete_credentials(self, connection_id: str) -> None: ...
-
-omni = Omnidapter(credential_store=MyCredentialStore(), oauth_state_store=MyStateStore())
-```
-
-See [docs/credential-stores.md](docs/credential-stores.md) for a full guide including an encrypted SQLAlchemy implementation and a Redis OAuth state store.
-
-## Checking capability support
-
-```python
-from omnidapter.services.calendar.capabilities import CalendarCapability
-
-if cal.supports(CalendarCapability.GET_AVAILABILITY):
-    result = await cal.get_availability(request)
-```
-
-## Custom providers
-
-```python
-from omnidapter.providers._base import BaseProvider
-
-class MyProvider(BaseProvider):
-    ...
-
-omni.register_provider(MyProvider())
-```
-
-## Documentation
-
-- [docs/providers.md](docs/providers.md) — OAuth app setup for each provider, FastAPI integration example, custom providers
-- [docs/calendar.md](docs/calendar.md) — Full calendar API reference: all methods, return models, error handling
-- [docs/credential-stores.md](docs/credential-stores.md) — Production stores: encryption, SQLAlchemy example, Redis OAuth state store
-
-## Roadmap
-
-**Webhooks / push notifications**
-Real-time change notifications via Google Calendar push channels, Microsoft Graph subscriptions, and polling fallback for providers without native push support.
-
-**Calendar-level CRUD**
-Create, rename, delete, and share calendars — not just events.
-
-**Common store implementations**
-Official packages for popular backends: `omnidapter-sqlalchemy`, `omnidapter-redis`, `omnidapter-django`.
-
-**New verticals**
-CRM (contacts, deals, pipelines), Email (read/send/thread), Tasks — using the same provider + connection model.
+- `uv run poe server-up`
+- `uv run poe server-bootstrap`
+- `uv run poe hosted-up`
 
 ## License
 
