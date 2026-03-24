@@ -6,7 +6,6 @@ import logging
 import secrets
 import uuid
 
-import bcrypt
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

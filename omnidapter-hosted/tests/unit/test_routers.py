@@ -1,4 +1,4 @@
-"""Unit tests for hosted router handlers."""
+"""Unit tests for hosted dashboard service flows."""
 
 from __future__ import annotations
 
@@ -9,32 +9,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from omnidapter_hosted.dependencies import HostedAuthContext
 from omnidapter_hosted.models.api_key import HostedAPIKey
-from omnidapter_hosted.models.membership import HostedMembership
+from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.models.user import HostedUser
-from omnidapter_hosted.routers.api_keys import (
-    CreateAPIKeyRequest,
-    create_api_key,
-    list_api_keys,
-    revoke_api_key,
-)
-from omnidapter_hosted.routers.memberships import (
-    CreateMembershipRequest,
-    create_membership,
-    delete_membership,
-    list_memberships,
-)
-from omnidapter_hosted.routers.tenants import (
-    CreateTenantRequest,
-    create_tenant,
-    get_current_tenant,
-)
-from omnidapter_hosted.routers.users import (
-    CreateUserRequest,
-    create_user,
-    get_user,
+from omnidapter_hosted.services.dashboard import (
+    create_api_key_flow,
+    list_api_keys_flow,
+    list_members,
+    remove_member,
+    revoke_api_key_flow,
+    update_tenant_name,
+    update_user_name,
 )
 
 
@@ -60,12 +46,7 @@ def _now() -> datetime:
 def _tenant() -> Tenant:
     ts = _now()
     return Tenant(
-        id=uuid.uuid4(),
-        name="Acme",
-        plan="free",
-        is_active=True,
-        created_at=ts,
-        updated_at=ts,
+        id=uuid.uuid4(), name="Acme", plan="free", is_active=True, created_at=ts, updated_at=ts
     )
 
 
@@ -82,27 +63,51 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
     )
 
 
-def _auth() -> HostedAuthContext:
-    tenant = _tenant()
-    return HostedAuthContext(api_key=_api_key(tenant.id), tenant=tenant)
+def _membership(tenant_id: uuid.UUID, user_id: uuid.UUID, role: str = "member") -> HostedMembership:
+    return HostedMembership(
+        id=uuid.uuid4(), tenant_id=tenant_id, user_id=user_id, role=role, created_at=_now()
+    )
+
+
+def _user() -> HostedUser:
+    return HostedUser(
+        id=uuid.uuid4(),
+        email="u@example.com",
+        name="User",
+        workos_user_id="workos_1",
+        created_at=_now(),
+        updated_at=_now(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# API key flows
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_list_api_keys() -> None:
-    auth = _auth()
-    key = _api_key(auth.tenant_id)
+async def test_list_api_keys_flow() -> None:
+    tenant_id = uuid.uuid4()
+    key = _api_key(tenant_id)
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_ScalarResult(many=[key]))
 
-    response = await list_api_keys(auth=auth, session=session, request_id="req_1")
+    result = await list_api_keys_flow(tenant_id, session)
 
-    assert response["meta"]["request_id"] == "req_1"
-    assert response["data"][0].name == "main"
+    assert result == [key]
 
 
 @pytest.mark.asyncio
-async def test_create_api_key() -> None:
-    auth = _auth()
+async def test_create_api_key_flow_requires_admin() -> None:
+    session = AsyncMock()
+    with pytest.raises(HTTPException) as exc_info:
+        await create_api_key_flow(uuid.uuid4(), "prod", MemberRole.MEMBER, session)
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_api_key_flow_success() -> None:
+    tenant_id = uuid.uuid4()
     session = AsyncMock()
     session.add = MagicMock()
     session.commit = AsyncMock()
@@ -113,338 +118,156 @@ async def test_create_api_key() -> None:
     session.refresh = AsyncMock(side_effect=_refresh)
 
     with patch(
-        "omnidapter_hosted.routers.api_keys.generate_hosted_api_key",
+        "omnidapter_hosted.services.dashboard.generate_hosted_api_key",
         return_value=("omni_raw", "hashed", "omni_raw__12"),
     ):
-        response = await create_api_key(
-            body=CreateAPIKeyRequest(name="prod"),
-            auth=auth,
-            session=session,
-            request_id="req_2",
-        )
+        raw_key, api_key = await create_api_key_flow(tenant_id, "prod", MemberRole.OWNER, session)
 
-    assert response["meta"]["request_id"] == "req_2"
-    assert response["data"]["raw_key"] == "omni_raw"
+    assert raw_key == "omni_raw"
+    assert api_key.name == "prod"
     session.add.assert_called_once()
     session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_revoke_api_key_invalid_id() -> None:
+async def test_revoke_api_key_flow_requires_admin() -> None:
+    session = AsyncMock()
     with pytest.raises(HTTPException) as exc_info:
-        await revoke_api_key(
-            key_id="not-a-uuid",
-            auth=_auth(),
-            session=AsyncMock(),
-        )
-
-    assert exc_info.value.status_code == 404
+        await revoke_api_key_flow(uuid.uuid4(), uuid.uuid4(), MemberRole.MEMBER, session)
+    assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_revoke_api_key_not_found() -> None:
+async def test_revoke_api_key_flow_not_found() -> None:
     session = AsyncMock()
     session.execute = AsyncMock(return_value=_ScalarResult(one=None))
 
     with pytest.raises(HTTPException) as exc_info:
-        await revoke_api_key(
-            key_id=str(uuid.uuid4()),
-            auth=_auth(),
-            session=session,
-        )
-
+        await revoke_api_key_flow(uuid.uuid4(), uuid.uuid4(), MemberRole.OWNER, session)
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_revoke_api_key_success() -> None:
-    auth = _auth()
-    key = _api_key(auth.tenant_id)
+async def test_revoke_api_key_flow_success() -> None:
+    tenant_id = uuid.uuid4()
+    key = _api_key(tenant_id)
     session = AsyncMock()
     session.execute = AsyncMock(side_effect=[_ScalarResult(one=key), MagicMock()])
     session.commit = AsyncMock()
 
-    await revoke_api_key(key_id=str(key.id), auth=auth, session=session)
+    await revoke_api_key_flow(key.id, tenant_id, MemberRole.OWNER, session)
 
     assert session.execute.await_count == 2
     session.commit.assert_awaited_once()
 
 
+# ---------------------------------------------------------------------------
+# Member flows
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.asyncio
-async def test_list_memberships() -> None:
-    auth = _auth()
-    membership = HostedMembership(
-        id=uuid.uuid4(),
-        tenant_id=auth.tenant_id,
-        user_id=uuid.uuid4(),
-        role="member",
-        created_at=_now(),
-    )
+async def test_list_members() -> None:
+    tenant_id = uuid.uuid4()
+    user = _user()
+    membership = _membership(tenant_id, user.id)
     session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(many=[membership]))
 
-    response = await list_memberships(auth=auth, session=session, request_id="req_3")
+    class _PairResult:
+        def all(self) -> list[object]:
+            return [(membership, user)]
 
-    assert response["meta"]["request_id"] == "req_3"
-    assert response["data"][0].role == "member"
+    session.execute = AsyncMock(return_value=_PairResult())
+
+    rows = await list_members(tenant_id, session)
+
+    assert len(rows) == 1
+    m, u = rows[0]
+    assert m is membership
+    assert u is user
 
 
 @pytest.mark.asyncio
-async def test_create_membership_invalid_user_id() -> None:
+async def test_remove_member_requires_admin() -> None:
+    session = AsyncMock()
     with pytest.raises(HTTPException) as exc_info:
-        await create_membership(
-            body=CreateMembershipRequest(user_id="invalid", role="member"),
-            auth=_auth(),
-            session=AsyncMock(),
-            request_id="req_4",
-        )
+        await remove_member(uuid.uuid4(), uuid.uuid4(), MemberRole.MEMBER, uuid.uuid4(), session)
+    assert exc_info.value.status_code == 403
 
+
+@pytest.mark.asyncio
+async def test_remove_member_not_found() -> None:
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await remove_member(uuid.uuid4(), uuid.uuid4(), MemberRole.OWNER, uuid.uuid4(), session)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_remove_member_cannot_remove_owner() -> None:
+    tenant_id = uuid.uuid4()
+    target_id = uuid.uuid4()
+    membership = _membership(tenant_id, target_id, role=MemberRole.OWNER)
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=_ScalarResult(one=membership))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await remove_member(tenant_id, target_id, MemberRole.OWNER, uuid.uuid4(), session)
     assert exc_info.value.status_code == 400
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "cannot_remove_owner"
 
 
 @pytest.mark.asyncio
-async def test_create_membership_duplicate() -> None:
-    auth = _auth()
-    existing = HostedMembership(
-        id=uuid.uuid4(),
-        tenant_id=auth.tenant_id,
-        user_id=uuid.uuid4(),
-        role="member",
-        created_at=_now(),
-    )
+async def test_remove_member_cannot_remove_self() -> None:
+    tenant_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    membership = _membership(tenant_id, user_id, role=MemberRole.ADMIN)
     session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=existing))
+    session.execute = AsyncMock(return_value=_ScalarResult(one=membership))
 
     with pytest.raises(HTTPException) as exc_info:
-        await create_membership(
-            body=CreateMembershipRequest(user_id=str(existing.user_id), role="admin"),
-            auth=auth,
-            session=session,
-            request_id="req_5",
-        )
+        await remove_member(tenant_id, user_id, MemberRole.OWNER, user_id, session)
+    assert exc_info.value.status_code == 400
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "cannot_remove_self"
 
-    assert exc_info.value.status_code == 409
+
+# ---------------------------------------------------------------------------
+# Profile / tenant name flows
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_create_membership_success() -> None:
-    auth = _auth()
+async def test_update_user_name() -> None:
+    user = _user()
     session = AsyncMock()
-    session.add = MagicMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
     session.commit = AsyncMock()
+    session.refresh = AsyncMock()
 
-    async def _refresh(obj: object) -> None:
-        obj.created_at = _now()  # type: ignore[attr-defined]
+    result = await update_user_name(user, "New Name", session)
 
-    session.refresh = AsyncMock(side_effect=_refresh)
-
-    response = await create_membership(
-        body=CreateMembershipRequest(user_id=str(uuid.uuid4()), role="owner"),
-        auth=auth,
-        session=session,
-        request_id="req_6",
-    )
-
-    assert response["meta"]["request_id"] == "req_6"
-    assert response["data"].tenant_id == str(auth.tenant_id)
+    assert result.name == "New Name"
     session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_delete_membership_invalid_id() -> None:
-    with pytest.raises(HTTPException) as exc_info:
-        await delete_membership(
-            membership_id="invalid",
-            auth=_auth(),
-            session=AsyncMock(),
-        )
-
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_delete_membership_not_found() -> None:
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
-
-    with pytest.raises(HTTPException) as exc_info:
-        await delete_membership(
-            membership_id=str(uuid.uuid4()),
-            auth=_auth(),
-            session=session,
-        )
-
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_delete_membership_success() -> None:
-    auth = _auth()
-    membership = HostedMembership(
-        id=uuid.uuid4(),
-        tenant_id=auth.tenant_id,
-        user_id=uuid.uuid4(),
-        role="member",
-        created_at=_now(),
-    )
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[_ScalarResult(one=membership), MagicMock()])
-    session.commit = AsyncMock()
-
-    await delete_membership(
-        membership_id=str(membership.id),
-        auth=auth,
-        session=session,
-    )
-
-    assert session.execute.await_count == 2
-    session.commit.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_get_current_tenant_not_found() -> None:
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
-
-    with pytest.raises(HTTPException) as exc_info:
-        await get_current_tenant(auth=_auth(), session=session, request_id="req_7")
-
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_get_current_tenant_success() -> None:
-    auth = _auth()
+async def test_update_tenant_name_requires_admin() -> None:
     tenant = _tenant()
-    tenant.id = auth.tenant_id
     session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=tenant))
-
-    response = await get_current_tenant(auth=auth, session=session, request_id="req_8")
-
-    assert response["meta"]["request_id"] == "req_8"
-    assert response["data"].id == str(auth.tenant_id)
+    with pytest.raises(HTTPException) as exc_info:
+        await update_tenant_name(tenant, "New", MemberRole.MEMBER, session)
+    assert exc_info.value.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_create_tenant() -> None:
+async def test_update_tenant_name_success() -> None:
+    tenant = _tenant()
     session = AsyncMock()
-    session.add = MagicMock()
     session.commit = AsyncMock()
+    session.refresh = AsyncMock()
 
-    async def _refresh(obj: object) -> None:
-        obj.created_at = _now()  # type: ignore[attr-defined]
+    result = await update_tenant_name(tenant, "New Corp", MemberRole.OWNER, session)
 
-    session.refresh = AsyncMock(side_effect=_refresh)
-
-    response = await create_tenant(
-        body=CreateTenantRequest(name="Acme", plan="free"),
-        session=session,
-        request_id="req_9",
-    )
-
-    assert response["meta"]["request_id"] == "req_9"
-    assert response["data"].name == "Acme"
+    assert result.name == "New Corp"
     session.commit.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_create_user_email_taken() -> None:
-    existing = HostedUser(
-        id=uuid.uuid4(),
-        email="taken@example.com",
-        name="Taken",
-        workos_user_id=None,
-        created_at=_now(),
-        updated_at=_now(),
-    )
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=existing))
-
-    with pytest.raises(HTTPException) as exc_info:
-        await create_user(
-            body=CreateUserRequest(email="taken@example.com", name="New"),
-            session=session,
-            request_id="req_10",
-        )
-
-    assert exc_info.value.status_code == 409
-    detail = cast(dict[str, Any], exc_info.value.detail)
-    assert detail["code"] == "email_taken"
-
-
-@pytest.mark.asyncio
-async def test_create_user_success() -> None:
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
-    session.commit = AsyncMock()
-
-    async def _refresh(obj: object) -> None:
-        obj.created_at = _now()  # type: ignore[attr-defined]
-
-    session.refresh = AsyncMock(side_effect=_refresh)
-
-    response = await create_user(
-        body=CreateUserRequest(email="ok@example.com", name="OK"),
-        session=session,
-        request_id="req_11",
-    )
-
-    assert response["meta"]["request_id"] == "req_11"
-    assert response["data"].email == "ok@example.com"
-    session.commit.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_get_user_invalid_id() -> None:
-    with pytest.raises(HTTPException) as exc_info:
-        await get_user(
-            user_id="invalid",
-            auth=_auth(),
-            session=AsyncMock(),
-            request_id="req_12",
-        )
-
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_get_user_not_found() -> None:
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=None))
-
-    with pytest.raises(HTTPException) as exc_info:
-        await get_user(
-            user_id=str(uuid.uuid4()),
-            auth=_auth(),
-            session=session,
-            request_id="req_13",
-        )
-
-    assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_get_user_success() -> None:
-    user = HostedUser(
-        id=uuid.uuid4(),
-        email="u@example.com",
-        name="User",
-        workos_user_id="workos_1",
-        created_at=_now(),
-        updated_at=_now(),
-    )
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(one=user))
-
-    response = await get_user(
-        user_id=str(user.id),
-        auth=_auth(),
-        session=session,
-        request_id="req_14",
-    )
-
-    assert response["meta"]["request_id"] == "req_14"
-    assert response["data"].id == str(user.id)

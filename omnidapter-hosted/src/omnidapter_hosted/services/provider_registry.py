@@ -47,10 +47,16 @@ async def build_hosted_provider_registry(
     if tenant_cfg is None:
         return build_provider_registry(settings=settings)
 
+    # Treat missing encrypted credentials as "no valid override configured" — fall
+    # back to server-level credentials rather than passing empty strings that would
+    # fail decryption downstream.
+    if not tenant_cfg.client_id_encrypted or not tenant_cfg.client_secret_encrypted:
+        return build_provider_registry(settings=settings)
+
     override = _ProviderConfigOverride(
         provider_key=tenant_cfg.provider_key,
-        client_id_encrypted=tenant_cfg.client_id_encrypted or "",
-        client_secret_encrypted=tenant_cfg.client_secret_encrypted or "",
+        client_id_encrypted=tenant_cfg.client_id_encrypted,
+        client_secret_encrypted=tenant_cfg.client_secret_encrypted,
     )
     return build_provider_registry(
         settings=settings,

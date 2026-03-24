@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from omnidapter_server.database import get_session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
@@ -24,7 +24,8 @@ class CreateLinkTokenRequest(BaseModel):
     end_user_id: str | None = None
     allowed_providers: list[str] | None = None
     redirect_uri: str | None = None
-    ttl_seconds: int | None = None
+    # min 60s, max 24h; defaults to settings.link_token_ttl_seconds if omitted
+    ttl_seconds: int | None = Field(default=None, gt=0, le=86400)
 
 
 @router.post("", status_code=201)

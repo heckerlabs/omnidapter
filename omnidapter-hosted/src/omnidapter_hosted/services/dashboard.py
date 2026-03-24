@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import cast
 
 from fastapi import HTTPException
 from omnidapter_server.encryption import EncryptionService
@@ -45,9 +46,7 @@ async def update_user_name(user: HostedUser, name: str, session: AsyncSession) -
 # ---------------------------------------------------------------------------
 
 
-async def update_tenant_name(
-    tenant: Tenant, name: str, role: str, session: AsyncSession
-) -> Tenant:
+async def update_tenant_name(tenant: Tenant, name: str, role: str, session: AsyncSession) -> Tenant:
     _require_admin(role)
     tenant.name = name
     await session.commit()
@@ -69,7 +68,7 @@ async def list_members(
         .join(HostedUser, HostedUser.id == HostedMembership.user_id)
         .where(HostedMembership.tenant_id == tenant_id)
     )
-    return list(result.all())
+    return cast(list[tuple[HostedMembership, HostedUser]], result.all())
 
 
 async def remove_member(
@@ -111,12 +110,8 @@ async def remove_member(
 # ---------------------------------------------------------------------------
 
 
-async def list_api_keys_flow(
-    tenant_id: uuid.UUID, session: AsyncSession
-) -> list[HostedAPIKey]:
-    result = await session.execute(
-        select(HostedAPIKey).where(HostedAPIKey.tenant_id == tenant_id)
-    )
+async def list_api_keys_flow(tenant_id: uuid.UUID, session: AsyncSession) -> list[HostedAPIKey]:
+    result = await session.execute(select(HostedAPIKey).where(HostedAPIKey.tenant_id == tenant_id))
     return list(result.scalars().all())
 
 
@@ -165,9 +160,7 @@ async def revoke_api_key_flow(
 # ---------------------------------------------------------------------------
 
 
-async def list_connections_flow(
-    tenant_id: uuid.UUID, session: AsyncSession
-) -> list[Connection]:
+async def list_connections_flow(tenant_id: uuid.UUID, session: AsyncSession) -> list[Connection]:
     result = await session.execute(
         select(Connection)
         .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)

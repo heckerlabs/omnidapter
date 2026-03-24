@@ -162,16 +162,16 @@ async def get_dashboard_auth_context(
 
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"])
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as exc:
         raise HTTPException(
             status_code=401,
             detail={"code": "token_expired", "message": "Session expired — please log in again"},
-        )
-    except jwt.InvalidTokenError:
+        ) from exc
+    except jwt.InvalidTokenError as exc:
         raise HTTPException(
             status_code=401,
             detail={"code": "invalid_token", "message": "Invalid session token"},
-        )
+        ) from exc
 
     user_id_str = payload.get("sub")
     tenant_id_str = payload.get("tenant_id")
@@ -184,11 +184,11 @@ async def get_dashboard_auth_context(
     try:
         user_id = uuid.UUID(user_id_str)
         tenant_id = uuid.UUID(tenant_id_str)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=401,
             detail={"code": "invalid_token", "message": "Invalid session token"},
-        )
+        ) from exc
 
     user_result = await session.execute(select(HostedUser).where(HostedUser.id == user_id))
     user = user_result.scalar_one_or_none()
