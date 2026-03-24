@@ -156,10 +156,9 @@ async def get_dashboard_auth_context(
 
     token = bearer_credentials.credentials
 
-    # Resolve the JWT secret (same logic as auth router)
-    from omnidapter_hosted.routers.auth import _get_jwt_secret
+    from omnidapter_hosted.services.auth_flows import get_jwt_secret
 
-    secret = _get_jwt_secret(settings)
+    secret = get_jwt_secret(settings)
 
     try:
         payload = jwt.decode(token, secret, algorithms=["HS256"])

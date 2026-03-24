@@ -1,7 +1,4 @@
-"""Dashboard endpoints — authenticated via JWT Bearer token.
-
-All routes require a valid dashboard session (issued by /v1/auth/callback).
-"""
+"""Dashboard endpoints — authenticated via JWT Bearer token."""
 
 from __future__ import annotations
 
@@ -11,10 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
-from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.services.connection_health import transition_to_revoked
 from pydantic import BaseModel
-from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.dependencies import (
@@ -24,15 +18,19 @@ from omnidapter_hosted.dependencies import (
     get_request_id,
 )
 from omnidapter_hosted.models.api_key import HostedAPIKey
-from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
-from omnidapter_hosted.models.membership import MemberRole
-from omnidapter_hosted.models.provider_config import HostedProviderConfig
-from omnidapter_hosted.services.auth import generate_hosted_api_key
 from omnidapter_hosted.services.dashboard import (
+    create_api_key_flow,
+    delete_provider_config_flow,
+    list_api_keys_flow,
+    list_connections_flow,
     list_members,
+    list_provider_configs_flow,
     remove_member,
+    revoke_api_key_flow,
+    revoke_connection_flow,
     update_tenant_name,
     update_user_name,
+    upsert_provider_config_flow,
 )
 from omnidapter_hosted.services.usage import count_monthly_usage
 
@@ -95,7 +93,7 @@ async def get_tenant(
 
 
 @router.patch("/tenant")
-async def update_tenant(
+async def patch_tenant(
     body: UpdateTenantRequest,
     auth: Annotated[DashboardAuthContext, Depends(get_dashboard_auth_context)],
     session: AsyncSession = Depends(get_session),
@@ -140,7 +138,9 @@ async def delete_member(
     try:
         target_user_id = uuid.UUID(user_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Member not found"}) from exc
+        raise HTTPException(
+            status_code=404, detail={"code": "not_found", "message": "Member not found"}
+        ) from exc
 
     await remove_member(
         tenant_id=auth.tenant_id,
@@ -156,24 +156,15 @@ async def delete_member(
 # ---------------------------------------------------------------------------
 
 
-class APIKeyResponse(BaseModel):
-    id: str
-    name: str
-    key_prefix: str
-    is_active: bool
-    last_used_at: str | None
-    created_at: str
-
-    @classmethod
-    def from_model(cls, k: HostedAPIKey) -> APIKeyResponse:
-        return cls(
-            id=str(k.id),
-            name=k.name,
-            key_prefix=k.key_prefix,
-            is_active=k.is_active,
-            last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
-            created_at=k.created_at.isoformat(),
-        )
+def _api_key_data(k: HostedAPIKey) -> dict:
+    return {
+        "id": str(k.id),
+        "name": k.name,
+        "key_prefix": k.key_prefix,
+        "is_active": k.is_active,
+        "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+        "created_at": k.created_at.isoformat(),
+    }
 
 
 class CreateAPIKeyRequest(BaseModel):
@@ -186,14 +177,8 @@ async def list_api_keys(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    result = await session.execute(
-        select(HostedAPIKey).where(HostedAPIKey.tenant_id == auth.tenant_id)
-    )
-    keys = result.scalars().all()
-    return {
-        "data": [APIKeyResponse.from_model(k) for k in keys],
-        "meta": {"request_id": request_id},
-    }
+    keys = await list_api_keys_flow(auth.tenant_id, session)
+    return {"data": [_api_key_data(k) for k in keys], "meta": {"request_id": request_id}}
 
 
 @router.post("/api-keys", status_code=201)
@@ -203,28 +188,12 @@ async def create_api_key(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    if auth.role not in (MemberRole.OWNER, MemberRole.ADMIN):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "forbidden", "message": "Owner or admin role required"},
-        )
-
-    raw_key, key_hash, key_prefix = generate_hosted_api_key()
-    api_key = HostedAPIKey(
-        id=uuid.uuid4(),
-        tenant_id=auth.tenant_id,
-        name=body.name.strip(),
-        key_hash=key_hash,
-        key_prefix=key_prefix,
-        is_active=True,
+    raw_key, api_key = await create_api_key_flow(
+        auth.tenant_id, body.name.strip(), auth.role, session
     )
-    session.add(api_key)
-    await session.commit()
-    await session.refresh(api_key)
-
-    response_data = APIKeyResponse.from_model(api_key).model_dump()
-    response_data["key"] = raw_key
-    return {"data": response_data, "meta": {"request_id": request_id}}
+    data = _api_key_data(api_key)
+    data["key"] = raw_key
+    return {"data": data, "meta": {"request_id": request_id}}
 
 
 @router.delete("/api-keys/{key_id}", status_code=204)
@@ -233,35 +202,18 @@ async def revoke_api_key(
     auth: Annotated[DashboardAuthContext, Depends(get_dashboard_auth_context)],
     session: AsyncSession = Depends(get_session),
 ):
-    if auth.role not in (MemberRole.OWNER, MemberRole.ADMIN):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "forbidden", "message": "Owner or admin role required"},
-        )
-
     try:
         key_uuid = uuid.UUID(key_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "API key not found"}) from exc
+        raise HTTPException(
+            status_code=404, detail={"code": "not_found", "message": "API key not found"}
+        ) from exc
 
-    result = await session.execute(
-        select(HostedAPIKey).where(
-            HostedAPIKey.id == key_uuid,
-            HostedAPIKey.tenant_id == auth.tenant_id,
-        )
-    )
-    key = result.scalar_one_or_none()
-    if key is None:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "API key not found"})
-
-    await session.execute(
-        update(HostedAPIKey).where(HostedAPIKey.id == key_uuid).values(is_active=False)
-    )
-    await session.commit()
+    await revoke_api_key_flow(key_uuid, auth.tenant_id, auth.role, session)
 
 
 # ---------------------------------------------------------------------------
-# Connections (read-only view + force-revoke)
+# Connections
 # ---------------------------------------------------------------------------
 
 
@@ -271,15 +223,7 @@ async def list_connections(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    result = await session.execute(
-        select(Connection)
-        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
-        .where(HostedConnectionOwner.tenant_id == auth.tenant_id)
-        .where(Connection.status != ConnectionStatus.REVOKED)
-        .order_by(Connection.created_at.desc())
-    )
-    connections = result.scalars().all()
-
+    connections = await list_connections_flow(auth.tenant_id, session)
     data = [
         {
             "id": str(c.id),
@@ -300,27 +244,14 @@ async def revoke_connection(
     auth: Annotated[DashboardAuthContext, Depends(get_dashboard_auth_context)],
     session: AsyncSession = Depends(get_session),
 ):
-    if auth.role not in (MemberRole.OWNER, MemberRole.ADMIN):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "forbidden", "message": "Owner or admin role required"},
-        )
-
     try:
         conn_uuid = uuid.UUID(connection_id)
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Connection not found"}) from exc
+        raise HTTPException(
+            status_code=404, detail={"code": "not_found", "message": "Connection not found"}
+        ) from exc
 
-    result = await session.execute(
-        select(Connection)
-        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
-        .where(Connection.id == conn_uuid, HostedConnectionOwner.tenant_id == auth.tenant_id)
-    )
-    conn = result.scalar_one_or_none()
-    if conn is None:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Connection not found"})
-
-    await transition_to_revoked(conn.id, session, reason="Revoked from dashboard")
+    await revoke_connection_flow(conn_uuid, auth.tenant_id, auth.role, session)
 
 
 # ---------------------------------------------------------------------------
@@ -340,11 +271,7 @@ async def list_provider_configs(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    result = await session.execute(
-        select(HostedProviderConfig).where(HostedProviderConfig.tenant_id == auth.tenant_id)
-    )
-    configs = result.scalars().all()
-
+    configs = await list_provider_configs_flow(auth.tenant_id, session)
     data = [
         {
             "provider_key": c.provider_key,
@@ -358,7 +285,7 @@ async def list_provider_configs(
     return {"data": data, "meta": {"request_id": request_id}}
 
 
-@router.put("/provider-configs/{provider_key}", status_code=200)
+@router.put("/provider-configs/{provider_key}")
 async def upsert_provider_config(
     provider_key: str,
     body: UpsertProviderConfigRequest,
@@ -367,42 +294,16 @@ async def upsert_provider_config(
     session: AsyncSession = Depends(get_session),
     request_id: str = Depends(get_request_id),
 ):
-    if auth.role not in (MemberRole.OWNER, MemberRole.ADMIN):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "forbidden", "message": "Owner or admin role required"},
-        )
-
-    result = await session.execute(
-        select(HostedProviderConfig).where(
-            HostedProviderConfig.tenant_id == auth.tenant_id,
-            HostedProviderConfig.provider_key == provider_key,
-        )
+    config = await upsert_provider_config_flow(
+        tenant_id=auth.tenant_id,
+        provider_key=provider_key,
+        client_id=body.client_id,
+        client_secret=body.client_secret,
+        scopes=body.scopes,
+        role=auth.role,
+        encryption=encryption,
+        session=session,
     )
-    config = result.scalar_one_or_none()
-
-    encrypted_id = encryption.encrypt(body.client_id)
-    encrypted_secret = encryption.encrypt(body.client_secret)
-
-    if config is None:
-        config = HostedProviderConfig(
-            id=uuid.uuid4(),
-            tenant_id=auth.tenant_id,
-            provider_key=provider_key,
-            auth_kind="oauth2",
-            client_id_encrypted=encrypted_id,
-            client_secret_encrypted=encrypted_secret,
-            scopes=body.scopes,
-        )
-        session.add(config)
-    else:
-        config.client_id_encrypted = encrypted_id
-        config.client_secret_encrypted = encrypted_secret
-        config.scopes = body.scopes
-
-    await session.commit()
-    await session.refresh(config)
-
     return {
         "data": {
             "provider_key": config.provider_key,
@@ -420,27 +321,7 @@ async def delete_provider_config(
     auth: Annotated[DashboardAuthContext, Depends(get_dashboard_auth_context)],
     session: AsyncSession = Depends(get_session),
 ):
-    if auth.role not in (MemberRole.OWNER, MemberRole.ADMIN):
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "forbidden", "message": "Owner or admin role required"},
-        )
-
-    result = await session.execute(
-        select(HostedProviderConfig).where(
-            HostedProviderConfig.tenant_id == auth.tenant_id,
-            HostedProviderConfig.provider_key == provider_key,
-        )
-    )
-    config = result.scalar_one_or_none()
-    if config is None:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "not_found", "message": "Provider config not found"},
-        )
-
-    await session.delete(config)
-    await session.commit()
+    await delete_provider_config_flow(auth.tenant_id, provider_key, auth.role, session)
 
 
 # ---------------------------------------------------------------------------
@@ -458,14 +339,8 @@ async def get_usage(
 
     settings = get_hosted_settings()
     calls_this_month = await count_monthly_usage(auth.tenant_id, session)
-
     limit = None if auth.tenant.plan != "free" else settings.hosted_free_tier_calls
-
     return {
-        "data": {
-            "plan": auth.tenant.plan,
-            "calls_this_month": calls_this_month,
-            "limit": limit,
-        },
+        "data": {"plan": auth.tenant.plan, "calls_this_month": calls_this_month, "limit": limit},
         "meta": {"request_id": request_id},
     }
