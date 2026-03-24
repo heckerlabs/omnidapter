@@ -1,38 +1,50 @@
-# Omnidapter
+# 🏗️ Omnidapter
 
-Provider-agnostic calendar integrations for Python and self-hosted APIs.
+**Provider-agnostic calendar integrations for Python and self-hosted APIs.**
 
-Omnidapter is open source (MIT-licensed).
+Omnidapter is a unified integration engine that eliminates the complexity of supporting multiple calendar providers. Stop writing separate implementations for Google, Microsoft, Apple, and Zoho—Omnidapter gives you one consistent API surface and data model.
 
-If you are tired of writing one integration for Google, another for Microsoft,
-then patching edge cases forever, Omnidapter gives you one consistent model and
-one API surface.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 
-## Why Use Omnidapter
+---
 
-- One unified calendar interface across major providers
-- Built-in OAuth lifecycle management (begin, callback completion, refresh)
-- Clean separation of credential storage from provider logic
-- Self-hosted REST API available when you do not want SDK coupling
-- Strong test coverage and explicit capability checks for provider differences
+## ⚡ Main Features
 
-## Choose Your Path
+- 🔄 **Unified Interface**: One model for events, calendars, and availability across all providers.
+- 🔑 **OAuth Management**: Automated lifecycle for authorization flows, callbacks, and token refreshes.
+- 📦 **Dual Distribution**: Use as a **Python SDK** or a standalone **REST API**.
+- 🛡️ **Explicit Capability Checks**: Easily determine which features a specific provider supports.
+- 💾 **Plug-and-Play Storage**: Clear separation of credential storage from provider logic.
 
-- I want a Python SDK: start with `omnidapter-core/README.md`
-- I want a self-hosted API: start with `omnidapter-server/docs/README.md`
+---
 
-## What You Get In This Repository
+## 🏛️ Architecture
 
-- `omnidapter-core` - `omnidapter` Python library
-- `omnidapter-server` - self-hosted FastAPI service that wraps core
-
-```text
-omnidapter-core/
-omnidapter-server/
-omnidapter-hosted/
+```mermaid
+graph TD
+    UserApp(Your Application) --> CoreSDK["omnidapter-core (Python SDK)"]
+    UserApp --> Server["omnidapter-server (REST API)"]
+    Server --> CoreSDK
+    CoreSDK --> P_Google[Google]
+    CoreSDK --> P_MS[Microsoft]
+    CoreSDK --> P_Apple[Apple]
+    CoreSDK --> P_Caldav[CalDAV]
+    CoreSDK --> P_Zoho[Zoho]
 ```
 
-## 60-Second Quick Start (Library)
+---
+
+## 🧩 Project Structure
+
+- **[`omnidapter-core`](omnidapter-core/README.md)**: The core Python library. Best if your application is Python-based and you want deep, native integration.
+- **[`omnidapter-server`](omnidapter-server/docs/README.md)**: A production-ready FastAPI service that wraps the core. Best for polyglot systems or independent microservices.
+
+---
+
+## 🚀 60-Second Quick Start
+
+### Python Library
 
 ```bash
 pip install omnidapter
@@ -42,70 +54,64 @@ pip install omnidapter
 from omnidapter import Omnidapter
 
 omni = Omnidapter(
-    credential_store=my_credential_store,
-    oauth_state_store=my_oauth_state_store,
+    credential_store=my_enc_store,
+    oauth_state_store=my_redis_store,
 )
 
-conn = await omni.connection("conn_123")
-cal = conn.calendar()
+# Seamlessly interact with any connection
+conn = await omni.connection("google_conn_1")
+calendar = conn.calendar()
 
-calendars = await cal.list_calendars()
+# List primary calendar events
+async for event in calendar.list_events("primary"):
+    print(f"[{event.start}] {event.summary}")
 ```
 
-Core docs:
+### Self-Hosted API
 
-- `omnidapter-core/README.md`
-- `omnidapter-core/docs/providers.md`
-- `omnidapter-core/docs/calendar.md`
-- `omnidapter-core/docs/credential-stores.md`
-
-## 60-Second Quick Start (Self-Hosted API)
+Pull the latest stack and start services:
 
 ```bash
-uv sync
-uv run --package omnidapter-server alembic -c omnidapter-server/alembic.ini upgrade head
-uv run omnidapter-bootstrap --name "local"
-uv run omnidapter-server
-```
+# Setup infrastructure (Postgres + Migration)
+docker-compose -f omnidapter-server/docker-compose.yml up -d
 
-Docker Compose file locations:
+# Bootstrap the first API key
+uv run --package omnidapter-server omnidapter-bootstrap --name "local-dev"
 
-- `omnidapter-server/docker-compose.yml` (self-hosted server)
-- `omnidapter-hosted/docker-compose.yml` (hosted multi-tenant app)
-
-Then call it:
-
-```bash
+# Call the API
 curl -H "Authorization: Bearer <API_KEY>" \
   http://localhost:8000/v1/providers
 ```
 
-Server docs:
+---
 
-- `omnidapter-server/docs/README.md`
+## 🛠️ Supported Providers
 
-## How It Stays Simple
+| Provider | Status | OAuth | Recurring Events | Free/Busy |
+|----------|---------|-------|------------------|-----------|
+| **Google** | ✅ Production | Yes | ✅ | ✅ |
+| **Microsoft** | ✅ Production | Yes | ✅ | ✅ |
+| **Zoho** | ✅ Production | Yes | ✅ | ❌ |
+| **Apple** | 🛰️ Beta | App Pass | ✅ | ❌ |
+| **CalDAV** | 🛰️ Beta | Basic | ✅ | ❌ |
 
-- Core handles provider-specific transport and mapping
-- You own credentials and OAuth state persistence strategy
-- Server wraps the same core flows with consistent JSON contracts
-- Capability checks make unsupported provider operations explicit
+---
 
-## Development
+## 👩‍💻 Development
+
+Omnidapter uses `uv` for package management and `poe` for task automation.
 
 ```bash
-uv run poe --help
+# Run local checks (format, lint, typecheck, tests)
 uv run poe check
+
+# Start development server
+uv run poe server-dev
 ```
 
-`uv run poe check` runs format, lint, typecheck, tests, and package builds.
+---
 
-Useful task shortcuts:
+## 📜 License
 
-- `uv run poe server-up`
-- `uv run poe server-bootstrap`
-- `uv run poe hosted-up`
+MIT - See [LICENSE](LICENSE) for details.
 
-## License
-
-MIT
