@@ -6,6 +6,8 @@ services:
       POSTGRES_DB: omnidapter
       POSTGRES_USER: omnidapter
       POSTGRES_PASSWORD: omnidapter
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,6 +20,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    ports:
+      - "6379:6379"
 
   migrate:
     build:
@@ -38,7 +42,8 @@ services:
     build:
       context: ..
       dockerfile: omnidapter-hosted/Dockerfile
-    restart: no
+    restart: "no"
+    profiles: ["production"]
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
     environment:

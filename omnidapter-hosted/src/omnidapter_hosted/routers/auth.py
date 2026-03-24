@@ -168,7 +168,7 @@ async def login(
     """
     _require_workos(settings)
     client = _workos_client(settings)
-    callback_uri = redirect_uri or f"{settings.omnidapter_base_url}/auth/callback"
+    callback_uri = redirect_uri or f"{settings.omnidapter_base_url}/v1/auth/callback"
     url = client.user_management.get_authorization_url(
         redirect_uri=callback_uri,
         provider="authkit",
