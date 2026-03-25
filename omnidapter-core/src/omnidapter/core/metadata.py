@@ -47,9 +47,13 @@ class ConnectionConfigField(BaseModel):
     """Describes a required/optional field for provider-specific connection config."""
 
     name: str
-    description: str
+    label: str | None = None  # display label; falls back to name title-cased if None
+    description: str = ""  # help text shown below the field
+    type: str = "text"  # text / password / url / email / select
     required: bool = True
-    example: str | None = None
+    placeholder: str | None = None
+    example: str | None = None  # kept for SDK documentation
+    options: list[dict[str, str]] | None = None  # [{"value": ..., "label": ...}] for select
 
 
 class ProviderMetadata(BaseModel):

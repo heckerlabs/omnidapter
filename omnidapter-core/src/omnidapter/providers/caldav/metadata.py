@@ -41,9 +41,26 @@ CALDAV_METADATA = ProviderMetadata(
     connection_config_fields=[
         ConnectionConfigField(
             name="server_url",
-            description="The CalDAV server URL (e.g., https://caldav.fastmail.com/dav/)",
+            label="Server URL",
+            description="Your CalDAV server address",
+            type="url",
             required=True,
+            placeholder="https://caldav.example.com/",
             example="https://caldav.fastmail.com/dav/",
+        ),
+        ConnectionConfigField(
+            name="username",
+            label="Username",
+            description="Your CalDAV username or email address",
+            type="text",
+            required=True,
+        ),
+        ConnectionConfigField(
+            name="password",
+            label="Password",
+            description="Use an app-specific password if available",
+            type="password",
+            required=True,
         ),
     ],
 )
