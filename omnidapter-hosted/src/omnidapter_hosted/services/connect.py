@@ -206,12 +206,45 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         )
 
     import base64
+    import ipaddress
+    import urllib.parse
 
     import httpx
 
+    # Validate URL to prevent SSRF
+    try:
+        parsed = urllib.parse.urlparse(server_url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("invalid scheme")
+        hostname = parsed.hostname or ""
+        if not hostname:
+            raise ValueError("missing hostname")
+        try:
+            addr = ipaddress.ip_address(hostname)
+            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
+                raise ValueError("private address")
+        except ValueError as exc:
+            if (
+                "private address" in str(exc)
+                or "invalid scheme" in str(exc)
+                or "missing hostname" in str(exc)
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "invalid_credentials", "message": "Invalid server URL"},
+                ) from exc
+            # hostname is a domain name, not an IP — allow it
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_credentials", "message": "Invalid server URL"},
+        ) from exc
+
     basic = base64.b64encode(f"{username}:{password}".encode()).decode()
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             response = await client.request(
                 "PROPFIND",
                 server_url,
@@ -241,11 +274,14 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
     except HTTPException:
         raise
     except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning("CalDAV validation failed: %s", exc)
         raise HTTPException(
             status_code=422,
             detail={
                 "code": "server_unreachable",
-                "message": f"Could not reach CalDAV server: {exc}",
+                "message": "Could not reach CalDAV server. Please check the server URL and try again.",
             },
         ) from exc
 

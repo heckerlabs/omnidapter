@@ -18,6 +18,7 @@ from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     CreateConnectionRequest,
+    ReauthorizeConnectionRequest,
 )
 from omnidapter_server.services.connection_flows import (
     create_connection_flow,
@@ -39,6 +40,7 @@ from omnidapter_hosted.dependencies import (
 from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
 from omnidapter_hosted.services.connect import (
     create_credential_connection,
+    is_provider_available,
     list_available_providers,
     update_credential_connection,
 )
@@ -215,6 +217,38 @@ async def create_connection(
         ) from exc
 
     is_oauth = any(k.value == "oauth2" for k in meta.auth_kinds)
+    auth_kind = meta.auth_kinds[0].value if meta.auth_kinds else "oauth2"
+
+    # Enforce allowed_providers restriction from the link token
+    if (
+        link_token.allowed_providers is not None
+        and body.provider_key not in link_token.allowed_providers
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "provider_not_allowed",
+                "message": f"Provider '{body.provider_key}' is not allowed for this session",
+            },
+        )
+
+    # Enforce tenant is_enabled flag
+    provider_config = await get_tenant_provider_config(
+        session=session, tenant_id=tenant_id, provider_key=body.provider_key
+    )
+    if not is_provider_available(
+        provider_key=body.provider_key,
+        auth_kind=auth_kind,
+        config=provider_config,
+        settings=settings,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "provider_not_available",
+                "message": f"Provider '{body.provider_key}' is not available",
+            },
+        )
 
     # -----------------------------------------------------------------------
     # Reconnect flow
@@ -276,7 +310,7 @@ async def create_connection(
 
         result = await reauthorize_connection_flow(
             connection_id=str(reconnect_connection_id),
-            body=type("Req", (), {"redirect_url": redirect_uri})(),  # type: ignore[misc]
+            body=ReauthorizeConnectionRequest(redirect_url=redirect_uri),
             request=request,
             session=session,
             settings=settings,

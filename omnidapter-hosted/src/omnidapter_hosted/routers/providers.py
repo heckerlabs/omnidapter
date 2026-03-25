@@ -26,9 +26,6 @@ from omnidapter_hosted.models.provider_config import HostedProviderConfig
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
-# OAuth providers for which the server can supply fallback credentials
-_OAUTH_FALLBACK_PROVIDERS = {"google", "microsoft", "zoho"}
-
 
 def _has_fallback(provider_key: str, settings: HostedSettings) -> bool:
     """Return True if the server has hosted fallback credentials for this provider."""

@@ -101,22 +101,33 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, view: "error", errorCode: action.code, errorMessage: action.message };
 
     case "CREDENTIAL_SUBMIT_START":
-      return { ...state, fieldErrors: {} };
+      return { ...state, fieldErrors: {}, submitting: true };
 
     case "CREDENTIAL_SUBMIT_SUCCESS":
-      return { ...state, view: "success", connectionId: action.connectionId };
+      return { ...state, view: "success", connectionId: action.connectionId, submitting: false };
 
     case "CREDENTIAL_SUBMIT_ERROR":
-      return { ...state, fieldErrors: action.fieldErrors };
+      return { ...state, fieldErrors: action.fieldErrors, submitting: false };
 
-    case "RETRY":
+    case "RETRY": {
+      if (state.providers.length > 1) {
+        return {
+          ...state,
+          view: "provider_selection",
+          errorCode: null,
+          errorMessage: null,
+          fieldErrors: {},
+        };
+      }
+      const provider = state.selectedProvider ?? state.providers[0] ?? null;
       return {
         ...state,
-        view: state.providers.length > 1 ? "provider_selection" : "credential_form",
+        view: provider?.credential_schema ? "credential_form" : "oauth_init",
         errorCode: null,
         errorMessage: null,
         fieldErrors: {},
       };
+    }
 
     default:
       return state;
@@ -132,6 +143,7 @@ const initialState: AppState = {
   errorCode: null,
   errorMessage: null,
   fieldErrors: {},
+  submitting: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -151,7 +163,9 @@ export function App() {
     const { connectionId, status, errorCode, errorMessage } = extractOAuthReturn();
 
     if (connectionId && status === "active") {
-      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: "" });
+      const savedProviderKey = sessionStorage.getItem("omnidapter_provider_key") ?? "";
+      sessionStorage.removeItem("omnidapter_provider_key");
+      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey });
       return;
     }
 
@@ -198,6 +212,9 @@ export function App() {
     const redirectUri = new URL(window.location.href);
     redirectUri.search = "";
     redirectUri.hash = "";
+    redirectUri.searchParams.set("token", state.token);
+
+    sessionStorage.setItem("omnidapter_provider_key", state.selectedProvider.key);
 
     createConnection(state.token, {
       provider_key: state.selectedProvider.key,
@@ -260,7 +277,7 @@ export function App() {
         <CredentialFormView
           provider={state.selectedProvider!}
           fieldErrors={state.fieldErrors}
-          submitting={false}
+          submitting={state.submitting}
           onSubmit={handleCredentialSubmit}
           onBack={handleBack}
         />

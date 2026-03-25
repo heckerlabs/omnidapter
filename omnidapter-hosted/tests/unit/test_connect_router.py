@@ -196,6 +196,11 @@ async def test_create_connection_oauth_returns_auth_url() -> None:
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
+        patch(
             "omnidapter_hosted.routers.connect.create_connection_flow",
             new=AsyncMock(return_value=flow_result),
         ),
@@ -250,6 +255,11 @@ async def test_create_connection_non_oauth_success() -> None:
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
+        patch(
             "omnidapter_hosted.routers.connect.create_credential_connection",
             new=AsyncMock(return_value=mock_conn),
         ),
@@ -291,6 +301,11 @@ async def test_create_connection_non_oauth_missing_credentials() -> None:
             "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
+        patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
         pytest.raises(HTTPException) as exc_info,
     ):
         await create_connection(
@@ -329,6 +344,11 @@ async def test_create_connection_reconnect_wrong_provider() -> None:
             "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
+        patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
         pytest.raises(HTTPException) as exc_info,
     ):
         await create_connection(
@@ -375,6 +395,11 @@ async def test_create_connection_reconnect_non_oauth_success() -> None:
             "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
+        patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
         patch(
             "omnidapter_hosted.routers.connect.update_credential_connection",
             new=AsyncMock(return_value=conn),
