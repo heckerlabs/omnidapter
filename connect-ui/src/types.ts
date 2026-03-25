@@ -41,6 +41,7 @@ export interface AppState {
   errorCode: string | null;
   errorMessage: string | null;
   fieldErrors: Record<string, string>;
+  submitting: boolean;
 }
 
 export interface PostMessageSuccess {
