@@ -13,7 +13,6 @@ from fastapi.responses import JSONResponse
 from omnidapter_server.config import get_settings as _server_get_settings
 from omnidapter_server.dependencies import get_auth_context as _server_get_auth_context
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
-from omnidapter_server.routers import providers
 
 from omnidapter_hosted.config import get_hosted_settings
 from omnidapter_hosted.dependencies import get_hosted_auth_context
@@ -26,6 +25,7 @@ from omnidapter_hosted.routers import (
     link_tokens,
     oauth,
     provider_configs,
+    providers,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,9 +86,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Provider metadata (no tenant data, auth via API key through dependency override)
-app.include_router(providers.router, prefix="/v1")
-
 # Auth — WorkOS login/callback, JWT-based /me, stateless logout
 app.include_router(auth.router, prefix="/v1")
 
@@ -99,6 +96,9 @@ app.include_router(dashboard.router, prefix="/v1")
 app.include_router(connections.router, prefix="/v1")
 app.include_router(calendar.router, prefix="/v1")
 app.include_router(provider_configs.router, prefix="/v1")
+
+# Provider management — API key auth
+app.include_router(providers.router, prefix="/v1")
 
 # Link token issuance — API key auth
 app.include_router(link_tokens.router, prefix="/v1")

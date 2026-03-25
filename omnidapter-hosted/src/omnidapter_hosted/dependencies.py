@@ -235,11 +235,22 @@ class LinkTokenContext:
         end_user_id: str | None,
         allowed_providers: list[str] | None,
         redirect_uri: str | None,
+        *,
+        connection_id: uuid.UUID | None = None,
+        locked_provider_key: str | None = None,
     ) -> None:
         self.tenant_id = tenant_id
         self.end_user_id = end_user_id
         self.allowed_providers = allowed_providers
         self.redirect_uri = redirect_uri
+        # Reconnect fields — set when the token is scoped to an existing connection
+        self.connection_id = connection_id
+        self.locked_provider_key = locked_provider_key
+
+    @property
+    def is_reconnect(self) -> bool:
+        """True when this token is locked to a specific existing connection."""
+        return self.connection_id is not None
 
 
 async def get_link_token_context(
@@ -269,7 +280,7 @@ async def get_link_token_context(
     if link_token is None:
         raise HTTPException(
             status_code=401,
-            detail={"code": "invalid_token", "message": "Invalid or expired link token"},
+            detail={"code": "session_expired", "message": "Invalid or expired link token"},
         )
 
     return LinkTokenContext(
@@ -277,6 +288,8 @@ async def get_link_token_context(
         end_user_id=link_token.end_user_id,
         allowed_providers=link_token.allowed_providers,
         redirect_uri=link_token.redirect_uri,
+        connection_id=link_token.connection_id,
+        locked_provider_key=link_token.locked_provider_key,
     )
 
 

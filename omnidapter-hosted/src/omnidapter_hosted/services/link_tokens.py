@@ -37,8 +37,16 @@ async def create_link_token(
     redirect_uri: str | None,
     ttl_seconds: int,
     session: AsyncSession,
+    *,
+    connection_id: uuid.UUID | None = None,
+    locked_provider_key: str | None = None,
 ) -> tuple[str, HostedLinkToken]:
-    """Create and persist a link token. Returns (raw_token, model)."""
+    """Create and persist a link token. Returns (raw_token, model).
+
+    When ``connection_id`` is provided the token is a *reconnect* token — it is
+    locked to a single existing connection so the connect UI can skip provider
+    selection and go straight to the authorization flow.
+    """
     raw_token, token_hash, token_prefix = generate_link_token()
 
     now = datetime.now(timezone.utc)
@@ -54,6 +62,8 @@ async def create_link_token(
         redirect_uri=redirect_uri,
         expires_at=expires_at,
         is_active=True,
+        connection_id=connection_id,
+        locked_provider_key=locked_provider_key,
     )
     session.add(link_token)
     await session.commit()

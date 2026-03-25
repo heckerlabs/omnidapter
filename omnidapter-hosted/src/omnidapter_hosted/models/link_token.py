@@ -34,3 +34,9 @@ class HostedLinkToken(HostedBase):
     redirect_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Reconnect: lock this token to an existing connection (for credential refresh)
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("connections.id"), nullable=True
+    )
+    # Provider key locked to the connection (derived at token creation for reconnect)
+    locked_provider_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
