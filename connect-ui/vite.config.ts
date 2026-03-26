@@ -8,4 +8,16 @@ export default defineConfig({
     emptyOutDir: true,
   },
   base: "/connect/",
+  server: {
+    proxy: {
+      "/connect/providers": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/connect/connections": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
 });
