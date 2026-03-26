@@ -366,14 +366,17 @@ async def test_create_credential_connection_success() -> None:
     session = AsyncMock()
     session.flush = AsyncMock()
     session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.execute = AsyncMock()
     session.add = MagicMock()
+
+    conn_id = uuid.uuid4()
+
+    # Mock execute to return a result with scalar_one_or_none method
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=conn_id)
+    session.execute = AsyncMock(return_value=mock_result)
 
     encryption = MagicMock()
     encryption.encrypt.return_value = "enc_creds"
-
-    conn_id = uuid.uuid4()
 
     async def _refresh_with_id(obj: Any) -> None:
         if isinstance(obj, Connection):
