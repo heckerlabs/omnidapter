@@ -28,6 +28,8 @@ class HostedConnectionOwner(HostedBase):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
     )
+    # Note: no FK constraint because Connection is in omnidapter_server.models with different metadata.
+    # Validation is done in routers/connect.py and routers/connections.py
     connection_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("connections.id"), nullable=False
+        UUID(as_uuid=True), nullable=False
     )
