@@ -39,6 +39,7 @@ export interface AppState {
   redirectUri: string | null;
   providers: Provider[];
   selectedProvider: Provider | null;
+  oauthProvider: string | null;
   connectionId: string | null;
   errorCode: string | null;
   errorMessage: string | null;

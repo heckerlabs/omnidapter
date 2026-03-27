@@ -27,7 +27,7 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
         window.location.href = url.toString();
       }, 1500);
     }
-  }, [connectionId, isPopup, provider, redirectUri]);
+  }, [connectionId, isPopup, provider, redirectUri, openerOrigin]);
 
   return (
     <div style={card}>

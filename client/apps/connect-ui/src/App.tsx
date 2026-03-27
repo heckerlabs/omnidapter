@@ -119,7 +119,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, view: "oauth_init" };
 
     case "OAUTH_RETURN_SUCCESS":
-      return { ...state, view: "success", connectionId: action.connectionId };
+      return { ...state, view: "success", connectionId: action.connectionId, oauthProvider: action.provider };
 
     case "OAUTH_RETURN_ERROR":
       return { ...state, view: "error", errorCode: action.code, errorMessage: action.message };
@@ -165,6 +165,7 @@ const initialState: AppState = {
   redirectUri: null,
   providers: [],
   selectedProvider: null,
+  oauthProvider: null,
   connectionId: null,
   errorCode: null,
   errorMessage: null,
@@ -331,7 +332,7 @@ export function App() {
       return (
         <SuccessView
           connectionId={state.connectionId ?? ""}
-          provider={state.selectedProvider?.key ?? ""}
+          provider={state.selectedProvider?.key ?? state.oauthProvider ?? ""}
           redirectUri={redirectUri}
           isPopup={popup}
           openerOrigin={state.openerOrigin}
