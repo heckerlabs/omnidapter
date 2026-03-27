@@ -36,12 +36,14 @@ export interface AppState {
   view: ViewName;
   token: string | null;
   openerOrigin: string | null;
+  redirectUri: string | null;
   providers: Provider[];
   selectedProvider: Provider | null;
   connectionId: string | null;
   errorCode: string | null;
   errorMessage: string | null;
   fieldErrors: Record<string, string>;
+  formError: string | null;
   submitting: boolean;
 }
 

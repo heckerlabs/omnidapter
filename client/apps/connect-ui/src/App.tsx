@@ -31,6 +31,19 @@ function extractOpenerOrigin(): string | null {
   }
 }
 
+function extractRedirectUri(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("redirect_uri");
+  if (!raw) return null;
+  try {
+    // Validate it's a real URL
+    new URL(raw);
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
 function extractOAuthReturn(): {
   connectionId: string | null;
   errorCode: string | null;
@@ -112,13 +125,13 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, view: "error", errorCode: action.code, errorMessage: action.message };
 
     case "CREDENTIAL_SUBMIT_START":
-      return { ...state, fieldErrors: {}, submitting: true };
+      return { ...state, fieldErrors: {}, formError: null, submitting: true };
 
     case "CREDENTIAL_SUBMIT_SUCCESS":
       return { ...state, view: "success", connectionId: action.connectionId, submitting: false };
 
     case "CREDENTIAL_SUBMIT_ERROR":
-      return { ...state, fieldErrors: action.fieldErrors, submitting: false };
+      return { ...state, fieldErrors: action.fieldErrors, formError: action.message, submitting: false };
 
     case "RETRY": {
       if (state.providers.length > 1) {
@@ -149,12 +162,14 @@ const initialState: AppState = {
   view: "loading",
   token: null,
   openerOrigin: null,
+  redirectUri: null,
   providers: [],
   selectedProvider: null,
   connectionId: null,
   errorCode: null,
   errorMessage: null,
   fieldErrors: {},
+  formError: null,
   submitting: false,
 };
 
@@ -167,6 +182,7 @@ export function App() {
     ...initialState,
     token: extractToken(),
     openerOrigin: extractOpenerOrigin(),
+    redirectUri: extractRedirectUri(),
   });
 
   const popup = isPopup();
@@ -228,6 +244,9 @@ export function App() {
     redirectUri.searchParams.set("token", state.token);
 
     sessionStorage.setItem("omnidapter_provider_key", state.selectedProvider.key);
+    if (state.redirectUri) {
+      sessionStorage.setItem("omnidapter_redirect_uri", state.redirectUri);
+    }
 
     createConnection(state.token, {
       provider_key: state.selectedProvider.key,
@@ -299,6 +318,7 @@ export function App() {
         <CredentialFormView
           provider={state.selectedProvider!}
           fieldErrors={state.fieldErrors}
+          formError={state.formError}
           submitting={state.submitting}
           onSubmit={handleCredentialSubmit}
           onBack={handleBack}
@@ -306,9 +326,8 @@ export function App() {
       );
 
     case "success": {
-      const redirectUri = state.token
-        ? new URLSearchParams(window.location.search).get("redirect_uri")
-        : null;
+      const redirectUri = state.redirectUri ?? sessionStorage.getItem("omnidapter_redirect_uri");
+      sessionStorage.removeItem("omnidapter_redirect_uri");
       return (
         <SuccessView
           connectionId={state.connectionId ?? ""}
