@@ -6,17 +6,18 @@ interface Props {
   provider: string;
   redirectUri: string | null;
   isPopup: boolean;
+  openerOrigin: string | null;
 }
 
-export function SuccessView({ connectionId, provider, redirectUri, isPopup }: Props) {
+export function SuccessView({ connectionId, provider, redirectUri, isPopup, openerOrigin }: Props) {
   useEffect(() => {
-    if (isPopup && window.opener) {
+    if (isPopup && window.opener && openerOrigin) {
       const msg: PostMessageSuccess = {
         type: "omnidapter:success",
         connectionId,
         provider,
       };
-      window.opener.postMessage(msg, "*");
+      window.opener.postMessage(msg, openerOrigin);
       setTimeout(() => window.close(), 300);
     } else if (redirectUri) {
       const url = new URL(redirectUri);

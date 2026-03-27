@@ -78,7 +78,7 @@ function isOmnidapterMessage(data: unknown): data is OmnidapterMessage {
     typeof data === "object" &&
     data !== null &&
     typeof (data as Record<string, unknown>).type === "string" &&
-    (data as Record<string, unknown>).type.toString().startsWith("omnidapter:")
+    ((data as Record<string, unknown>).type as string).startsWith("omnidapter:")
   );
 }
 
@@ -93,7 +93,6 @@ export class OmnidapterConnect {
   private _popup: Window | null = null;
   private _pollTimer: ReturnType<typeof setInterval> | null = null;
   private _messageHandler: ((event: MessageEvent) => void) | null = null;
-  private _onClose: (() => void) | null = null;
 
   constructor(options: OmnidapterConnectOptions = {}) {
     this._baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
@@ -119,7 +118,7 @@ export class OmnidapterConnect {
       return;
     }
 
-    const connectUrl = `${this._baseUrl}/connect?token=${encodeURIComponent(token)}`;
+    const connectUrl = `${this._baseUrl}/connect?token=${encodeURIComponent(token)}&opener_origin=${encodeURIComponent(window.location.origin)}`;
     const popupFeatures = _centeredPopupFeatures(width, height);
     this._popup = window.open(connectUrl, "omnidapter_connect", popupFeatures);
 
@@ -129,7 +128,6 @@ export class OmnidapterConnect {
       return;
     }
 
-    this._onClose = onClose ?? null;
     this._setupListeners(onSuccess, onError, onClose);
   }
 
@@ -151,9 +149,10 @@ export class OmnidapterConnect {
     onError?: (e: ConnectErrorResult) => void,
     onClose?: () => void
   ): void {
-    // Message listener — validates origin to prevent XSS
+    // Message listener — validates origin and source to prevent spoofing
     this._messageHandler = (event: MessageEvent) => {
       if (!this._isAllowedOrigin(event.origin)) return;
+      if (event.source !== this._popup) return;
       if (!isOmnidapterMessage(event.data)) return;
 
       const msg = event.data;

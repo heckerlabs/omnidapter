@@ -1,5 +1,5 @@
 {
-  "name": "@omnidapter/connect",
+  "name": "@omnidapter/connect-sdk",
   "version": "1.0.0",
   "description": "Omnidapter Connect — embed a calendar authorization flow in your app",
   "main": "./dist/omnidapter-connect.umd.js",
