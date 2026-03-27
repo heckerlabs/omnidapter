@@ -35,6 +35,7 @@ export type ViewName =
 export interface AppState {
   view: ViewName;
   token: string | null;
+  openerOrigin: string | null;
   providers: Provider[];
   selectedProvider: Provider | null;
   connectionId: string | null;

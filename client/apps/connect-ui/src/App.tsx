@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { listProviders, createConnection } from "./api";
 import { LoadingView } from "./views/Loading";
 import { ProviderSelectionView } from "./views/ProviderSelection";
@@ -16,6 +16,19 @@ import type { AppState, Provider } from "./types";
 function extractToken(): string | null {
   const params = new URLSearchParams(window.location.search);
   return params.get("token");
+}
+
+function extractOpenerOrigin(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("opener_origin");
+  if (!raw) return null;
+  try {
+    // Validate it's a real origin (scheme + host), not an arbitrary string
+    const url = new URL(raw);
+    return url.origin;
+  } catch {
+    return null;
+  }
 }
 
 function extractOAuthReturn(): {
@@ -137,6 +150,7 @@ function reducer(state: AppState, action: Action): AppState {
 const initialState: AppState = {
   view: "loading",
   token: null,
+  openerOrigin: null,
   providers: [],
   selectedProvider: null,
   connectionId: null,
@@ -154,6 +168,7 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, {
     ...initialState,
     token: extractToken(),
+    openerOrigin: extractOpenerOrigin(),
   });
 
   const popup = isPopup();
@@ -293,6 +308,7 @@ export function App() {
           provider={state.selectedProvider?.key ?? ""}
           redirectUri={redirectUri}
           isPopup={popup}
+          openerOrigin={state.openerOrigin}
         />
       );
     }
@@ -303,6 +319,7 @@ export function App() {
           code={state.errorCode ?? "unknown"}
           message={state.errorMessage ?? "An unexpected error occurred."}
           isPopup={popup}
+          openerOrigin={state.openerOrigin}
           onRetry={
             state.errorCode && ["user_denied", "invalid_credentials"].includes(state.errorCode)
               ? () => dispatch({ type: "RETRY" })

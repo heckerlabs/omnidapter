@@ -3,7 +3,7 @@
  *
  * Tests run in jsdom via Vitest.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { OmnidapterConnect } from "./index";
 
 // ---------------------------------------------------------------------------
@@ -63,10 +63,13 @@ describe("open() — popup blocked", () => {
 // ---------------------------------------------------------------------------
 
 describe("open() — popup opened", () => {
-  let openSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let openSpy: MockInstance<(...args: any[]) => any>;
   let mockPopup: ReturnType<typeof createMockPopup>;
-  let addEventListenerSpy: ReturnType<typeof vi.spyOn>;
-  let removeEventListenerSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let addEventListenerSpy: MockInstance<(...args: any[]) => any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let removeEventListenerSpy: MockInstance<(...args: any[]) => any>;
 
   beforeEach(() => {
     mockPopup = createMockPopup();

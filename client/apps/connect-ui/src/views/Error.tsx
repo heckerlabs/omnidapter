@@ -5,18 +5,19 @@ interface Props {
   code: string;
   message: string;
   isPopup: boolean;
+  openerOrigin: string | null;
   onRetry?: () => void;
 }
 
 const RETRY_CODES = new Set(["user_denied", "invalid_credentials", "server_unreachable"]);
 
-export function ErrorView({ code, message, isPopup, onRetry }: Props) {
+export function ErrorView({ code, message, isPopup, openerOrigin, onRetry }: Props) {
   const canRetry = RETRY_CODES.has(code) && onRetry != null;
 
   const handleClose = () => {
-    if (isPopup && window.opener) {
+    if (isPopup && window.opener && openerOrigin) {
       const msg: PostMessageError = { type: "omnidapter:error", code, message };
-      window.opener.postMessage(msg, "*");
+      window.opener.postMessage(msg, openerOrigin);
       window.close();
     }
   };

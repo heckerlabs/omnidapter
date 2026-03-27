@@ -17,7 +17,7 @@ export default defineConfig({
         globals: {},
       },
     },
-    minify: "terser",
+    minify: "esbuild",
     target: "es2020",
   },
 });
