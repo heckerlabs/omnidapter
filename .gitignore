@@ -20,4 +20,3 @@ htmlcov/
 .env.*
 !**/.env.example
 node_modules/
-package-lock.json
