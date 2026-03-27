@@ -11,8 +11,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter_server.database import get_session
-from omnidapter_server.provider_registry import build_provider_registry
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -98,7 +98,9 @@ async def list_providers_management(
     Used by the admin dashboard to manage which providers are enabled and how
     they are configured (own OAuth app vs hosted fallback).
     """
-    omni = Omnidapter(registry=build_provider_registry(settings))
+    registry = ProviderRegistry()
+    registry.register_builtins(auto_register_by_env=False)
+    omni = Omnidapter(registry=registry)
     tenant_configs = await _load_tenant_configs(session, auth.tenant_id)
 
     data = []

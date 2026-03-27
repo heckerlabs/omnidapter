@@ -12,10 +12,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     CreateConnectionRequest,
     ReauthorizeConnectionRequest,
@@ -48,6 +48,18 @@ from omnidapter_hosted.services.provider_registry import build_hosted_provider_r
 from omnidapter_hosted.services.tenant_resources import get_tenant_provider_config
 
 router = APIRouter(prefix="/connect", tags=["connect"])
+
+
+def _metadata_omni() -> Omnidapter:
+    """Omnidapter instance used only for provider metadata (listing, describing).
+
+    Registers all built-in providers regardless of whether server-level OAuth
+    credentials are present, so tenant-configured providers are never invisible.
+    Availability filtering is done separately via ``is_provider_available()``.
+    """
+    registry = ProviderRegistry()
+    registry.register_builtins(auto_register_by_env=False)
+    return Omnidapter(registry=registry)
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +164,7 @@ async def list_providers(
 
     Returns an empty list if no providers are available (error shown in UI).
     """
-    omni = Omnidapter(registry=build_provider_registry(settings))
+    omni = _metadata_omni()
 
     providers = await list_available_providers(
         session=session,
@@ -204,7 +216,7 @@ async def create_connection(
     redirect_uri = body.redirect_uri or link_token.redirect_uri
 
     # Determine provider metadata to check auth_kind
-    omni = Omnidapter(registry=build_provider_registry(settings))
+    omni = _metadata_omni()
     try:
         meta = omni.describe_provider(body.provider_key)
     except KeyError as exc:

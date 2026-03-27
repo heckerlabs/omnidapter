@@ -211,6 +211,16 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
 
     import httpx
 
+    # Hostnames that must always be blocked regardless of IP resolution
+    _BLOCKED_HOSTNAMES = frozenset({
+        "localhost",
+        "localhost.localdomain",
+        "ip6-localhost",
+        "ip6-loopback",
+        "broadcasthost",
+    })
+    _BLOCKED_SUFFIXES = (".local", ".localhost", ".internal", ".corp", ".home", ".lan", ".intranet")
+
     # Validate URL to prevent SSRF
     try:
         parsed = urllib.parse.urlparse(server_url)
@@ -219,6 +229,14 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         hostname = parsed.hostname or ""
         if not hostname:
             raise ValueError("missing hostname")
+
+        # Block well-known private hostnames that don't parse as IPs
+        hostname_lower = hostname.lower()
+        if hostname_lower in _BLOCKED_HOSTNAMES or any(
+            hostname_lower.endswith(s) for s in _BLOCKED_SUFFIXES
+        ):
+            raise ValueError("blocked hostname")
+
         try:
             addr = ipaddress.ip_address(hostname)
             if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
@@ -226,6 +244,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         except ValueError as exc:
             if (
                 "private address" in str(exc)
+                or "blocked hostname" in str(exc)
                 or "invalid scheme" in str(exc)
                 or "missing hostname" in str(exc)
             ):
@@ -233,7 +252,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                     status_code=422,
                     detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                 ) from exc
-            # hostname is a domain name, not an IP — allow it
+            # hostname is a public domain name — allow it
     except HTTPException:
         raise
     except Exception as exc:
