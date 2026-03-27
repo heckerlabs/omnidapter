@@ -5,7 +5,9 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
@@ -156,6 +158,17 @@ async def patch_provider_config(
     OAuth credentials — this lets an org explicitly disable a fallback provider
     or pre-stage an enabled record for a non-OAuth provider.
     """
+    registry = ProviderRegistry()
+    registry.register_builtins(auto_register_by_env=False)
+    omni = Omnidapter(registry=registry)
+    try:
+        omni.describe_provider(provider_key)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "provider_not_found", "message": f"Unknown provider: {provider_key}"},
+        ) from exc
+
     existing = await _load_config(provider_key, session, auth.tenant_id)
 
     if existing is None:

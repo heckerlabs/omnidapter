@@ -14,9 +14,11 @@ from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.routers.provider_configs import (
+    PatchProviderConfigRequest,
     delete_provider_config,
     get_provider_config,
     list_provider_configs,
+    patch_provider_config,
     upsert_provider_config,
 )
 from omnidapter_server.schemas.provider_config import UpsertProviderConfigRequest
@@ -166,3 +168,22 @@ async def test_delete_provider_config_success() -> None:
 
     assert session.execute.await_count == 2
     session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_patch_provider_config_unknown_provider_key_returns_422() -> None:
+    session = AsyncMock()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await patch_provider_config(
+            provider_key="not_a_real_provider_xyz",
+            body=PatchProviderConfigRequest(is_enabled=True),
+            auth=_auth(),
+            session=session,
+            request_id="req_patch",
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "provider_not_found"
+    session.add.assert_not_called() if hasattr(session, "add") else None

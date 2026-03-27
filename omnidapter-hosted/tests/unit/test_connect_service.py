@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -13,6 +13,7 @@ from omnidapter.core.metadata import AuthKind, ConnectionConfigField, ProviderMe
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
 from omnidapter_hosted.services.connect import (
     _build_stored_credential,
+    _default_caldav_validator,
     _field_to_schema,
     build_credential_schema,
     create_credential_connection,
@@ -454,3 +455,98 @@ async def test_create_credential_connection_validation_failure() -> None:
     assert exc_info.value.status_code == 422
     # Verify we attempted to revoke the connection
     session.execute.assert_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _default_caldav_validator — DNS-based SSRF mitigation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_domain_resolving_to_private_ip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A public hostname that resolves to a private IP must be rejected."""
+    import socket as socket_mod
+
+    # Simulate a hostname that resolves to a private IP (e.g. nip.io style)
+    private_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("192.168.1.1", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: private_addrinfo)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://caldav.attacker.example.com/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_unresolvable_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hostname that cannot be resolved must be rejected."""
+    import socket as socket_mod
+
+    def _fail(*a: Any, **kw: Any) -> None:
+        raise socket_mod.gaierror("Name or service not known")
+
+    monkeypatch.setattr("socket.getaddrinfo", _fail)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://does-not-exist.invalid/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_allows_public_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A hostname that resolves to a public IP and returns a valid response is accepted."""
+    import socket as socket_mod
+
+    import httpx
+
+    public_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: public_addrinfo)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 207
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> MagicMock:
+            return mock_response
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+
+    # Should not raise
+    await _default_caldav_validator(
+        "caldav",
+        {
+            "server_url": "https://caldav.example.com/",
+            "username": "u",
+            "password": "p",
+        },
+    )

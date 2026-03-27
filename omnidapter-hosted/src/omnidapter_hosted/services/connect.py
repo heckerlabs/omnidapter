@@ -205,8 +205,10 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
             detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
         )
 
+    import asyncio
     import base64
     import ipaddress
+    import socket
     import urllib.parse
 
     import httpx
@@ -254,7 +256,33 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                     status_code=422,
                     detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                 ) from exc
-            # hostname is a public domain name — allow it
+            # hostname is a public domain name — resolve DNS and verify IPs
+            loop = asyncio.get_event_loop()
+            try:
+                addr_infos = await loop.run_in_executor(
+                    None, lambda: socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+                )
+            except OSError as dns_exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail={"code": "invalid_credentials", "message": "Invalid server URL"},
+                ) from dns_exc
+            for info in addr_infos:
+                ip_str = info[4][0]
+                try:
+                    resolved = ipaddress.ip_address(ip_str)
+                    if (
+                        resolved.is_private
+                        or resolved.is_loopback
+                        or resolved.is_link_local
+                        or resolved.is_reserved
+                    ):
+                        raise HTTPException(
+                            status_code=422,
+                            detail={"code": "invalid_credentials", "message": "Invalid server URL"},
+                        )
+                except ValueError:
+                    pass  # IPv6 addresses with scope IDs don't parse — skip
     except HTTPException:
         raise
     except Exception as exc:
