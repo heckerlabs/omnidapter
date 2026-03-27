@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, Security
@@ -82,6 +83,68 @@ async def get_auth_context(
     await update_last_used(api_key.id, session)
 
     return AuthContext(api_key=api_key)
+
+
+class LinkTokenContext:
+    """Resolved context for a Connect UI request authenticated by a link token."""
+
+    def __init__(
+        self,
+        *,
+        end_user_id: str | None,
+        allowed_providers: list[str] | None,
+        redirect_uri: str | None,
+        connection_id: uuid.UUID | None = None,
+        locked_provider_key: str | None = None,
+    ) -> None:
+        self.end_user_id = end_user_id
+        self.allowed_providers = allowed_providers
+        self.redirect_uri = redirect_uri
+        self.connection_id = connection_id
+        self.locked_provider_key = locked_provider_key
+
+    @property
+    def is_reconnect(self) -> bool:
+        return self.connection_id is not None
+
+
+async def get_link_token_context(
+    bearer_credentials: Annotated[
+        HTTPAuthorizationCredentials | None,
+        Security(_bearer_scheme),
+    ] = None,
+    session: AsyncSession = Depends(get_session),
+) -> LinkTokenContext:
+    """Extract and validate a link token (lt_*) from Authorization header."""
+    from omnidapter_server.services.link_tokens import verify_link_token
+
+    if bearer_credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "unauthenticated", "message": "Missing Authorization header"},
+        )
+
+    raw_token = bearer_credentials.credentials
+    if not raw_token.startswith("lt_"):
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "unauthenticated", "message": "Invalid link token"},
+        )
+
+    link_token = await verify_link_token(raw_token, session)
+    if link_token is None:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "unauthenticated", "message": "Invalid or expired link token"},
+        )
+
+    return LinkTokenContext(
+        end_user_id=link_token.end_user_id,
+        allowed_providers=link_token.allowed_providers,
+        redirect_uri=link_token.redirect_uri,
+        connection_id=link_token.connection_id,
+        locked_provider_key=link_token.locked_provider_key,
+    )
 
 
 def get_request_id(request: Request) -> str:

@@ -260,7 +260,12 @@ async def get_link_token_context(
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> LinkTokenContext:
-    """Validate a link token and return the connect context."""
+    """Validate a link token and return the connect context.
+
+    Two-step verification:
+    1. Verify the raw token against the server's ``link_tokens`` table.
+    2. Look up the companion ``HostedLinkTokenOwner`` row to resolve ``tenant_id``.
+    """
     if bearer_credentials is None:
         raise HTTPException(
             status_code=401,
@@ -274,7 +279,9 @@ async def get_link_token_context(
             detail={"code": "invalid_token", "message": "Invalid link token"},
         )
 
-    from omnidapter_hosted.services.link_tokens import verify_link_token
+    from omnidapter_server.services.link_tokens import verify_link_token
+
+    from omnidapter_hosted.models.link_token_owner import HostedLinkTokenOwner
 
     link_token = await verify_link_token(raw_token, session)
     if link_token is None:
@@ -283,8 +290,18 @@ async def get_link_token_context(
             detail={"code": "session_expired", "message": "Invalid or expired link token"},
         )
 
+    owner_result = await session.execute(
+        select(HostedLinkTokenOwner).where(HostedLinkTokenOwner.link_token_id == link_token.id)
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "session_expired", "message": "Invalid or expired link token"},
+        )
+
     return LinkTokenContext(
-        tenant_id=link_token.tenant_id,
+        tenant_id=owner.tenant_id,
         end_user_id=link_token.end_user_id,
         allowed_providers=link_token.allowed_providers,
         redirect_uri=link_token.redirect_uri,

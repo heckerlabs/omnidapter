@@ -1,19 +1,18 @@
-"""Unit tests for the hosted link token service wrapper."""
+"""Unit tests for the server link token service."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from omnidapter_hosted.models.link_token_owner import HostedLinkTokenOwner
-from omnidapter_hosted.services.link_tokens import (
+from omnidapter_server.models.link_token import LinkToken
+from omnidapter_server.services.link_tokens import (
     create_link_token,
     generate_link_token,
     verify_link_token,
 )
-from omnidapter_server.models.link_token import LinkToken
 
 
 def _now() -> datetime:
@@ -21,7 +20,7 @@ def _now() -> datetime:
 
 
 # ---------------------------------------------------------------------------
-# generate_link_token (re-exported from server — basic sanity checks)
+# generate_link_token
 # ---------------------------------------------------------------------------
 
 
@@ -33,6 +32,14 @@ def test_generate_link_token_format() -> None:
     assert hashed != raw
 
 
+def test_generate_link_token_hash_is_one_way() -> None:
+    import bcrypt
+
+    raw, hashed, _ = generate_link_token()
+    assert bcrypt.checkpw(raw.encode(), hashed.encode())
+    assert raw != hashed
+
+
 def test_generate_link_token_is_random() -> None:
     token1, _, _ = generate_link_token()
     token2, _, _ = generate_link_token()
@@ -40,111 +47,112 @@ def test_generate_link_token_is_random() -> None:
 
 
 # ---------------------------------------------------------------------------
-# create_link_token (hosted wrapper)
+# create_link_token
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_create_link_token_creates_companion_owner() -> None:
-    """Hosted create_link_token must add a HostedLinkTokenOwner companion row."""
-    tenant_id = uuid.uuid4()
-    token_id = uuid.uuid4()
-
-    server_token = LinkToken(
-        id=token_id,
-        token_hash="hash",
-        token_prefix="lt_abc123456789",
-        end_user_id="u1",
-        allowed_providers=["google"],
-        redirect_uri="https://app.example.com",
-        expires_at=_now() + timedelta(seconds=1800),
-        is_active=True,
-        connection_id=None,
-        locked_provider_key=None,
-    )
-
-    captured_owners: list[HostedLinkTokenOwner] = []
+async def test_create_link_token_basic() -> None:
     session = AsyncMock()
+    session.add = MagicMock()
     session.flush = AsyncMock()
     session.commit = AsyncMock()
 
-    def _add(obj: object) -> None:
-        if isinstance(obj, HostedLinkTokenOwner):
-            captured_owners.append(obj)
+    async def _refresh(obj: object) -> None:
+        pass
 
-    session.add = MagicMock(side_effect=_add)
-    session.refresh = AsyncMock()
+    session.refresh = AsyncMock(side_effect=_refresh)
 
-    with patch(
-        "omnidapter_hosted.services.link_tokens._server_create_link_token",
-        new=AsyncMock(return_value=("lt_rawtoken", server_token)),
-    ) as mock_server_create:
-        raw, model = await create_link_token(
-            tenant_id=tenant_id,
-            end_user_id="u1",
-            allowed_providers=["google"],
-            redirect_uri="https://app.example.com",
-            ttl_seconds=1800,
-            session=session,
-        )
+    # Capture what gets added to the session
+    added: list[object] = []
+    session.add = MagicMock(side_effect=lambda obj: added.append(obj))
 
-    assert raw == "lt_rawtoken"
-    assert model is server_token
+    raw, model = await create_link_token(
+        end_user_id="u1",
+        allowed_providers=["google"],
+        redirect_uri="https://app.example.com",
+        ttl_seconds=1800,
+        session=session,
+    )
 
-    # Verify that server create was called with a persist_post_create callback
-    mock_server_create.assert_awaited_once()
-    call_kwargs = mock_server_create.call_args.kwargs
-    assert "persist_post_create" in call_kwargs
-    assert call_kwargs["persist_post_create"] is not None
+    assert raw.startswith("lt_")
+    assert len(added) == 1
+    assert isinstance(added[0], LinkToken)
+    session.flush.assert_awaited_once()
+    session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
 async def test_create_link_token_with_reconnect_fields() -> None:
-    tenant_id = uuid.uuid4()
     conn_id = uuid.uuid4()
+    session = AsyncMock()
+    session.flush = AsyncMock()
+    session.commit = AsyncMock()
 
-    server_token = LinkToken(
-        id=uuid.uuid4(),
-        token_hash="hash",
-        token_prefix="lt_abc123456789",
-        end_user_id=None,
+    captured: list[LinkToken] = []
+
+    def _add(obj: object) -> None:
+        if isinstance(obj, LinkToken):
+            captured.append(obj)
+
+    session.add = MagicMock(side_effect=_add)
+
+    async def _refresh(obj: object) -> None:
+        pass
+
+    session.refresh = AsyncMock(side_effect=_refresh)
+
+    raw, model = await create_link_token(
+        end_user_id="u1",
         allowed_providers=None,
         redirect_uri=None,
-        expires_at=_now() + timedelta(seconds=600),
-        is_active=True,
+        ttl_seconds=600,
+        session=session,
         connection_id=conn_id,
         locked_provider_key="google",
     )
 
+    assert raw.startswith("lt_")
+    assert len(captured) == 1
+    assert captured[0].connection_id == conn_id
+    assert captured[0].locked_provider_key == "google"
+
+
+@pytest.mark.asyncio
+async def test_create_link_token_calls_persist_callback() -> None:
+    """persist_post_create callback must be invoked after flush with (model, session)."""
     session = AsyncMock()
     session.flush = AsyncMock()
     session.commit = AsyncMock()
     session.add = MagicMock()
-    session.refresh = AsyncMock()
 
-    with patch(
-        "omnidapter_hosted.services.link_tokens._server_create_link_token",
-        new=AsyncMock(return_value=("lt_reconnect", server_token)),
-    ) as mock_server_create:
-        raw, model = await create_link_token(
-            tenant_id=tenant_id,
-            end_user_id=None,
-            allowed_providers=None,
-            redirect_uri=None,
-            ttl_seconds=600,
-            session=session,
-            connection_id=conn_id,
-            locked_provider_key="google",
-        )
+    callback_args: list[tuple[object, object]] = []
 
-    assert raw == "lt_reconnect"
-    call_kwargs = mock_server_create.call_args.kwargs
-    assert call_kwargs["connection_id"] == conn_id
-    assert call_kwargs["locked_provider_key"] == "google"
+    async def _persist(lt: LinkToken, s: object) -> None:
+        callback_args.append((lt, s))
+
+    async def _refresh(obj: object) -> None:
+        pass
+
+    session.refresh = AsyncMock(side_effect=_refresh)
+
+    await create_link_token(
+        end_user_id=None,
+        allowed_providers=None,
+        redirect_uri=None,
+        ttl_seconds=300,
+        session=session,
+        persist_post_create=_persist,
+    )
+
+    assert len(callback_args) == 1
+    lt, s = callback_args[0]
+    assert isinstance(lt, LinkToken)
+    assert s is session
 
 
 # ---------------------------------------------------------------------------
-# verify_link_token (re-exported from server)
+# verify_link_token
 # ---------------------------------------------------------------------------
 
 
@@ -219,3 +227,37 @@ async def test_verify_link_token_valid() -> None:
 
     result = await verify_link_token(raw, session)
     assert result is valid_model
+
+
+@pytest.mark.asyncio
+async def test_verify_link_token_wrong_token_fails() -> None:
+    import bcrypt
+
+    raw = "lt_correcttoken12345678901234567"
+    wrong = "lt_wrongtoken123456789012345678"
+    hashed = bcrypt.hashpw(raw.encode(), bcrypt.gensalt()).decode()
+    model = LinkToken(
+        id=uuid.uuid4(),
+        token_hash=hashed,
+        token_prefix=wrong[:16],
+        end_user_id=None,
+        allowed_providers=None,
+        redirect_uri=None,
+        expires_at=_now() + timedelta(seconds=1800),
+        is_active=True,
+        connection_id=None,
+        locked_provider_key=None,
+    )
+
+    class _ScalarResult:
+        def scalars(self) -> _ScalarResult:
+            return self
+
+        def all(self) -> list[LinkToken]:
+            return [model]
+
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=_ScalarResult())
+
+    result = await verify_link_token(wrong, session)
+    assert result is None

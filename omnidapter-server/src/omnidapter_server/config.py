@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # Managed API key for server authentication.
     omnidapter_api_key: str = ""
 
+    # Link token TTL in seconds (default 30 minutes)
+    link_token_ttl_seconds: int = 1800
+
     @field_validator("omnidapter_env", mode="before")
     @classmethod
     def _normalize_env(cls, value: str | None) -> str:

@@ -25,9 +25,6 @@ class HostedSettings(Settings):
     # Dashboard session TTL in seconds (default 24 hours)
     jwt_ttl_seconds: int = 86400
 
-    # Link token TTL in seconds (default 30 minutes)
-    link_token_ttl_seconds: int = 1800
-
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60
     hosted_rate_limit_paid: int = 600
