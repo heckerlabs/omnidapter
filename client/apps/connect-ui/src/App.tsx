@@ -258,11 +258,20 @@ export function App() {
       dispatch({ type: "CREDENTIAL_SUBMIT_SUCCESS", connectionId: result.connection_id });
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string; fields?: Record<string, string> };
-      dispatch({
-        type: "CREDENTIAL_SUBMIT_ERROR",
-        fieldErrors: e.fields ?? {},
-        message: e.message ?? "Invalid credentials. Please try again.",
-      });
+      // Token/session errors should show the error view, not the form
+      if (e.code === "session_expired" || e.code === "unauthenticated") {
+        dispatch({
+          type: "LOAD_ERROR",
+          code: e.code,
+          message: e.message ?? "Session expired. Please try again.",
+        });
+      } else {
+        dispatch({
+          type: "CREDENTIAL_SUBMIT_ERROR",
+          fieldErrors: e.fields ?? {},
+          message: e.message ?? "Invalid credentials. Please try again.",
+        });
+      }
     }
   };
 
