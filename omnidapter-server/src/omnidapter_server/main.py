@@ -12,7 +12,15 @@ from fastapi.responses import JSONResponse
 from omnidapter_server.config import get_settings
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
-from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
+from omnidapter_server.routers import (
+    calendar,
+    connect,
+    connections,
+    link_tokens,
+    oauth,
+    provider_configs,
+    providers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +122,8 @@ app.include_router(providers.router, prefix="/v1")
 app.include_router(provider_configs.router, prefix="/v1")
 app.include_router(connections.router, prefix="/v1")
 app.include_router(calendar.router, prefix="/v1")
+app.include_router(link_tokens.router, prefix="/v1")
+app.include_router(connect.router)  # /connect is not under /v1
 app.include_router(oauth.router)  # /oauth is not under /v1
 
 
