@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,10 @@ from omnidapter_hosted.database import HostedBase
 
 class HostedLinkToken(HostedBase):
     __tablename__ = "hosted_link_tokens"
+    __table_args__ = (
+        Index("ix_hosted_link_tokens_token_prefix", "token_prefix"),
+        Index("ix_hosted_link_tokens_tenant_is_active", "tenant_id", "is_active"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at: Mapped[datetime] = mapped_column(
