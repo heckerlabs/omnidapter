@@ -4,6 +4,7 @@ import type { CredentialField, Provider } from "../types";
 interface Props {
   provider: Provider;
   fieldErrors: Record<string, string>;
+  formError: string | null;
   submitting: boolean;
   onSubmit: (values: Record<string, string>) => void;
   onBack: () => void;
@@ -12,6 +13,7 @@ interface Props {
 export function CredentialFormView({
   provider,
   fieldErrors,
+  formError,
   submitting,
   onSubmit,
   onBack,
@@ -39,6 +41,7 @@ export function CredentialFormView({
         ← Back
       </button>
       <h2 style={heading}>Connect {provider.name}</h2>
+      {formError && <p style={formErrorBanner}>{formError}</p>}
       <form onSubmit={handleSubmit} noValidate>
         {fields.map((field) => (
           <div key={field.key} style={fieldWrapper}>
@@ -161,4 +164,14 @@ const submitBtn: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
   marginTop: 8,
+};
+
+const formErrorBanner: React.CSSProperties = {
+  padding: "12px",
+  background: "#fee2e2",
+  border: "1px solid #fca5a5",
+  borderRadius: 6,
+  color: "#991b1b",
+  fontSize: 14,
+  marginBottom: 16,
 };
