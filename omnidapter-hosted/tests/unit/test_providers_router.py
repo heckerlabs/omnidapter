@@ -196,9 +196,6 @@ async def test_list_providers_management_structure() -> None:
     omni.describe_provider.side_effect = _describe
 
     with (
-        patch(
-            "omnidapter_hosted.routers.providers.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.providers.Omnidapter", return_value=omni),
     ):
         resp = await list_providers_management(
@@ -236,9 +233,6 @@ async def test_list_providers_management_configured_provider() -> None:
     )
 
     with (
-        patch(
-            "omnidapter_hosted.routers.providers.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.providers.Omnidapter", return_value=omni),
     ):
         resp = await list_providers_management(

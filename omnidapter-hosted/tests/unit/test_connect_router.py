@@ -116,9 +116,6 @@ async def test_list_providers_returns_available() -> None:
             "omnidapter_hosted.routers.connect.list_available_providers",
             new=AsyncMock(return_value=providers_data),
         ),
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=MagicMock()),
     ):
         resp = await list_providers(
@@ -151,9 +148,6 @@ async def test_list_providers_reconnect_single_provider() -> None:
         patch(
             "omnidapter_hosted.routers.connect.list_available_providers",
             new=AsyncMock(return_value=locked_provider),
-        ),
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
         ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=MagicMock()),
     ):
@@ -191,9 +185,6 @@ async def test_create_connection_oauth_returns_auth_url() -> None:
     flow_result.authorization_url = "https://accounts.google.com/o/oauth2/auth?..."
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
             "omnidapter_hosted.routers.connect.get_tenant_provider_config",
@@ -250,9 +241,6 @@ async def test_create_connection_non_oauth_success() -> None:
     omni.describe_provider.return_value = _basic_meta("caldav")
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
             "omnidapter_hosted.routers.connect.get_tenant_provider_config",
@@ -297,9 +285,6 @@ async def test_create_connection_non_oauth_missing_credentials() -> None:
     omni.describe_provider.return_value = _basic_meta("caldav")
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
             "omnidapter_hosted.routers.connect.get_tenant_provider_config",
@@ -340,9 +325,6 @@ async def test_create_connection_reconnect_wrong_provider() -> None:
     omni.describe_provider.return_value = _oauth_meta("microsoft")
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
             "omnidapter_hosted.routers.connect.get_tenant_provider_config",
@@ -391,9 +373,6 @@ async def test_create_connection_reconnect_non_oauth_success() -> None:
     omni.describe_provider.return_value = _basic_meta("caldav")
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         patch(
             "omnidapter_hosted.routers.connect.get_tenant_provider_config",
@@ -438,9 +417,6 @@ async def test_create_connection_unknown_provider_raises_422() -> None:
     omni.describe_provider.side_effect = KeyError("unknown")
 
     with (
-        patch(
-            "omnidapter_hosted.routers.connect.build_provider_registry", return_value=MagicMock()
-        ),
         patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
         pytest.raises(HTTPException) as exc_info,
     ):
