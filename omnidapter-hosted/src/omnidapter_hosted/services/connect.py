@@ -212,13 +212,15 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
     import httpx
 
     # Hostnames that must always be blocked regardless of IP resolution
-    _BLOCKED_HOSTNAMES = frozenset({
-        "localhost",
-        "localhost.localdomain",
-        "ip6-localhost",
-        "ip6-loopback",
-        "broadcasthost",
-    })
+    _BLOCKED_HOSTNAMES = frozenset(
+        {
+            "localhost",
+            "localhost.localdomain",
+            "ip6-localhost",
+            "ip6-loopback",
+            "broadcasthost",
+        }
+    )
     _BLOCKED_SUFFIXES = (".local", ".localhost", ".internal", ".corp", ".home", ".lan", ".intranet")
 
     # Validate URL to prevent SSRF
