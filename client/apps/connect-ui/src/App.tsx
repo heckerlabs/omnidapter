@@ -33,14 +33,12 @@ function extractOpenerOrigin(): string | null {
 
 function extractOAuthReturn(): {
   connectionId: string | null;
-  status: string | null;
   errorCode: string | null;
   errorMessage: string | null;
 } {
   const params = new URLSearchParams(window.location.search);
   return {
     connectionId: params.get("connection_id"),
-    status: params.get("status"),
     errorCode: params.get("error"),
     errorMessage: params.get("error_description"),
   };
@@ -175,9 +173,9 @@ export function App() {
 
   // On mount: check for OAuth return params, else load providers
   useEffect(() => {
-    const { connectionId, status, errorCode, errorMessage } = extractOAuthReturn();
+    const { connectionId, errorCode, errorMessage } = extractOAuthReturn();
 
-    if (connectionId && status === "active") {
+    if (connectionId && !errorCode) {
       const savedProviderKey = sessionStorage.getItem("omnidapter_provider_key") ?? "";
       sessionStorage.removeItem("omnidapter_provider_key");
       dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey });
