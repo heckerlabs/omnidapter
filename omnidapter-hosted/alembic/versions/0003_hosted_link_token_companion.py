@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "hosted_0003"
-down_revision: str | Sequence[str] | None = "hosted_0002"
+down_revision: str | Sequence[str] | None = ("hosted_0002", "0002")
 branch_labels: str | Sequence[str] | None = None
 # Ensure server's link_tokens table exists before we create the companion table
 depends_on: str | Sequence[str] | None = "0002"
