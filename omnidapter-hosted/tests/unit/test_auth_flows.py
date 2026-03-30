@@ -6,7 +6,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import jwt
 import pytest
@@ -182,7 +182,7 @@ async def test_provision_existing_user_by_workos_id() -> None:
         ]
     )
 
-    result_user, result_tenant, result_membership, initial_key = await provision_user_flow(
+    result_user, result_tenant, result_membership = await provision_user_flow(
         workos_user_id="wos_abc",
         email="user@example.com",
         first_name="Test",
@@ -193,7 +193,6 @@ async def test_provision_existing_user_by_workos_id() -> None:
     assert result_user is user
     assert result_tenant is tenant
     assert result_membership is membership
-    assert initial_key is None  # no key on existing user
 
 
 @pytest.mark.asyncio
@@ -215,7 +214,7 @@ async def test_provision_existing_user_falls_back_to_email() -> None:
     )
     session.flush = AsyncMock()
 
-    result_user, _, _, initial_key = await provision_user_flow(
+    result_user, _, _ = await provision_user_flow(
         workos_user_id="wos_new",
         email="user@example.com",
         first_name=None,
@@ -224,7 +223,6 @@ async def test_provision_existing_user_falls_back_to_email() -> None:
     )
 
     assert result_user.workos_user_id == "wos_new"
-    assert initial_key is None
     session.flush.assert_awaited()
 
 
@@ -245,7 +243,7 @@ async def test_provision_existing_user_falls_back_to_any_membership() -> None:
         ]
     )
 
-    _, _, result_membership, _ = await provision_user_flow(
+    _, _, result_membership = await provision_user_flow(
         workos_user_id="wos_abc",
         email="user@example.com",
         first_name=None,
@@ -301,28 +299,22 @@ async def test_provision_new_user_creates_all_entities() -> None:
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
 
-    with patch(
-        "omnidapter_hosted.services.auth_flows.generate_hosted_api_key",
-        return_value=("omni_rawkey", "hashed", "omni_rawkey_12"),
-    ):
-        result_user, result_tenant, result_membership, initial_key = await provision_user_flow(
-            workos_user_id="wos_new",
-            email="new@example.com",
-            first_name="Alice",
-            last_name="Smith",
-            session=session,
-        )
+    result_user, result_tenant, result_membership = await provision_user_flow(
+        workos_user_id="wos_new",
+        email="new@example.com",
+        first_name="Alice",
+        last_name="Smith",
+        session=session,
+    )
 
-    # Four adds: user, tenant, membership, api_key
-    assert session.add.call_count == 4
+    # Three adds: user, tenant, membership
+    assert session.add.call_count == 3
     session.commit.assert_awaited_once()
 
     assert result_user.email == "new@example.com"
     assert result_user.workos_user_id == "wos_new"
     assert result_tenant.is_active is True
     assert result_membership.role == MemberRole.OWNER
-    assert initial_key is not None
-    assert initial_key.raw_key == "omni_rawkey"  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -334,17 +326,13 @@ async def test_provision_new_user_name_from_full_name() -> None:
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
 
-    with patch(
-        "omnidapter_hosted.services.auth_flows.generate_hosted_api_key",
-        return_value=("omni_r", "h", "omni_r00000"),
-    ):
-        result_user, result_tenant, _, _ = await provision_user_flow(
-            workos_user_id="wos_1",
-            email="a@b.com",
-            first_name="Alice",
-            last_name="Smith",
-            session=session,
-        )
+    result_user, result_tenant, _ = await provision_user_flow(
+        workos_user_id="wos_1",
+        email="a@b.com",
+        first_name="Alice",
+        last_name="Smith",
+        session=session,
+    )
 
     assert result_user.name == "Alice Smith"
     assert result_tenant.name == "Alice Smith"
@@ -359,16 +347,12 @@ async def test_provision_new_user_name_fallback_to_email_prefix() -> None:
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
 
-    with patch(
-        "omnidapter_hosted.services.auth_flows.generate_hosted_api_key",
-        return_value=("omni_r", "h", "omni_r00000"),
-    ):
-        result_user, _, _, _ = await provision_user_flow(
-            workos_user_id="wos_1",
-            email="alice@example.com",
-            first_name=None,
-            last_name=None,
-            session=session,
-        )
+    result_user, _, _ = await provision_user_flow(
+        workos_user_id="wos_1",
+        email="alice@example.com",
+        first_name=None,
+        last_name=None,
+        session=session,
+    )
 
     assert result_user.name == "alice"

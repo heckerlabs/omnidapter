@@ -10,11 +10,9 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.models.user import HostedUser
-from omnidapter_hosted.services.auth import generate_hosted_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +60,10 @@ async def provision_user_flow(
     first_name: str | None,
     last_name: str | None,
     session: AsyncSession,
-) -> tuple[HostedUser, Tenant, HostedMembership, HostedAPIKey | None]:
+) -> tuple[HostedUser, Tenant, HostedMembership]:
     """Look up or provision a user from a WorkOS login.
 
-    Returns ``(user, tenant, membership, initial_api_key)``.
-    ``initial_api_key`` is only non-None on the very first signup — callers
-    must return the raw key to the client once and never again.
+    Returns ``(user, tenant, membership)``.
     """
     # Try lookup by WorkOS user ID first, then fall back to email.
     result = await session.execute(
@@ -106,9 +102,9 @@ async def provision_user_flow(
             select(Tenant).where(Tenant.id == membership.tenant_id)
         )
         tenant = tenant_result.scalar_one()
-        return user, tenant, membership, None
+        return user, tenant, membership
 
-    # --- First sign-in: provision user + tenant + membership + initial API key ---
+    # --- First sign-in: provision user + tenant + membership ---
     name = " ".join(filter(None, [first_name, last_name])) or email.split("@")[0]
 
     user = HostedUser(id=uuid.uuid4(), email=email, name=name, workos_user_id=workos_user_id)
@@ -128,19 +124,9 @@ async def provision_user_flow(
     session.add(membership)
     await session.flush()
 
-    raw_key, key_hash, key_prefix = generate_hosted_api_key()
-    api_key = HostedAPIKey(
-        id=uuid.uuid4(),
-        tenant_id=tenant.id,
-        name="default",
-        key_hash=key_hash,
-        key_prefix=key_prefix,
-    )
-    session.add(api_key)
     await session.commit()
     await session.refresh(user)
     await session.refresh(tenant)
-    api_key.raw_key = raw_key  # type: ignore[attr-defined]  # transient, shown once
 
     logger.info("Provisioned new user %s with tenant %s", user.id, tenant.id)
-    return user, tenant, membership, api_key
+    return user, tenant, membership
