@@ -20,7 +20,7 @@ class HostedSettings(Settings):
 
     # JWT signing secret for dashboard sessions (HS256).
     # Auto-generated on startup if empty, but will rotate on each restart — set explicitly in prod.
-    # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+    # Generate with: `openssl rand -base64 32`
     jwt_secret: str = ""
     # Dashboard session TTL in seconds (default 24 hours)
     jwt_ttl_seconds: int = 86400
