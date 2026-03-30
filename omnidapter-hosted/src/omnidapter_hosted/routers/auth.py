@@ -106,9 +106,3 @@ async def me(
         },
         "meta": {"request_id": request_id},
     }
-
-
-@router.post("/logout")
-async def logout(request_id: str = Depends(get_request_id)):
-    """Stateless logout — client discards the Bearer token."""
-    return {"data": {"logged_out": True}, "meta": {"request_id": request_id}}

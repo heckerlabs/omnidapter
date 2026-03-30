@@ -104,7 +104,7 @@ def _respond(data: object, request_id: str):
     return _wrap(data, request_id)
 
 
-@router.get("/connections/{connection_id}/calendar/calendars")
+@router.get("/connections/{connection_id}/calendars")
 async def list_calendars(
     connection_id: str,
     request: Request,
@@ -132,16 +132,16 @@ async def list_calendars(
     return _respond(result, request_id)
 
 
-@router.get("/connections/{connection_id}/calendar/events")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events")
 async def list_events(
     connection_id: str,
+    calendar_id: str,
     request: Request,
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
-    calendar_id: str = Query(...),
     start: datetime | None = Query(None),
     end: datetime | None = Query(None),
     page_size: int | None = Query(None),
@@ -175,9 +175,10 @@ async def list_events(
     return _respond(result, request_id)
 
 
-@router.get("/connections/{connection_id}/calendar/events/{event_id}")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}")
 async def get_event(
     connection_id: str,
+    calendar_id: str,
     event_id: str,
     request: Request,
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
@@ -185,7 +186,6 @@ async def get_event(
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
-    calendar_id: str = Query(...),
 ):
     result = await execute_calendar_operation(
         connection_id=connection_id,
@@ -205,9 +205,10 @@ async def get_event(
     return _respond(result, request_id)
 
 
-@router.post("/connections/{connection_id}/calendar/events", status_code=201)
+@router.post("/connections/{connection_id}/calendars/{calendar_id}/events", status_code=201)
 async def create_event(
     connection_id: str,
+    calendar_id: str,
     body: CreateEventRequest,
     request: Request,
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
@@ -216,6 +217,7 @@ async def create_event(
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
+    body.calendar_id = calendar_id
     result = await execute_calendar_operation(
         connection_id=connection_id,
         request=request,
@@ -234,9 +236,10 @@ async def create_event(
     return _respond(result, request_id)
 
 
-@router.patch("/connections/{connection_id}/calendar/events/{event_id}")
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}")
 async def update_event(
     connection_id: str,
+    calendar_id: str,
     event_id: str,
     body: UpdateEventRequest,
     request: Request,
@@ -258,22 +261,26 @@ async def update_event(
             auth.tenant_id,
             provider_key,
         ),
-        operation=lambda cal: cal.update_event(body.model_copy(update={"event_id": event_id})),
+        operation=lambda cal: cal.update_event(
+            body.model_copy(update={"calendar_id": calendar_id, "event_id": event_id})
+        ),
         update_last_used=update_last_used,
     )
     return _respond(result, request_id)
 
 
-@router.delete("/connections/{connection_id}/calendar/events/{event_id}", status_code=204)
+@router.delete(
+    "/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", status_code=204
+)
 async def delete_event(
     connection_id: str,
+    calendar_id: str,
     event_id: str,
     request: Request,
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
-    calendar_id: str = Query(...),
 ):
     await execute_calendar_operation(
         connection_id=connection_id,
@@ -292,16 +299,16 @@ async def delete_event(
     )
 
 
-@router.get("/connections/{connection_id}/calendar/availability")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/availability")
 async def get_availability(
     connection_id: str,
+    calendar_id: str,
     request: Request,
     auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
     encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
-    calendar_id: str = Query(...),
     start: datetime = Query(...),
     end: datetime = Query(...),
 ):
