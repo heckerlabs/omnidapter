@@ -21,7 +21,7 @@ from omnidapter.services.calendar.models import (
 class CreateEventRequest(BaseModel):
     """Request model for creating a calendar event."""
 
-    calendar_id: str
+    calendar_id: str = ""
     summary: str
     start: datetime | date
     end: datetime | date
@@ -41,8 +41,8 @@ class CreateEventRequest(BaseModel):
 class UpdateEventRequest(BaseModel):
     """Request model for updating a calendar event."""
 
-    calendar_id: str
-    event_id: str
+    calendar_id: str = ""
+    event_id: str = ""
     summary: str | None = None
     start: datetime | date | None = None
     end: datetime | date | None = None
@@ -82,7 +82,7 @@ class CreateCalendarRequest(BaseModel):
 class UpdateCalendarRequest(BaseModel):
     """Request model for updating a calendar."""
 
-    calendar_id: str
+    calendar_id: str = ""
     summary: str | None = None
     description: str | None = None
     timezone: str | None = None
