@@ -9,9 +9,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from omnidapter import (
+    CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
     Omnidapter,
+    UpdateCalendarRequest,
     UpdateEventRequest,
 )
 from omnidapter_server.database import get_session
@@ -130,6 +132,123 @@ async def list_calendars(
         update_last_used=update_last_used,
     )
     return _respond(result, request_id)
+
+
+@router.get("/connections/{connection_id}/calendars/{calendar_id}")
+async def get_calendar(
+    connection_id: str,
+    calendar_id: str,
+    request: Request,
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
+    encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
+    session: AsyncSession = Depends(get_session),
+    settings: HostedSettings = Depends(get_hosted_settings),
+    request_id: str = Depends(get_request_id),
+):
+    result = await execute_calendar_operation(
+        connection_id=connection_id,
+        request=request,
+        session=session,
+        load_connection=lambda conn_id, s, req: _get_conn(conn_id, s, req, auth.tenant_id),
+        build_omni=lambda s, provider_key: _build_omni(
+            s,
+            encryption,
+            settings,
+            auth.tenant_id,
+            provider_key,
+        ),
+        operation=lambda cal: cal.get_calendar(calendar_id=calendar_id),
+        update_last_used=update_last_used,
+    )
+    return _respond(result, request_id)
+
+
+@router.post("/connections/{connection_id}/calendars", status_code=201)
+async def create_calendar(
+    connection_id: str,
+    body: CreateCalendarRequest,
+    request: Request,
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
+    encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
+    session: AsyncSession = Depends(get_session),
+    settings: HostedSettings = Depends(get_hosted_settings),
+    request_id: str = Depends(get_request_id),
+):
+    result = await execute_calendar_operation(
+        connection_id=connection_id,
+        request=request,
+        session=session,
+        load_connection=lambda conn_id, s, req: _get_conn(conn_id, s, req, auth.tenant_id),
+        build_omni=lambda s, provider_key: _build_omni(
+            s,
+            encryption,
+            settings,
+            auth.tenant_id,
+            provider_key,
+        ),
+        operation=lambda cal: cal.create_calendar(body),
+        update_last_used=update_last_used,
+    )
+    return _respond(result, request_id)
+
+
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}")
+async def update_calendar(
+    connection_id: str,
+    calendar_id: str,
+    body: UpdateCalendarRequest,
+    request: Request,
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
+    encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
+    session: AsyncSession = Depends(get_session),
+    settings: HostedSettings = Depends(get_hosted_settings),
+    request_id: str = Depends(get_request_id),
+):
+    result = await execute_calendar_operation(
+        connection_id=connection_id,
+        request=request,
+        session=session,
+        load_connection=lambda conn_id, s, req: _get_conn(conn_id, s, req, auth.tenant_id),
+        build_omni=lambda s, provider_key: _build_omni(
+            s,
+            encryption,
+            settings,
+            auth.tenant_id,
+            provider_key,
+        ),
+        operation=lambda cal: cal.update_calendar(
+            body.model_copy(update={"calendar_id": calendar_id})
+        ),
+        update_last_used=update_last_used,
+    )
+    return _respond(result, request_id)
+
+
+@router.delete("/connections/{connection_id}/calendars/{calendar_id}", status_code=204)
+async def delete_calendar(
+    connection_id: str,
+    calendar_id: str,
+    request: Request,
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
+    encryption: Annotated[EncryptionService, Depends(get_encryption_service)],
+    session: AsyncSession = Depends(get_session),
+    settings: HostedSettings = Depends(get_hosted_settings),
+):
+    await execute_calendar_operation(
+        connection_id=connection_id,
+        request=request,
+        session=session,
+        load_connection=lambda conn_id, s, req: _get_conn(conn_id, s, req, auth.tenant_id),
+        build_omni=lambda s, provider_key: _build_omni(
+            s,
+            encryption,
+            settings,
+            auth.tenant_id,
+            provider_key,
+        ),
+        operation=lambda cal: cal.delete_calendar(calendar_id=calendar_id),
+        update_last_used=update_last_used,
+    )
 
 
 @router.get("/connections/{connection_id}/calendars/{calendar_id}/events")
