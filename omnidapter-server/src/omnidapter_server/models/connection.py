@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,7 +23,7 @@ class ConnectionStatus(str, Enum):
 class Connection(Base):
     __tablename__ = "connections"
     __table_args__ = (
-        UniqueConstraint("external_id", name="uq_connection_external_id"),
+        Index("ix_connections_external_id", "external_id"),
         Index("ix_connections_status", "status"),
         Index("ix_connections_provider", "provider_key"),
     )
