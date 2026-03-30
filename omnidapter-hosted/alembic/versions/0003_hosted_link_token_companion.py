@@ -46,9 +46,13 @@ def upgrade() -> None:
     op.drop_index("ix_hosted_link_tokens_token_prefix", table_name="hosted_link_tokens")
     op.drop_table("hosted_link_tokens")
 
+    op.drop_column("hosted_api_keys", "is_active")
+
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.add_column("hosted_api_keys", sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False))
+
     op.create_table(
         "hosted_link_tokens",
         sa.Column("id", sa.UUID(), nullable=False),

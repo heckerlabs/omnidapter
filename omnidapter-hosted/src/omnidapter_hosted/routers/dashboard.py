@@ -161,7 +161,6 @@ def _api_key_data(k: HostedAPIKey) -> dict:
         "id": str(k.id),
         "name": k.name,
         "key_prefix": k.key_prefix,
-        "is_active": k.is_active,
         "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
         "created_at": k.created_at.isoformat(),
     }

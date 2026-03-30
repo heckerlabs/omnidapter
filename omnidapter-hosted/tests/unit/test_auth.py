@@ -50,7 +50,6 @@ def _api_key(tenant_id: uuid.UUID, key_hash: str = "hash") -> HostedAPIKey:
         name="key",
         key_hash=key_hash,
         key_prefix="omni_key_abcd",
-        is_active=True,
         created_at=datetime.now(timezone.utc),
         last_used_at=None,
     )

@@ -135,7 +135,6 @@ async def provision_user_flow(
         name="default",
         key_hash=key_hash,
         key_prefix=key_prefix,
-        is_active=True,
     )
     session.add(api_key)
     await session.commit()

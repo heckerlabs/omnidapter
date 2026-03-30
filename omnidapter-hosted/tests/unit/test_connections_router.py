@@ -53,7 +53,6 @@ def _auth() -> HostedAuthContext:
         name="key",
         key_hash="hash",
         key_prefix="omni_key_abcd",
-        is_active=True,
         created_at=_now(),
         last_used_at=None,
     )

@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.connection_health import transition_to_revoked
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.models.api_key import HostedAPIKey
@@ -127,7 +127,6 @@ async def create_api_key_flow(
         name=name,
         key_hash=key_hash,
         key_prefix=key_prefix,
-        is_active=True,
     )
     session.add(api_key)
     await session.commit()
@@ -145,13 +144,12 @@ async def revoke_api_key_flow(
             HostedAPIKey.tenant_id == tenant_id,
         )
     )
-    if result.scalar_one_or_none() is None:
+    api_key = result.scalar_one_or_none()
+    if api_key is None:
         raise HTTPException(
             status_code=404, detail={"code": "not_found", "message": "API key not found"}
         )
-    await session.execute(
-        update(HostedAPIKey).where(HostedAPIKey.id == key_id).values(is_active=False)
-    )
+    await session.delete(api_key)
     await session.commit()
 
 

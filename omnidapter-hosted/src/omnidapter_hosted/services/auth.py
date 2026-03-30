@@ -50,7 +50,6 @@ async def authenticate_hosted_key(
     result = await session.execute(
         select(HostedAPIKey)
         .where(HostedAPIKey.key_prefix == prefix)
-        .where(HostedAPIKey.is_active.is_(True))
     )
     candidates = result.scalars().all()
 
