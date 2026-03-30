@@ -51,7 +51,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.add_column("hosted_api_keys", sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False))
+    op.add_column(
+        "hosted_api_keys",
+        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+    )
 
     op.create_table(
         "hosted_link_tokens",

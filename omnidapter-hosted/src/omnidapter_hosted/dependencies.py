@@ -25,10 +25,22 @@ from omnidapter_hosted.services.billing import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
-_bearer_scheme = HTTPBearer(
+hosted_api_key_scheme = HTTPBearer(
     auto_error=False,
-    scheme_name="BearerAuth",
-    description="Use `Authorization: Bearer <API_KEY>`",
+    scheme_name="HostedAPIKeyAuth",
+    description="Main Integration API Key (omni_*)",
+)
+
+dashboard_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="DashboardJWTAuth",
+    description="Dashboard Session JWT (Bearer <token>)",
+)
+
+link_token_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="LinkTokenAuth",
+    description="Connect UI Link Token (lt_*)",
 )
 
 
@@ -57,7 +69,7 @@ async def get_hosted_auth_context(
     request: Request,
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(hosted_api_key_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
     hosted_settings: HostedSettings = Depends(get_hosted_settings),
@@ -142,7 +154,7 @@ class DashboardAuthContext:
 async def get_dashboard_auth_context(
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(dashboard_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
@@ -256,7 +268,7 @@ class LinkTokenContext:
 async def get_link_token_context(
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(link_token_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> LinkTokenContext:

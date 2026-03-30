@@ -47,10 +47,7 @@ async def authenticate_hosted_key(
         return None
 
     prefix = raw_key[:12]
-    result = await session.execute(
-        select(HostedAPIKey)
-        .where(HostedAPIKey.key_prefix == prefix)
-    )
+    result = await session.execute(select(HostedAPIKey).where(HostedAPIKey.key_prefix == prefix))
     candidates = result.scalars().all()
 
     for api_key in candidates:

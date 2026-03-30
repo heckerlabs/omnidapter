@@ -17,10 +17,16 @@ from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import authenticate_api_key, update_last_used
 
 logger = logging.getLogger(__name__)
-_bearer_scheme = HTTPBearer(
+api_key_scheme = HTTPBearer(
     auto_error=False,
-    scheme_name="BearerAuth",
-    description="Use `Authorization: Bearer <API_KEY>`",
+    scheme_name="APIKeyAuth",
+    description="Main Server API Key (omni_*)",
+)
+
+link_token_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="LinkTokenAuth",
+    description="Connect UI Link Token (lt_*)",
 )
 
 
@@ -46,7 +52,7 @@ async def get_auth_context(
     settings: Annotated[Settings, Depends(get_settings)],
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(api_key_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> AuthContext:
@@ -111,7 +117,7 @@ class LinkTokenContext:
 async def get_link_token_context(
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(link_token_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> LinkTokenContext:
