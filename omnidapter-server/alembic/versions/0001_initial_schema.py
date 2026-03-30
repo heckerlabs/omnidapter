@@ -52,8 +52,8 @@ def upgrade() -> None:
         sa.Column("last_refresh_failure_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_used_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("external_id", name="uq_connection_external_id"),
     )
+    op.create_index(op.f("ix_connections_external_id"), "connections", ["external_id"], unique=False)
     op.create_index("ix_connections_provider", "connections", ["provider_key"], unique=False)
     op.create_index("ix_connections_status", "connections", ["status"], unique=False)
     op.create_table(
