@@ -12,17 +12,28 @@ from collections.abc import AsyncIterator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from omnidapter_server.config import Settings
 from omnidapter_server.database import Base, get_session
 from omnidapter_server.encryption import EncryptionService
-from omnidapter_server.main import app
+from omnidapter_server.main import create_app
 from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import generate_api_key
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 TEST_DB_URL = os.environ.get("OMNIDAPTER_TEST_DATABASE_URL")
-_SKIP_INTEGRATION = os.environ.get("OMNIDAPTER_INTEGRATION") != "1" or TEST_DB_URL is None
 TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Set up integration test environment variables."""
+    os.environ["OMNIDAPTER_ENV"] = "DEV"
+    if not os.environ.get("OMNIDAPTER_TEST_DATABASE_URL"):
+        # Default for local dev if not specified
+        os.environ["OMNIDAPTER_TEST_DATABASE_URL"] = (
+            "postgresql+asyncpg://omnidapter:omnidapter@localhost:5432/omnidapter_test"
+        )
+    os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = TEST_ENCRYPTION_KEY
 
 
 @pytest.fixture(scope="session")
@@ -32,14 +43,14 @@ def anyio_backend():
 
 @pytest.fixture(scope="session", autouse=True)
 def skip_if_no_integration():
-    if _SKIP_INTEGRATION:
+    if os.environ.get("OMNIDAPTER_INTEGRATION") != "1":
         pytest.skip("Set OMNIDAPTER_INTEGRATION=1 to run integration tests")
 
 
 @pytest_asyncio.fixture
 async def test_engine() -> AsyncIterator[AsyncEngine]:
-    assert TEST_DB_URL is not None
-    engine = create_async_engine(TEST_DB_URL, echo=False)
+    db_url = os.environ["OMNIDAPTER_TEST_DATABASE_URL"]
+    engine = create_async_engine(db_url, echo=False)
     try:
         yield engine
     finally:
@@ -106,28 +117,19 @@ async def api_key(session: AsyncSession) -> tuple[str, APIKey]:
 async def client(session: AsyncSession, api_key: tuple[str, APIKey]) -> AsyncIterator[AsyncClient]:
     """HTTP test client with API key auth and injected test session."""
     raw_key, _ = api_key
-    assert TEST_DB_URL is not None
-    db_url = TEST_DB_URL
+    db_url = os.environ["OMNIDAPTER_TEST_DATABASE_URL"]
 
     async def override_session():
         yield session
 
-    from omnidapter_server.config import Settings, get_settings
-    from omnidapter_server.dependencies import get_encryption_service
+    test_settings = Settings(
+        omnidapter_database_url=db_url,
+        omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
+        omnidapter_env="DEV",
+    )
 
-    def override_encryption():
-        return EncryptionService(current_key=TEST_ENCRYPTION_KEY)
-
-    def override_settings():
-        return Settings(
-            omnidapter_database_url=db_url,
-            omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="DEV",
-        )
-
+    app = create_app(settings=test_settings)
     app.dependency_overrides[get_session] = override_session
-    app.dependency_overrides[get_settings] = override_settings
-    app.dependency_overrides[get_encryption_service] = override_encryption
 
     async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
