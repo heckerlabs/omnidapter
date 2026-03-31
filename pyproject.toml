@@ -48,28 +48,21 @@ help = "Build all workspace packages"
 cmd = "uv build --all-packages"
 
 [tool.poe.tasks.test]
-help = "Run full test suite"
+help = "Run all unit tests"
 cmd = "pytest"
 
 [tool.poe.tasks.check]
 help = "Run format, lint, typecheck, tests, and builds"
 sequence = ["format", "lint", "typecheck", "build", "test"]
 
-[tool.poe.tasks.test-integration-core]
-help = "Run Omnidapter Core integration tests"
-cmd = "uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests -m integration"
-
-[tool.poe.tasks.test-integration-server]
-help = "Run server integration tests using Testcontainers"
-cmd = "uv run pytest omnidapter-server/tests -m integration"
-
-[tool.poe.tasks.test-integration-hosted]
-help = "Run hosted integration tests using Testcontainers"
-cmd = "uv run pytest omnidapter-hosted/tests -m integration"
-
 [tool.poe.tasks.test-integration]
-help = "Run Integration Tests"
-sequence = ["test-integration-core", "test-integration-server", "test-integration-hosted"]
+help = "Run all integration tests using TestContainers. Requires docker"
+cmd = "pytest -m integration"
+
+[tool.poe.tasks.test-integration-core]
+help = "Run core integration tests against live providers (requires .env)"
+cmd = "pytest omnidapter-core/tests/integration -m integration"
+envfile = "omnidapter-core/tests/integration/.env"
 
 [tool.poe.tasks.server-infra]
 help = "Start backend infra: db, migration"
@@ -79,6 +72,14 @@ cmd = "docker-compose -f omnidapter-server/docker-compose.yml up --build"
 help = "Start Omnidapter Server"
 cmd = "uv run --env-file omnidapter-server/.env omnidapter-server"
 
+[tool.poe.tasks.hosted-infra]
+help = "Start hosted infra: db, redis, migration"
+cmd = "docker-compose -f omnidapter-hosted/docker-compose.yml up --build"
+
+[tool.poe.tasks.hosted-dev]
+help = "Start Omnidapter Hosted"
+cmd = "uv run --env-file omnidapter-hosted/.env omnidapter-hosted"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib -m 'not integration'"
@@ -87,9 +88,7 @@ filterwarnings = [
     "ignore::DeprecationWarning:testcontainers",
 ]
 testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests"]
-markers = [
-    "integration: integration tests requiring Docker (auto-applied to tests under integration/ dirs)",
-]
+markers = ["integration: integration tests requiring Docker or real providers"]
 
 [tool.ruff]
 line-length = 100

@@ -23,7 +23,7 @@ Fill in credentials/tokens in `omnidapter-core/tests/integration/.env`.
 All integration tests:
 
 ```bash
-uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration -m integration
 ```
 
 Google only:
@@ -56,10 +56,8 @@ Apple only:
 uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_apple.py
 ```
 
-## Required env vars by provider
-
-- Common: `OMNIDAPTER_INTEGRATION=1`
-  - Optional: `OMNIDAPTER_TEST_ATTENDEE_EMAIL` (comma-separated list for attendee invite tests)
+- Common:
+  - `OMNIDAPTER_TEST_ATTENDEE_EMAIL` (Optional comma-separated list for attendee invite tests)
 - Google:
   - `OMNIDAPTER_TEST_GOOGLE_CLIENT_ID`
   - `OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET`
@@ -151,6 +149,7 @@ curl -X POST "https://login.microsoftonline.com/common/oauth2/v2.0/token" \
 9. Copy `refresh_token` into `OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN`.
 
 Notes:
+
 - If your app is org-only, replace `common` with your tenant ID in both authorize/token endpoints.
 - `code` is short-lived and single-use; exchange immediately.
 - `redirect_uri` must match exactly in Azure config, authorize request, and token request (including `localhost` vs `127.0.0.1`).
@@ -182,6 +181,7 @@ curl -X POST "https://accounts.zoho.com/oauth/v2/token" \
 6. Copy `refresh_token` into `OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN`.
 
 Notes:
+
 - The `code` is single-use and short-lived; exchange it immediately.
 - `redirect_uri` must exactly match both the authorize request and Zoho app config.
 - If your account is not on US DC, use your region host (for example `accounts.zoho.eu`).
@@ -202,5 +202,6 @@ Apple integration tests use Basic auth with your Apple ID email plus an app-spec
    - `OMNIDAPTER_TEST_CALDAV_PASSWORD=<same-app-specific-password>`
 
 Notes:
+
 - Use the app-specific password, not your regular Apple ID password.
 - If auth fails, generate a fresh app-specific password and retry.
