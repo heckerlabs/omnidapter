@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from typing import Any, cast
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -208,3 +208,63 @@ async def test_get_hosted_auth_context_success() -> None:
     assert ctx.tenant_id == tenant.id
     assert req.state.rate_limit["limit"] == 60
     update_last_used.assert_awaited_once_with(api_key.id, ANY)
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_expired_token() -> None:
+    import jwt
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    token = jwt.encode({"exp": 0, "sub": str(uuid.uuid4())}, "a" * 32, algorithm="HS256")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+            session=AsyncMock(),
+            settings=HostedSettings(jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "token_expired"
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_invalid_token() -> None:
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="not-a-jwt"
+            ),
+            session=AsyncMock(),
+            settings=HostedSettings(jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "invalid_token"
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_user_not_found() -> None:
+    import jwt
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    token = jwt.encode(
+        {"sub": str(uuid.uuid4()), "tenant_id": str(uuid.uuid4())}, "a" * 32, algorithm="HS256"
+    )
+
+    mock_session = AsyncMock()
+    mock_result = MagicMock()  # Sync result object
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = mock_result
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+            session=mock_session,
+            settings=HostedSettings(jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "user_not_found"

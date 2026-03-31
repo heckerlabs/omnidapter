@@ -12,9 +12,12 @@ from omnidapter_hosted.config import HostedSettings
 from omnidapter_hosted.database import HostedBase
 from omnidapter_hosted.main import create_app
 from omnidapter_hosted.models.api_key import HostedAPIKey
+from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
 from omnidapter_hosted.models.tenant import Tenant, TenantPlan
+from omnidapter_hosted.models.user import HostedUser
 from omnidapter_hosted.services.auth import generate_hosted_api_key
+from omnidapter_hosted.services.auth_flows import issue_jwt
 from omnidapter_hosted.services.billing import _redis_clients
 from omnidapter_server.database import Base, get_session
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -155,3 +158,74 @@ async def second_api_key(
     db_session.add(api_key)
     await db_session.flush()
     return raw_key, api_key
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession) -> HostedUser:
+    """Create a test user."""
+    user = HostedUser(
+        id=uuid.uuid4(),
+        email=f"test-{uuid.uuid4().hex[:8]}@example.com",
+        name="Test User",
+    )
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def test_membership(
+    db_session: AsyncSession, test_user: HostedUser, test_tenant: Tenant
+) -> HostedMembership:
+    """Create a membership for the test user in the test tenant."""
+    membership = HostedMembership(
+        id=uuid.uuid4(),
+        tenant_id=test_tenant.id,
+        user_id=test_user.id,
+        role=MemberRole.OWNER,
+    )
+    db_session.add(membership)
+    await db_session.flush()
+    return membership
+
+
+@pytest.fixture
+def dashboard_auth(test_user: HostedUser, test_tenant: Tenant, test_membership: HostedMembership):
+    """Return a valid dashboard JWT for the test user/tenant/membership."""
+
+    class _JWTContext:
+        def __init__(self, user, tenant, membership):
+            self.user = user
+            self.tenant = tenant
+            self.membership = membership
+
+        def get_token(self, settings) -> str:
+            return issue_jwt(self.user.id, self.tenant.id, self.membership.role, settings)
+
+    return _JWTContext(test_user, test_tenant, test_membership)
+
+
+@pytest_asyncio.fixture
+async def dashboard_client(
+    db_session: AsyncSession, postgres_url: str, redis_url: str, dashboard_auth
+) -> AsyncGenerator[AsyncClient, None]:
+    """Provide an HTTP client for testing the dashboard endpoints (authenticated via JWT)."""
+
+    async def _get_session_override():
+        yield db_session
+
+    test_settings = HostedSettings()
+    test_settings.omnidapter_database_url = postgres_url
+    test_settings.hosted_rate_limit_redis_url = redis_url
+    test_settings.jwt_secret = "a" * 32
+
+    app = create_app(settings=test_settings)
+    app.dependency_overrides[get_session] = _get_session_override
+
+    token = dashboard_auth.get_token(test_settings)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
+        ac.headers["Authorization"] = f"Bearer {token}"
+        yield ac
+
+    app.dependency_overrides.clear()
