@@ -13,8 +13,6 @@ from omnidapter_server.services.connection_health import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_refresh_failure_increments_count_in_db(

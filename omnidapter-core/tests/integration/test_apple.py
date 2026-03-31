@@ -56,9 +56,6 @@ async def _create_with_retry(apple_service, req: CreateEventRequest) -> Calendar
     raise last_exc
 
 
-pytestmark = pytest.mark.integration
-
-
 # --------------------------------------------------------------------------- #
 # Server discovery                                                             #
 # --------------------------------------------------------------------------- #

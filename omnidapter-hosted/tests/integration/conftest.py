@@ -1,10 +1,9 @@
-"""Integration test configuration for omnidapter-hosted — Function-scoped to avoid loop issues."""
+"""Integration test fixtures with real Postgres and Redis via Testcontainers."""
 
 from __future__ import annotations
 
-import os
 import uuid
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
@@ -17,25 +16,26 @@ from omnidapter_hosted.models.provider_config import HostedProviderConfig
 from omnidapter_hosted.models.tenant import Tenant, TenantPlan
 from omnidapter_hosted.services.auth import generate_hosted_api_key
 from omnidapter_hosted.services.billing import _redis_clients
-from omnidapter_server.database import get_session
+from omnidapter_server.database import Base, get_session
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    """Set up integration test environment variables."""
-    os.environ["OMNIDAPTER_ENV"] = "DEV"
-    os.environ["OMNIDAPTER_DATABASE_URL"] = (
-        "postgresql+asyncpg://omnidapter:omnidapter@localhost:5432/omnidapter"
-    )
-    os.environ["HOSTED_RATE_LIMIT_REDIS_URL"] = "redis://localhost:6379/1"
-    os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+@pytest.fixture(scope="session")
+def postgres_url() -> Generator[str, None, None]:
+    """Start a Postgres container for the test session."""
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
-@pytest.fixture(scope="session", autouse=True)
-def skip_if_no_integration():
-    """Skip integration tests unless OMNIDAPTER_INTEGRATION=1 is set."""
-    if os.environ.get("OMNIDAPTER_INTEGRATION") != "1":
-        pytest.skip("Set OMNIDAPTER_INTEGRATION=1 to run integration tests")
+@pytest.fixture(scope="session")
+def redis_url() -> Generator[str, None, None]:
+    """Start a Redis container for the test session."""
+    with RedisContainer("redis:7-alpine") as redis:
+        host = redis.get_container_host_ip()
+        port = redis.get_exposed_port(6379)
+        yield f"redis://{host}:{port}/1"
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -46,9 +46,10 @@ async def clear_redis_clients():
 
 
 @pytest_asyncio.fixture
-async def db_engine() -> AsyncGenerator[AsyncEngine, None]:
-    engine = create_async_engine(os.environ["OMNIDAPTER_DATABASE_URL"])
+async def db_engine(postgres_url: str) -> AsyncGenerator[AsyncEngine, None]:
+    engine = create_async_engine(postgres_url)
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(HostedBase.metadata.create_all)
     yield engine
     await engine.dispose()
@@ -66,7 +67,9 @@ async def db_session(db_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, Non
 
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client(
+    db_session: AsyncSession, postgres_url: str, redis_url: str
+) -> AsyncGenerator[AsyncClient, None]:
     """Provide an HTTP client for testing the FastAPI app."""
 
     async def _get_session_override():
@@ -78,6 +81,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     test_settings.hosted_rate_limit_paid = 2
     test_settings.omnidapter_google_client_id = "test-google-id"
     test_settings.omnidapter_google_client_secret = "test-google-secret"
+    test_settings.omnidapter_database_url = postgres_url
+    test_settings.hosted_rate_limit_redis_url = redis_url
 
     app = create_app(settings=test_settings)
     app.dependency_overrides[get_session] = _get_session_override

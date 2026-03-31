@@ -94,6 +94,7 @@ def create_app(settings: HostedSettings | None = None) -> FastAPI:
     # Override server's auth with hosted auth (resolves tenant + rate limits)
     app.dependency_overrides[_server_get_auth_context] = get_hosted_auth_context
     app.dependency_overrides[_server_get_settings] = lambda: settings
+    app.dependency_overrides[get_hosted_settings] = lambda: settings
 
     # Middleware
     app.add_middleware(RequestIdMiddleware)

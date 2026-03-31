@@ -2,9 +2,10 @@
 Shared fixtures and utilities for integration tests.
 
 Integration tests require real provider credentials supplied via environment
-variables. They are skipped by default and enabled by setting:
+variables. They are marked with `@pytest.mark.integration` and skipped by default.
+Run them using:
 
-    OMNIDAPTER_INTEGRATION=1
+    uv run poe test-integration-core
 
 Each provider also needs its own env vars; see the individual test modules
 for the full list.
@@ -34,21 +35,6 @@ PAGINATION_PAGE_SIZE = 5
 # Override to mailboxes you control to avoid delivery-failure noise.
 INTEGRATION_ATTENDEE_EMAIL_ENV = "OMNIDAPTER_TEST_ATTENDEE_EMAIL"
 DEFAULT_INTEGRATION_ATTENDEE_EMAIL = "integration-attendee@example.com"
-
-
-# --------------------------------------------------------------------------- #
-# Marker / guard                                                               #
-# --------------------------------------------------------------------------- #
-
-
-@pytest.fixture(autouse=True)
-def _require_integration_flag(request):
-    """Skip any @pytest.mark.integration test unless OMNIDAPTER_INTEGRATION=1."""
-    if (
-        request.node.get_closest_marker("integration")
-        and os.getenv("OMNIDAPTER_INTEGRATION") != "1"
-    ):
-        pytest.skip("Integration tests disabled. Set OMNIDAPTER_INTEGRATION=1 to run.")
 
 
 # --------------------------------------------------------------------------- #

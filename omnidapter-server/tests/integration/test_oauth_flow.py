@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from omnidapter_server.main import app
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from sqlalchemy.ext.asyncio import AsyncSession
-
-pytestmark = pytest.mark.integration
 
 
 def _make_oauth_begin_result(conn_id: str, provider: str = "google") -> MagicMock:
@@ -22,6 +21,31 @@ def _make_oauth_begin_result(conn_id: str, provider: str = "google") -> MagicMoc
     result.connection_id = conn_id
     result.provider = provider
     return result
+
+
+@pytest_asyncio.fixture
+async def public_client(postgres_url: str, session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """An unauthenticated client that uses the proper isolated test settings."""
+    from omnidapter_server.config import Settings
+    from omnidapter_server.database import get_session
+    from omnidapter_server.main import create_app
+
+    test_settings = Settings(
+        omnidapter_database_url=postgres_url,
+        omnidapter_encryption_key="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+        omnidapter_env="DEV",
+    )
+    app = create_app(settings=test_settings)
+
+    async def override_session():
+        yield session
+
+    app.dependency_overrides[get_session] = override_session
+
+    async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as c:
+        yield c
+
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
@@ -94,7 +118,7 @@ async def test_create_connection_sets_pending_status(
 
 @pytest.mark.asyncio
 async def test_oauth_callback_transitions_to_active(
-    client: AsyncClient,
+    public_client: AsyncClient,
     session: AsyncSession,
     encryption,
 ):
@@ -150,13 +174,10 @@ async def test_oauth_callback_transitions_to_active(
         MockOmni.return_value = mock_instance
 
         # No auth header needed for callback — it's public
-        async with AsyncClient(
-            transport=ASGITransport(app), base_url="http://testserver"
-        ) as public_client:
-            response = await public_client.get(
-                f"/oauth/google/callback?code=auth_code&state={state_token}",
-                follow_redirects=False,
-            )
+        response = await public_client.get(
+            f"/oauth/google/callback?code=auth_code&state={state_token}",
+            follow_redirects=False,
+        )
 
     # Should redirect to the redirect_url
     assert response.status_code in (200, 302, 307)
@@ -164,31 +185,25 @@ async def test_oauth_callback_transitions_to_active(
 
 @pytest.mark.asyncio
 async def test_oauth_callback_invalid_state(
-    client: AsyncClient,
+    public_client: AsyncClient,
     session: AsyncSession,
 ):
     """Callback with invalid state returns error."""
-    async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver"
-    ) as public_client:
-        response = await public_client.get(
-            "/oauth/google/callback?code=some_code&state=INVALID_STATE_TOKEN",
-            follow_redirects=False,
-        )
+    response = await public_client.get(
+        "/oauth/google/callback?code=some_code&state=INVALID_STATE_TOKEN",
+        follow_redirects=False,
+    )
     assert response.status_code in (400, 422)
 
 
 @pytest.mark.asyncio
 async def test_oauth_callback_error_from_provider(
-    client: AsyncClient,
+    public_client: AsyncClient,
     session: AsyncSession,
 ):
     """Callback with error param from provider is handled gracefully."""
-    async with AsyncClient(
-        transport=ASGITransport(app), base_url="http://testserver"
-    ) as public_client:
-        response = await public_client.get(
-            "/oauth/google/callback?error=access_denied&error_description=User+denied+access",
-            follow_redirects=False,
-        )
+    response = await public_client.get(
+        "/oauth/google/callback?error=access_denied&error_description=User+denied+access",
+        follow_redirects=False,
+    )
     assert response.status_code in (400, 422)
