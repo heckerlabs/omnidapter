@@ -20,6 +20,7 @@ class ProviderConfigResponse(BaseModel):
     auth_kind: str
     scopes: list[str] | None
     is_fallback: bool
+    is_enabled: bool | None = None
     created_at: datetime
     updated_at: datetime
 
