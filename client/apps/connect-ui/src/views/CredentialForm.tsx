@@ -47,7 +47,7 @@ export function CredentialFormView({
           <div key={field.key} style={fieldWrapper}>
             <label style={labelStyle} htmlFor={field.key}>
               {field.label}
-              {field.required && <span style={{ color: "#ef4444" }}> *</span>}
+              {field.required && <span style={{ color: "var(--error)" }}> *</span>}
             </label>
             {field.type === "select" ? (
               <select
@@ -95,7 +95,7 @@ export function CredentialFormView({
 }
 
 const card: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: 12,
   padding: "32px 40px",
   boxShadow: "0 1px 3px rgba(0,0,0,.1)",
@@ -107,7 +107,7 @@ const card: React.CSSProperties = {
 const backBtn: React.CSSProperties = {
   background: "none",
   border: "none",
-  color: "#6b7280",
+  color: "var(--text-sub)",
   cursor: "pointer",
   fontSize: 14,
   padding: 0,
@@ -118,6 +118,7 @@ const heading: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   marginBottom: 20,
+  color: "var(--text-main)",
 };
 
 const fieldWrapper: React.CSSProperties = {
@@ -129,34 +130,36 @@ const labelStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 500,
   marginBottom: 4,
-  color: "#374151",
+  color: "var(--text-main)",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "8px 12px",
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--border)",
   borderRadius: 6,
   fontSize: 14,
   outline: "none",
+  background: "var(--input-bg)",
+  color: "var(--text-main)",
 };
 
 const helpText: React.CSSProperties = {
   fontSize: 12,
-  color: "#6b7280",
+  color: "var(--text-sub)",
   marginTop: 4,
 };
 
 const errorText: React.CSSProperties = {
   fontSize: 12,
-  color: "#ef4444",
+  color: "var(--error)",
   marginTop: 4,
 };
 
 const submitBtn: React.CSSProperties = {
   width: "100%",
   padding: "10px",
-  background: "#6366f1",
+  background: "var(--primary)",
   color: "#fff",
   border: "none",
   borderRadius: 8,
@@ -168,10 +171,10 @@ const submitBtn: React.CSSProperties = {
 
 const formErrorBanner: React.CSSProperties = {
   padding: "12px",
-  background: "#fee2e2",
-  border: "1px solid #fca5a5",
+  background: "var(--error-bg)",
+  border: "1px solid var(--error-border)",
   borderRadius: 6,
-  color: "#991b1b",
+  color: "var(--error-text)",
   fontSize: 14,
   marginBottom: 16,
 };

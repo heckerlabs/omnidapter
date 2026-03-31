@@ -42,7 +42,7 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
 }
 
 const card: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: 12,
   padding: "48px 40px",
   boxShadow: "0 1px 3px rgba(0,0,0,.1)",
@@ -53,7 +53,7 @@ const card: React.CSSProperties = {
 const check: React.CSSProperties = {
   width: 48,
   height: 48,
-  background: "#10b981",
+  background: "var(--success)",
   color: "#fff",
   borderRadius: "50%",
   display: "flex",
@@ -68,9 +68,10 @@ const heading: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   marginBottom: 8,
+  color: "var(--text-main)",
 };
 
 const sub: React.CSSProperties = {
-  color: "#6b7280",
+  color: "var(--text-sub)",
   fontSize: 14,
 };

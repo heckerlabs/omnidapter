@@ -4,13 +4,13 @@ export function LoadingView() {
   return (
     <div style={card}>
       <div style={spinner} />
-      <p style={{ color: "#6b7280", marginTop: 16 }}>Loading…</p>
+      <p style={{ color: "var(--text-sub)", marginTop: 16 }}>Loading…</p>
     </div>
   );
 }
 
 const card: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: 12,
   padding: "48px 40px",
   boxShadow: "0 1px 3px rgba(0,0,0,.1)",
@@ -21,8 +21,8 @@ const card: React.CSSProperties = {
 const spinner: React.CSSProperties = {
   width: 36,
   height: 36,
-  border: "3px solid #e5e7eb",
-  borderTopColor: "#6366f1",
+  border: "3px solid var(--border)",
+  borderTopColor: "var(--primary)",
   borderRadius: "50%",
   animation: "spin 0.8s linear infinite",
   margin: "0 auto",
