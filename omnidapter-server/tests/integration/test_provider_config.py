@@ -8,8 +8,6 @@ from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.provider_config import ProviderConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_list_provider_configs_empty(client: AsyncClient):

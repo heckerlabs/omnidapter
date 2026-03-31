@@ -12,8 +12,6 @@ from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.connection_health import update_last_used
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_update_last_used_sets_timestamp(session: AsyncSession):

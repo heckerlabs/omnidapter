@@ -2,9 +2,19 @@
 name = "omnidapter-workspace"
 version = "0.0.0"
 requires-python = ">=3.10"
+dependencies = [
+    "omnidapter",
+    "omnidapter-server",
+    "omnidapter-hosted",
+]
 
 [tool.uv.workspace]
 members = ["omnidapter-*"]
+
+[tool.uv.sources]
+omnidapter = { workspace = true }
+omnidapter-server = { workspace = true }
+omnidapter-hosted = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -18,6 +28,7 @@ dev = [
     "pyright>=1.1.408",
     "mypy>=1.10",
     "poethepoet>=0.31.1",
+    "testcontainers[postgres,redis]>=4.14.2",
 ]
 
 [tool.poe.tasks.format]
@@ -46,22 +57,19 @@ sequence = ["format", "lint", "typecheck", "build", "test"]
 
 [tool.poe.tasks.test-integration-core]
 help = "Run Omnidapter Core integration tests"
-cmd = "uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration"
+cmd = "uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests -m integration"
 
 [tool.poe.tasks.test-integration-server]
-help = "Run server tests with inline postgres"
-sequence = [
-  { cmd = "docker run --name omnidapter-test-db --rm -e POSTGRES_PASSWORD=omnidapter -e POSTGRES_DB=omnidapter_test -p 5433:5432 -d postgres:16-alpine" },
-  { cmd = "sh -c 'until docker exec omnidapter-test-db pg_isready; do sleep 1; done'" },
-  { cmd = "uv run alembic -c alembic.ini upgrade head", cwd = "omnidapter-server", env = { OMNIDAPTER_DATABASE_URL = "postgresql+asyncpg://postgres:omnidapter@localhost:5433/omnidapter_test" } },
-  { cmd = "uv run pytest tests/integration", cwd = "omnidapter-server", env = { OMNIDAPTER_INTEGRATION = "1", OMNIDAPTER_TEST_DATABASE_URL = "postgresql+asyncpg://postgres:omnidapter@localhost:5433/omnidapter_test" } },
-  { cmd = "docker stop omnidapter-test-db" }
-]
-ignore_fail = "return_non_zero"
+help = "Run server integration tests using Testcontainers"
+cmd = "uv run pytest omnidapter-server/tests -m integration"
+
+[tool.poe.tasks.test-integration-hosted]
+help = "Run hosted integration tests using Testcontainers"
+cmd = "uv run pytest omnidapter-hosted/tests -m integration"
 
 [tool.poe.tasks.test-integration]
 help = "Run Integration Tests"
-sequence = ["test-integration-core", "test-integration-server"]
+sequence = ["test-integration-core", "test-integration-server", "test-integration-hosted"]
 
 [tool.poe.tasks.server-infra]
 help = "Start backend infra: db, migration"
@@ -73,10 +81,14 @@ cmd = "uv run --env-file omnidapter-server/.env omnidapter-server"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-addopts = "--import-mode=importlib"
+addopts = "--import-mode=importlib -m 'not integration'"
+filterwarnings = [
+    # testcontainers uses @wait_container_is_ready internally — their issue, not ours
+    "ignore::DeprecationWarning:testcontainers",
+]
 testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests"]
 markers = [
-    "integration: marks tests requiring live provider credentials; set OMNIDAPTER_INTEGRATION=1 to enable",
+    "integration: integration tests requiring Docker (auto-applied to tests under integration/ dirs)",
 ]
 
 [tool.ruff]

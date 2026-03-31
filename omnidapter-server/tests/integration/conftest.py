@@ -1,13 +1,9 @@
-"""Integration test fixtures with real Postgres database.
-
-Integration tests are skipped unless OMNIDAPTER_INTEGRATION=1 is set.
-"""
+"""Integration test fixtures with real Postgres via Testcontainers."""
 
 from __future__ import annotations
 
-import os
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Generator
 
 import pytest
 import pytest_asyncio
@@ -20,20 +16,16 @@ from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import generate_api_key
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from testcontainers.postgres import PostgresContainer
 
-TEST_DB_URL = os.environ.get("OMNIDAPTER_TEST_DATABASE_URL")
 TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 
-def pytest_configure(config: pytest.Config) -> None:
-    """Set up integration test environment variables."""
-    os.environ["OMNIDAPTER_ENV"] = "DEV"
-    if not os.environ.get("OMNIDAPTER_TEST_DATABASE_URL"):
-        # Default for local dev if not specified
-        os.environ["OMNIDAPTER_TEST_DATABASE_URL"] = (
-            "postgresql+asyncpg://omnidapter:omnidapter@localhost:5432/omnidapter_test"
-        )
-    os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = TEST_ENCRYPTION_KEY
+@pytest.fixture(scope="session")
+def postgres_url() -> Generator[str, None, None]:
+    """Start a Postgres container for the test session."""
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres.get_connection_url().replace("psycopg2", "asyncpg")
 
 
 @pytest.fixture(scope="session")
@@ -41,16 +33,9 @@ def anyio_backend():
     return "asyncio"
 
 
-@pytest.fixture(scope="session", autouse=True)
-def skip_if_no_integration():
-    if os.environ.get("OMNIDAPTER_INTEGRATION") != "1":
-        pytest.skip("Set OMNIDAPTER_INTEGRATION=1 to run integration tests")
-
-
 @pytest_asyncio.fixture
-async def test_engine() -> AsyncIterator[AsyncEngine]:
-    db_url = os.environ["OMNIDAPTER_TEST_DATABASE_URL"]
-    engine = create_async_engine(db_url, echo=False)
+async def test_engine(postgres_url: str) -> AsyncIterator[AsyncEngine]:
+    engine = create_async_engine(postgres_url, echo=False)
     try:
         yield engine
     finally:
@@ -114,16 +99,17 @@ async def api_key(session: AsyncSession) -> tuple[str, APIKey]:
 
 
 @pytest_asyncio.fixture
-async def client(session: AsyncSession, api_key: tuple[str, APIKey]) -> AsyncIterator[AsyncClient]:
+async def client(
+    session: AsyncSession, api_key: tuple[str, APIKey], postgres_url: str
+) -> AsyncIterator[AsyncClient]:
     """HTTP test client with API key auth and injected test session."""
     raw_key, _ = api_key
-    db_url = os.environ["OMNIDAPTER_TEST_DATABASE_URL"]
 
     async def override_session():
         yield session
 
     test_settings = Settings(
-        omnidapter_database_url=db_url,
+        omnidapter_database_url=postgres_url,
         omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
         omnidapter_env="DEV",
     )

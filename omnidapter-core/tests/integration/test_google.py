@@ -56,9 +56,6 @@ async def _assert_deleted_event_state(google_service, calendar_id: str, event_id
     assert deleted.status == EventStatus.CANCELLED
 
 
-pytestmark = pytest.mark.integration
-
-
 # --------------------------------------------------------------------------- #
 # Token refresh                                                                #
 # --------------------------------------------------------------------------- #

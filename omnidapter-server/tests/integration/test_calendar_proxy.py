@@ -12,8 +12,6 @@ from httpx import AsyncClient
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 def _make_calendar_event(calendar_id: str = "primary", event_id: str = "evt_1") -> MagicMock:
     from omnidapter import CalendarEvent, EventStatus

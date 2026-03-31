@@ -39,9 +39,6 @@ from omnidapter.services.calendar.requests import (
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
 
-pytestmark = pytest.mark.integration
-
-
 # --------------------------------------------------------------------------- #
 # Server discovery                                                             #
 # --------------------------------------------------------------------------- #
