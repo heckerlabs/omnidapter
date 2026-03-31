@@ -1,5 +1,4 @@
 """Integration test configuration for omnidapter-hosted — Function-scoped to avoid loop issues."""
-# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -10,27 +9,26 @@ from collections.abc import AsyncGenerator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
-
-# Set test environment variables before importing app
-os.environ["OMNIDAPTER_ENV"] = "DEV"
-# Note: Integration tests are skipped unless OMNIDAPTER_INTEGRATION=1 is set
-# We use the same DB as the dev env for integration tests by default,
-# but transactions are rolled back.
-_DB_URL = "postgresql+asyncpg://omnidapter:omnidapter@localhost:5432/omnidapter"
-os.environ["OMNIDAPTER_DATABASE_URL"] = _DB_URL
-os.environ["HOSTED_RATE_LIMIT_REDIS_URL"] = "redis://localhost:6379/1"
-os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
-
-from omnidapter_hosted.config import get_hosted_settings
+from omnidapter_hosted.config import HostedSettings
 from omnidapter_hosted.database import HostedBase
-from omnidapter_hosted.main import app
+from omnidapter_hosted.main import create_app
 from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
 from omnidapter_hosted.models.tenant import Tenant, TenantPlan
 from omnidapter_hosted.services.auth import generate_hosted_api_key
 from omnidapter_hosted.services.billing import _redis_clients
 from omnidapter_server.database import get_session
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Set up integration test environment variables."""
+    os.environ["OMNIDAPTER_ENV"] = "DEV"
+    os.environ["OMNIDAPTER_DATABASE_URL"] = (
+        "postgresql+asyncpg://omnidapter:omnidapter@localhost:5432/omnidapter"
+    )
+    os.environ["HOSTED_RATE_LIMIT_REDIS_URL"] = "redis://localhost:6379/1"
+    os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -74,17 +72,15 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async def _get_session_override():
         yield db_session
 
-    app.dependency_overrides[get_session] = _get_session_override
-
     # Force a very low rate limit for testing
-    from omnidapter_hosted.config import HostedSettings
-
     test_settings = HostedSettings()
     test_settings.hosted_rate_limit_free = 2
     test_settings.hosted_rate_limit_paid = 2
     test_settings.omnidapter_google_client_id = "test-google-id"
     test_settings.omnidapter_google_client_secret = "test-google-secret"
-    app.dependency_overrides[get_hosted_settings] = lambda: test_settings
+
+    app = create_app(settings=test_settings)
+    app.dependency_overrides[get_session] = _get_session_override
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
         yield ac

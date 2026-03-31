@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from omnidapter_hosted.dependencies import get_hosted_auth_context
 from omnidapter_hosted.main import (
     app,
+    create_app,
     health,
     run,
     unhandled_exception_handler,
@@ -43,7 +44,9 @@ def test_server_auth_dependency_is_overridden() -> None:
 
 
 def test_server_settings_dependency_is_overridden() -> None:
-    assert app.dependency_overrides[server_get_settings] is hosted_config.get_hosted_settings
+    test_app = create_app()
+    override = test_app.dependency_overrides[server_get_settings]
+    assert override() == hosted_config.get_hosted_settings()
 
 
 def test_openapi_exposes_bearer_auth_scheme() -> None:
