@@ -3,63 +3,48 @@
 from __future__ import annotations
 
 import uuid
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from omnidapter_hosted.config import get_hosted_settings
+from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant, TenantPlan
 from omnidapter_hosted.models.user import HostedUser
-from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.services.auth_flows import issue_jwt
-from omnidapter_hosted.config import get_hosted_settings
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest_asyncio.fixture
 async def authenticated_dashboard_client(
-    client: AsyncClient, 
-    db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession
 ) -> tuple[AsyncClient, HostedUser, Tenant]:
     """Provide a client authenticated with a dashboard JWT."""
     # Create user
-    user = HostedUser(
-        id=uuid.uuid4(),
-        email=f"test-{uuid.uuid4()}@example.com",
-        name="Test User"
-    )
+    user = HostedUser(id=uuid.uuid4(), email=f"test-{uuid.uuid4()}@example.com", name="Test User")
     db_session.add(user)
-    
+
     # Create tenant
-    tenant = Tenant(
-        id=uuid.uuid4(),
-        name="Dashboard Tenant",
-        plan=TenantPlan.FREE,
-        is_active=True
-    )
+    tenant = Tenant(id=uuid.uuid4(), name="Dashboard Tenant", plan=TenantPlan.FREE, is_active=True)
     db_session.add(tenant)
-    
+
     # Create membership
     membership = HostedMembership(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        tenant_id=tenant.id,
-        role=MemberRole.OWNER
+        id=uuid.uuid4(), user_id=user.id, tenant_id=tenant.id, role=MemberRole.OWNER
     )
     db_session.add(membership)
-    
+
     await db_session.commit()
     await db_session.refresh(user)
     await db_session.refresh(tenant)
-    
+
     # Issue JWT
     settings = get_hosted_settings()
     token = issue_jwt(user.id, tenant.id, membership.role, settings)
-    
+
     client.headers["Authorization"] = f"Bearer {token}"
     return client, user, tenant
 
-
-import pytest_asyncio
 
 @pytest.mark.asyncio
 async def test_get_profile(authenticated_dashboard_client):
@@ -96,7 +81,7 @@ async def test_list_api_keys_dashboard(authenticated_dashboard_client):
     assert response.status_code == 201
     assert "key" in response.json()["data"]
     assert response.json()["data"]["name"] == "New Web Key"
-    
+
     # List them
     response = await client.get("/v1/dashboard/api-keys")
     assert response.status_code == 200

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 import pytest
 from httpx import AsyncClient
 from omnidapter_hosted.models.api_key import HostedAPIKey
@@ -19,10 +18,7 @@ async def test_auth_missing_header(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_auth_invalid_header_format(client: AsyncClient):
     """Verify that a request with invalid Authorization header format fails."""
-    response = await client.get(
-        "/v1/connections",
-        headers={"Authorization": "InvalidFormat key"}
-    )
+    response = await client.get("/v1/connections", headers={"Authorization": "InvalidFormat key"})
     assert response.status_code == 401
     assert response.json()["detail"]["code"] == "invalid_api_key"
 
@@ -31,8 +27,7 @@ async def test_auth_invalid_header_format(client: AsyncClient):
 async def test_auth_invalid_key(client: AsyncClient):
     """Verify that a request with an invalid API key fails."""
     response = await client.get(
-        "/v1/connections",
-        headers={"Authorization": "Bearer omni_invalid_key_1234567890"}
+        "/v1/connections", headers={"Authorization": "Bearer omni_invalid_key_1234567890"}
     )
     assert response.status_code == 401
     assert response.json()["detail"]["code"] == "invalid_api_key"
@@ -42,10 +37,7 @@ async def test_auth_invalid_key(client: AsyncClient):
 async def test_auth_valid_key(client: AsyncClient, test_api_key: tuple[str, HostedAPIKey]):
     """Verify that a request with a valid API key succeeds."""
     raw_key, api_key_obj = test_api_key
-    response = await client.get(
-        "/v1/connections",
-        headers={"Authorization": f"Bearer {raw_key}"}
-    )
+    response = await client.get("/v1/connections", headers={"Authorization": f"Bearer {raw_key}"})
     # Success here might be 200 with an empty list or similar
     assert response.status_code == 200
     assert isinstance(response.json()["data"], list)
