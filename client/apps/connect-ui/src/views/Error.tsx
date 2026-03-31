@@ -47,7 +47,7 @@ export function ErrorView({ code, message, isPopup, openerOrigin, onRetry }: Pro
 }
 
 const card: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: 12,
   padding: "48px 40px",
   boxShadow: "0 1px 3px rgba(0,0,0,.1)",
@@ -59,7 +59,7 @@ const card: React.CSSProperties = {
 const icon: React.CSSProperties = {
   width: 48,
   height: 48,
-  background: "#ef4444",
+  background: "var(--error)",
   color: "#fff",
   borderRadius: "50%",
   display: "flex",
@@ -74,17 +74,18 @@ const heading: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   marginBottom: 8,
+  color: "var(--text-main)",
 };
 
 const sub: React.CSSProperties = {
-  color: "#6b7280",
+  color: "var(--text-sub)",
   fontSize: 14,
 };
 
 const retryBtn: React.CSSProperties = {
   marginTop: 20,
   padding: "8px 20px",
-  background: "#6366f1",
+  background: "var(--primary)",
   color: "#fff",
   border: "none",
   borderRadius: 6,
@@ -97,8 +98,8 @@ const closeBtn: React.CSSProperties = {
   marginTop: 12,
   padding: "8px 20px",
   background: "transparent",
-  color: "#6b7280",
-  border: "1px solid #e5e7eb",
+  color: "var(--text-sub)",
+  border: "1px solid var(--border)",
   borderRadius: 6,
   cursor: "pointer",
   fontSize: 14,

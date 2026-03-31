@@ -35,7 +35,7 @@ export function ProviderSelectionView({ providers, onSelect }: Props) {
 }
 
 const card: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: 12,
   padding: "40px",
   boxShadow: "0 1px 3px rgba(0,0,0,.1)",
@@ -48,10 +48,11 @@ const heading: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   marginBottom: 6,
+  color: "var(--text-main)",
 };
 
 const sub: React.CSSProperties = {
-  color: "#6b7280",
+  color: "var(--text-sub)",
   fontSize: 14,
 };
 
@@ -60,20 +61,21 @@ const providerBtn: React.CSSProperties = {
   alignItems: "center",
   gap: 12,
   padding: "12px 16px",
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--border)",
   borderRadius: 8,
-  background: "#fff",
+  background: "var(--bg-card)",
+  color: "var(--text-main)",
   cursor: "pointer",
   fontSize: 15,
   textAlign: "left",
-  transition: "border-color 0.15s",
+  transition: "border-color 0.15s, background-color 0.15s",
 };
 
 const providerIcon: React.CSSProperties = {
   width: 32,
   height: 32,
   borderRadius: "50%",
-  background: "#6366f1",
+  background: "var(--primary)",
   color: "#fff",
   display: "flex",
   alignItems: "center",
