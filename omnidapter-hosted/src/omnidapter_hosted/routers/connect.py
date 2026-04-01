@@ -24,6 +24,7 @@ from omnidapter_server.services.connection_flows import (
     create_connection_flow,
     reauthorize_connection_flow,
 )
+from omnidapter_server.services.link_tokens import deactivate_link_token
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
 from pydantic import BaseModel
@@ -304,6 +305,7 @@ async def create_connection(
                 session=session,
                 encryption=encryption,
             )
+            await deactivate_link_token(link_token.link_token_id, session)
             return {
                 "data": ConnectCreateConnectionResponse(
                     connection_id=str(conn.id),
@@ -332,6 +334,7 @@ async def create_connection(
             ),
             build_omni=lambda s, pk, pc: _build_omni(s, encryption, settings, tenant_id, pk, pc),
         )
+        await deactivate_link_token(link_token.link_token_id, session)
         return {
             "data": ConnectCreateConnectionResponse(
                 connection_id=result.connection_id,
@@ -365,6 +368,7 @@ async def create_connection(
             encryption=encryption,
             persist_post_create=lambda c, s: _persist_owner(c, s, tenant_id),
         )
+        await deactivate_link_token(link_token.link_token_id, session)
         return {
             "data": ConnectCreateConnectionResponse(
                 connection_id=str(conn.id),
@@ -404,6 +408,7 @@ async def create_connection(
         persist_post_create=lambda conn, s: _persist_owner(conn, s, tenant_id),
     )
 
+    await deactivate_link_token(link_token.link_token_id, session)
     return {
         "data": ConnectCreateConnectionResponse(
             connection_id=flow_result.connection_id,

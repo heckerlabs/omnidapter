@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_server.models.link_token import LinkToken
@@ -109,3 +109,9 @@ async def verify_link_token(
             continue
 
     return None
+
+
+async def deactivate_link_token(token_id: uuid.UUID, session: AsyncSession) -> None:
+    """Mark a link token as inactive (consumed)."""
+    await session.execute(update(LinkToken).where(LinkToken.id == token_id).values(is_active=False))
+    await session.commit()

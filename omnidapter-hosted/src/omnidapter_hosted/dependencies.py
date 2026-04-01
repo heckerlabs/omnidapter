@@ -248,6 +248,7 @@ class LinkTokenContext:
         allowed_providers: list[str] | None,
         redirect_uri: str | None,
         *,
+        link_token_id: uuid.UUID,
         connection_id: uuid.UUID | None = None,
         locked_provider_key: str | None = None,
     ) -> None:
@@ -255,6 +256,7 @@ class LinkTokenContext:
         self.end_user_id = end_user_id
         self.allowed_providers = allowed_providers
         self.redirect_uri = redirect_uri
+        self.link_token_id = link_token_id
         # Reconnect fields — set when the token is scoped to an existing connection
         self.connection_id = connection_id
         self.locked_provider_key = locked_provider_key
@@ -317,6 +319,7 @@ async def get_link_token_context(
         end_user_id=link_token.end_user_id,
         allowed_providers=link_token.allowed_providers,
         redirect_uri=link_token.redirect_uri,
+        link_token_id=link_token.id,
         connection_id=link_token.connection_id,
         locked_provider_key=link_token.locked_provider_key,
     )

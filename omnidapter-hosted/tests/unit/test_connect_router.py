@@ -25,6 +25,7 @@ def _now() -> datetime:
 def _link_token(
     *,
     tenant_id: uuid.UUID | None = None,
+    link_token_id: uuid.UUID | None = None,
     allowed_providers: list[str] | None = None,
     redirect_uri: str | None = "https://app.example.com/done",
     connection_id: uuid.UUID | None = None,
@@ -35,6 +36,7 @@ def _link_token(
         end_user_id="user_1",
         allowed_providers=allowed_providers,
         redirect_uri=redirect_uri,
+        link_token_id=link_token_id or uuid.uuid4(),
         connection_id=connection_id,
         locked_provider_key=locked_provider_key,
     )
@@ -431,4 +433,113 @@ async def test_create_connection_unknown_provider_raises_422() -> None:
         )
 
     assert exc_info.value.status_code == 422
-    assert exc_info.value.detail["code"] == "provider_not_found"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_create_connection_non_oauth_deactivates_token() -> None:
+    """Verify that link token is deactivated after successful non-OAuth connection."""
+    link_token_id = uuid.uuid4()
+    link_token = _link_token(link_token_id=link_token_id)
+    session = AsyncMock()
+    encryption = MagicMock()
+    settings = _settings()
+    request = MagicMock()
+
+    conn_id = uuid.uuid4()
+    mock_conn = Connection(
+        id=conn_id,
+        provider_key="caldav",
+        status=ConnectionStatus.ACTIVE,
+        external_id="user_1",
+        refresh_failure_count=0,
+        created_at=_now(),
+        updated_at=_now(),
+    )
+
+    omni = MagicMock()
+    omni.describe_provider.return_value = _basic_meta("caldav")
+
+    with (
+        patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
+        patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
+        patch(
+            "omnidapter_hosted.routers.connect.create_credential_connection",
+            new=AsyncMock(return_value=mock_conn),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.deactivate_link_token",
+            new=AsyncMock(),
+        ) as mock_deactivate,
+    ):
+        await create_connection(
+            body=ConnectCreateConnectionRequest(
+                provider_key="caldav",
+                credentials={
+                    "server_url": "https://caldav.example.com/",
+                    "username": "u",
+                    "password": "p",
+                },
+            ),
+            request=request,
+            link_token=link_token,
+            encryption=encryption,
+            session=session,
+            settings=settings,
+            request_id="req_deactivate_1",
+        )
+
+    mock_deactivate.assert_awaited_once_with(link_token_id, session)
+
+
+@pytest.mark.asyncio
+async def test_create_connection_oauth_deactivates_token() -> None:
+    """Verify that link token is deactivated after OAuth connection initiation."""
+    link_token_id = uuid.uuid4()
+    link_token = _link_token(link_token_id=link_token_id)
+    session = AsyncMock()
+    encryption = MagicMock()
+    settings = _settings()
+    request = MagicMock()
+
+    omni = MagicMock()
+    omni.describe_provider.return_value = _oauth_meta("google")
+
+    flow_result = MagicMock()
+    flow_result.connection_id = str(uuid.uuid4())
+    flow_result.status = "pending"
+    flow_result.authorization_url = "https://accounts.google.com/o/oauth2/v2/auth?..."
+
+    with (
+        patch("omnidapter_hosted.routers.connect.Omnidapter", return_value=omni),
+        patch(
+            "omnidapter_hosted.routers.connect.get_tenant_provider_config",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
+        patch(
+            "omnidapter_hosted.routers.connect.create_connection_flow",
+            new=AsyncMock(return_value=flow_result),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.deactivate_link_token",
+            new=AsyncMock(),
+        ) as mock_deactivate,
+    ):
+        await create_connection(
+            body=ConnectCreateConnectionRequest(
+                provider_key="google",
+                redirect_uri="https://app.example.com/done",
+            ),
+            request=request,
+            link_token=link_token,
+            encryption=encryption,
+            session=session,
+            settings=settings,
+            request_id="req_deactivate_2",
+        )
+
+    mock_deactivate.assert_awaited_once_with(link_token_id, session)

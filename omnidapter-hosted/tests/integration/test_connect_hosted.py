@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncGenerator
 
 import pytest
@@ -29,6 +30,7 @@ async def link_token_client(
         end_user_id="end_user_123",
         allowed_providers=None,
         redirect_uri="https://client.com/callback",
+        link_token_id=uuid.uuid4(),
     )
 
     settings = HostedSettings()
