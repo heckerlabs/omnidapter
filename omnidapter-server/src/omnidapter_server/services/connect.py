@@ -37,6 +37,11 @@ _BLOCKED_HOSTNAMES = frozenset(
 )
 _BLOCKED_SUFFIXES = (".local", ".localhost", ".internal", ".corp", ".home", ".lan", ".intranet")
 
+# CalDAV validation retry policy for transient failures
+_TRANSIENT_STATUS_CODES = frozenset({502, 503})
+_MAX_CALDAV_RETRIES = 2
+_CALDAV_RETRY_DELAY_SECONDS = 0.5
+
 # ---------------------------------------------------------------------------
 # Credential schema building
 # ---------------------------------------------------------------------------
@@ -287,47 +292,69 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         ) from exc
 
     basic = base64.b64encode(f"{username}:{password}".encode()).decode()
-    try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
-            response = await client.request(
-                "PROPFIND",
-                server_url,
-                headers={
-                    "Authorization": f"Basic {basic}",
-                    "Depth": "0",
-                    "Content-Type": "application/xml",
-                },
-                content=b'<?xml version="1.0"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
-            )
-        if response.status_code == 401:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "code": "invalid_credentials",
-                    "message": "Invalid username or password",
-                },
-            )
-        if response.status_code >= 400 and response.status_code not in (404, 405):
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "code": "invalid_credentials",
-                    "message": f"Server returned {response.status_code}",
-                },
-            )
-    except HTTPException:
-        raise
-    except Exception as exc:
-        import logging
 
-        logging.getLogger(__name__).warning("CalDAV validation failed: %s", exc)
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "server_unreachable",
-                "message": "Could not reach CalDAV server. Please check the server URL and try again.",
-            },
-        ) from exc
+    # Retry loop for transient failures (timeouts, connection errors, 502/503)
+    attempts = 0
+    while attempts <= _MAX_CALDAV_RETRIES:
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+                response = await client.request(
+                    "PROPFIND",
+                    server_url,
+                    headers={
+                        "Authorization": f"Basic {basic}",
+                        "Depth": "0",
+                        "Content-Type": "application/xml",
+                    },
+                    content=b'<?xml version="1.0"?><propfind xmlns="DAV:"><prop><resourcetype/></prop></propfind>',
+                )
+            if response.status_code == 401:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "invalid_credentials",
+                        "message": "Invalid username or password",
+                    },
+                )
+            if response.status_code >= 400 and response.status_code not in (404, 405):
+                # Check if this is a transient error that we should retry
+                if (
+                    response.status_code in _TRANSIENT_STATUS_CODES
+                    and attempts < _MAX_CALDAV_RETRIES
+                ):
+                    attempts += 1
+                    await asyncio.sleep(_CALDAV_RETRY_DELAY_SECONDS)
+                    continue
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "invalid_credentials",
+                        "message": "Could not connect to CalDAV server",
+                    },
+                )
+            # Success
+            break
+        except HTTPException:
+            raise
+        except Exception as exc:
+            # Transient network error — retry if we have attempts left
+            if attempts < _MAX_CALDAV_RETRIES:
+                attempts += 1
+                await asyncio.sleep(_CALDAV_RETRY_DELAY_SECONDS)
+                continue
+            # All retries exhausted
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "CalDAV validation failed after %d attempts: %s", attempts + 1, exc
+            )
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "server_unreachable",
+                    "message": "Could not reach CalDAV server. Please check the server URL and try again.",
+                },
+            ) from exc
 
 
 def _build_stored_credential(

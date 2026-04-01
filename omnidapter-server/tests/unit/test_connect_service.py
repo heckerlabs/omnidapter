@@ -631,3 +631,143 @@ async def test_default_caldav_validator_blocks_ipv6_scope_id(
     assert exc_info.value.status_code == 422
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_retries_on_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Should retry on httpx.TimeoutException."""
+    import socket as socket_mod
+
+    import httpx
+
+    call_count = 0
+
+    async def _mock_request(*a: Any, **kw: Any) -> MagicMock:
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            raise httpx.TimeoutException("timeout")
+        # Third call succeeds
+        resp = MagicMock()
+        resp.status_code = 207
+        return resp
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> MagicMock:
+            return await _mock_request(*a, **kw)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+    # Mock DNS to return a public IP
+    public_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: public_addrinfo)
+
+    # Should not raise — retries should succeed
+    await _default_caldav_validator(
+        "caldav",
+        {
+            "server_url": "https://caldav.example.com/",
+            "username": "u",
+            "password": "p",
+        },
+    )
+    assert call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_fails_after_max_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Should raise server_unreachable after max retries."""
+    import socket as socket_mod
+
+    import httpx
+
+    async def _mock_request(*a: Any, **kw: Any) -> None:
+        raise httpx.TimeoutException("timeout")
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> None:
+            return await _mock_request(*a, **kw)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+    # Mock DNS to return a public IP
+    public_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: public_addrinfo)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://caldav.example.com/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "server_unreachable"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_retries_on_503(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Should retry on 503 (Service Unavailable)."""
+    import socket as socket_mod
+
+    import httpx
+
+    call_count = 0
+
+    class _MockResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+
+    async def _mock_request(*a: Any, **kw: Any) -> _MockResponse:
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            return _MockResponse(503)
+        # Third call succeeds
+        return _MockResponse(207)
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> _MockResponse:
+            return await _mock_request(*a, **kw)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+    # Mock DNS to return a public IP
+    public_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: public_addrinfo)
+
+    # Should not raise — retries should succeed
+    await _default_caldav_validator(
+        "caldav",
+        {
+            "server_url": "https://caldav.example.com/",
+            "username": "u",
+            "password": "p",
+        },
+    )
+    assert call_count == 3
