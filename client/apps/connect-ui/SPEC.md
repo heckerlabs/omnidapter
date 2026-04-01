@@ -41,7 +41,7 @@ When operating as a popup, the UI performs strict origin validation:
 
 ### 1. Provider Discovery
 Upon valid token detection, the UI fetches available providers for the current session.
-*   **Endpoint**: `GET /api/providers`
+*   **Endpoint**: `GET /connect/providers`
 *   **Logic**:
     *   If **multiple** providers are allowed, show the `ProviderSelection` view.
     *   If **one** provider is allowed (e.g., a "reconnect" flow), skip the selection and go straight to the auth flow for that provider.
@@ -50,7 +50,7 @@ Upon valid token detection, the UI fetches available providers for the current s
 ### 2. OAuth2 Authorization Flow
 For providers like Google and Microsoft:
 *   **Trigger**: User selects an OAuth provider.
-*   **Action**: Calls `POST /api/connections` to retrieve an `authorization_url`.
+*   **Action**: Calls `POST /connect/connections` to retrieve an `authorization_url`.
 *   **Redirection**: Navigates the current window to the provider’s consent screen.
 *   **Return**: Upon successful external auth, the backend redirects back to the Connect UI with success/error parameters in the URL.
 
@@ -59,7 +59,7 @@ For providers requiring fixed credentials (e.g., Apple, CalDAV, Sync.com):
 *   **Trigger**: User selects a provider with a `credential_schema`.
 *   **Action**: Dynamically generates a form based on the JSON schema provided by the backend.
 *   **Fields**: Supports `text`, `password`, `email`, and `select` types with real-time validation feedback.
-*   **Submission**: Sends the collected credentials to `POST /api/connections`.
+*   **Submission**: Sends the collected credentials to `POST /connect/connections`.
 
 ---
 

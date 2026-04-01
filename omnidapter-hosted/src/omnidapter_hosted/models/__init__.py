@@ -2,7 +2,6 @@
 
 from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
-from omnidapter_hosted.models.link_token import HostedLinkToken
 from omnidapter_hosted.models.link_token_owner import HostedLinkTokenOwner
 from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
@@ -21,5 +20,4 @@ __all__ = [
     "HostedConnectionOwner",
     "HostedLinkTokenOwner",
     "HostedProviderConfig",
-    "HostedLinkToken",
 ]
