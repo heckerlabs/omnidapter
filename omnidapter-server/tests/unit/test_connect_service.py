@@ -771,3 +771,113 @@ async def test_default_caldav_validator_retries_on_503(
         },
     )
     assert call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_unspecified_address() -> None:
+    """0.0.0.0 (unspecified address) should be blocked."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "http://0.0.0.0:8008/caldav/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_multicast_address() -> None:
+    """Multicast addresses (224.0.0.0/4) should be blocked."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "http://224.0.0.1/caldav/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_dns_resolving_to_unspecified(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Domain resolving to 0.0.0.0 (unspecified) should be blocked."""
+    import socket as socket_mod
+
+    import httpx
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> None:
+            pass
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+    # Mock DNS to return unspecified address
+    unspecified_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("0.0.0.0", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: unspecified_addrinfo)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://example.com/caldav/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_dns_resolving_to_multicast(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Domain resolving to multicast address should be blocked."""
+    import socket as socket_mod
+
+    import httpx
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> None:
+            pass
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+    # Mock DNS to return multicast address
+    multicast_addrinfo = [(socket_mod.AF_INET, socket_mod.SOCK_STREAM, 0, "", ("224.0.0.1", 0))]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: multicast_addrinfo)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://example.com/caldav/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"

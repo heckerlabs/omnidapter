@@ -239,11 +239,19 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
 
         try:
             addr = ipaddress.ip_address(hostname)
-            if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-                raise ValueError("private address")
+            if (
+                addr.is_private
+                or addr.is_loopback
+                or addr.is_link_local
+                or addr.is_reserved
+                or addr.is_unspecified
+                or addr.is_multicast
+            ):
+                raise ValueError("unsafe address")
         except ValueError as exc:
             if (
-                "private address" in str(exc)
+                "unsafe address" in str(exc)
+                or "private address" in str(exc)
                 or "blocked hostname" in str(exc)
                 or "invalid scheme" in str(exc)
                 or "missing hostname" in str(exc)
@@ -272,6 +280,8 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                         or resolved.is_loopback
                         or resolved.is_link_local
                         or resolved.is_reserved
+                        or resolved.is_unspecified
+                        or resolved.is_multicast
                     ):
                         raise HTTPException(
                             status_code=422,
