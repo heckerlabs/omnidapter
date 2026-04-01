@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from omnidapter_hosted.config import HostedSettings
@@ -18,7 +20,7 @@ pytestmark = pytest.mark.asyncio
 @pytest.fixture
 async def link_token_client(
     db_session: AsyncSession, test_tenant: Tenant, test_user: HostedUser
-) -> AsyncClient:
+) -> AsyncGenerator[AsyncClient, None]:
     """An AsyncClient with get_link_token_context mocked to avoid DB complexity."""
 
     # Create the context we want to "resolve" to

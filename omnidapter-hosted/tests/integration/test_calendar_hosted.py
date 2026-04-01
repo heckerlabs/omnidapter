@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import unittest.mock
 import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,7 +16,9 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-async def api_key_client(db_session: AsyncSession, test_tenant: Tenant) -> AsyncClient:
+async def api_key_client(
+    db_session: AsyncSession, test_tenant: Tenant
+) -> AsyncGenerator[AsyncClient, None]:
     """An AsyncClient authenticated with a valid Hosted API Key (omni_*)."""
     from omnidapter_hosted.config import HostedSettings
     from omnidapter_hosted.main import create_app
