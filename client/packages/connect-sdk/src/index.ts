@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { OmnidapterConnect } from '@omnidapter/connect';
+ * import { OmnidapterConnect } from '@omnidapter/connect-sdk';
  *
  * const connect = new OmnidapterConnect({
  *   baseUrl: 'https://omnidapter.heckerlabs.ai',

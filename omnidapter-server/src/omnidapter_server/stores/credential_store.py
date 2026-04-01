@@ -79,8 +79,6 @@ class DatabaseCredentialStore(CredentialStore):
         if result.scalar_one_or_none() is None:
             raise ConnectionNotFoundError(connection_id)
 
-        await self._session.commit()
-
     async def delete_credentials(self, connection_id: str) -> None:
         conn_uuid = self._parse_connection_uuid(connection_id)
         if conn_uuid is None:
