@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     omnidapter_base_url: str = "http://localhost:8000"
-    omnidapter_env: str = "DEV"
+    omnidapter_env: str = "PROD"
     omnidapter_auth_mode: Literal["required", "disabled"] = "required"
     omnidapter_allowed_origin_domains: str = "*"
 
