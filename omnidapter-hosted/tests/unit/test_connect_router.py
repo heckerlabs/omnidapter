@@ -382,6 +382,10 @@ async def test_create_connection_reconnect_non_oauth_success() -> None:
         ),
         patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
         patch(
+            "omnidapter_hosted.routers.connect._load_tenant_connection",
+            new=AsyncMock(return_value=conn),
+        ),
+        patch(
             "omnidapter_hosted.routers.connect.update_credential_connection",
             new=AsyncMock(return_value=conn),
         ),

@@ -6,9 +6,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
 from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.models.user import HostedUser
+from omnidapter_server.models.connection import Connection, ConnectionStatus
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -184,3 +186,34 @@ async def test_revoke_connection(
     response = await dashboard_client.delete(f"/v1/dashboard/connections/{conn_id}")
     # It might return 404 if not found in server DB, which is also coverage!
     assert response.status_code in (204, 404)
+
+
+async def test_revoke_connection_cross_tenant(
+    dashboard_client: AsyncClient,
+    second_dashboard_client: AsyncClient,
+    db_session: AsyncSession,
+    test_tenant: Tenant,
+):
+    """Verify that Tenant B's dashboard cannot revoke Tenant A's connection."""
+    # Create a connection for Tenant A
+    conn_a = Connection(
+        id=uuid.uuid4(), provider_key="google", external_id="user_a", status=ConnectionStatus.ACTIVE
+    )
+    db_session.add(conn_a)
+    await db_session.flush()
+
+    # Create ownership record for Tenant A
+    owner_a = HostedConnectionOwner(
+        id=uuid.uuid4(), tenant_id=test_tenant.id, connection_id=conn_a.id
+    )
+    db_session.add(owner_a)
+    await db_session.flush()
+
+    # Tenant B's dashboard tries to revoke Tenant A's connection → 404
+    response = await second_dashboard_client.delete(f"/v1/dashboard/connections/{conn_a.id}")
+    assert response.status_code == 404
+
+    # Verify connection still active
+    db_session.expire(conn_a)
+    await db_session.refresh(conn_a)
+    assert conn_a.status == ConnectionStatus.ACTIVE

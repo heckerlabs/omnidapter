@@ -22,16 +22,36 @@ export function CredentialFormView({
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((f) => [f.key, ""]))
   );
+  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
+
+  // Merge local validation errors with server-side field errors (server takes priority)
+  const mergedErrors = { ...localErrors, ...fieldErrors };
 
   const handleChange = (key: string, value: string) => {
     setValues((v) => ({ ...v, [key]: value }));
+    // Clear local error for this field once user starts typing
+    if (localErrors[key]) {
+      setLocalErrors((e) => {
+        const r = { ...e };
+        delete r[key];
+        return r;
+      });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Client-side required validation
     const missing = fields.filter((f) => f.required && !values[f.key]?.trim());
-    if (missing.length > 0) return; // HTML5 required handles this
+    if (missing.length > 0) {
+      const errors: Record<string, string> = {};
+      missing.forEach((f) => {
+        errors[f.key] = "Required";
+      });
+      setLocalErrors(errors);
+      return;
+    }
+    setLocalErrors({});
     onSubmit(values);
   };
 
@@ -55,7 +75,10 @@ export function CredentialFormView({
                 value={values[field.key]}
                 onChange={(e) => handleChange(field.key, e.target.value)}
                 required={field.required}
-                style={inputStyle}
+                style={{
+                  ...inputStyle,
+                  borderColor: mergedErrors[field.key] ? "#ef4444" : "#d1d5db",
+                }}
               >
                 <option value="">Select…</option>
                 {(field.options ?? []).map((opt) => (
@@ -74,14 +97,14 @@ export function CredentialFormView({
                 required={field.required}
                 style={{
                   ...inputStyle,
-                  borderColor: fieldErrors[field.key] ? "#ef4444" : "#d1d5db",
+                  borderColor: mergedErrors[field.key] ? "#ef4444" : "#d1d5db",
                 }}
               />
             )}
-            {fieldErrors[field.key] && (
-              <p style={errorText}>{fieldErrors[field.key]}</p>
+            {mergedErrors[field.key] && (
+              <p style={errorText}>{mergedErrors[field.key]}</p>
             )}
-            {field.help_text && !fieldErrors[field.key] && (
+            {field.help_text && !mergedErrors[field.key] && (
               <p style={helpText}>{field.help_text}</p>
             )}
           </div>

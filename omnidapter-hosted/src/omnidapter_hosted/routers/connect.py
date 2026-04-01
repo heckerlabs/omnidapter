@@ -299,6 +299,8 @@ async def create_connection(
                         "message": "Credentials are required for non-OAuth reconnect",
                     },
                 )
+            # Verify tenant owns this connection before updating credentials
+            await _load_tenant_connection(str(reconnect_connection_id), session, tenant_id)
             conn = await update_credential_connection(
                 connection_id=reconnect_connection_id,
                 credentials=body.credentials,

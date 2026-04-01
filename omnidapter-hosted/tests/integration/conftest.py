@@ -229,3 +229,48 @@ async def dashboard_client(
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def second_dashboard_client(
+    db_session: AsyncSession, postgres_url: str, redis_url: str, second_tenant: Tenant
+) -> AsyncGenerator[AsyncClient, None]:
+    """Provide an HTTP client for testing dashboard endpoints as a user in the second tenant."""
+    # Create a user for the second tenant
+    second_user = HostedUser(
+        id=uuid.uuid4(),
+        email=f"user-{uuid.uuid4().hex[:8]}@example.com",
+        name="Second Tenant User",
+    )
+    db_session.add(second_user)
+    await db_session.flush()
+
+    # Create a membership for this user in the second tenant
+    second_membership = HostedMembership(
+        id=uuid.uuid4(),
+        tenant_id=second_tenant.id,
+        user_id=second_user.id,
+        role=MemberRole.OWNER,
+    )
+    db_session.add(second_membership)
+    await db_session.flush()
+
+    # Issue JWT for this user/tenant
+    async def _get_session_override():
+        yield db_session
+
+    test_settings = HostedSettings()
+    test_settings.omnidapter_database_url = postgres_url
+    test_settings.hosted_rate_limit_redis_url = redis_url
+    test_settings.jwt_secret = "a" * 32
+
+    app = create_app(settings=test_settings)
+    app.dependency_overrides[get_session] = _get_session_override
+
+    token = issue_jwt(second_user.id, second_tenant.id, MemberRole.OWNER, test_settings)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
+        ac.headers["Authorization"] = f"Bearer {token}"
+        yield ac
+
+    app.dependency_overrides.clear()
