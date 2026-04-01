@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 import re
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 # Import server's auth dependency so we can override it
 from omnidapter_server.config import get_settings as _server_get_settings
 from omnidapter_server.dependencies import get_auth_context as _server_get_auth_context
+from omnidapter_server.errors import make_unhandled_exception_handler
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
@@ -63,17 +63,6 @@ async def health_endpoint():
     return {"status": "ok", "service": "omnidapter-hosted"}
 
 
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    request_id = getattr(request.state, "request_id", "req_unknown")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": {"code": "internal_error", "message": "An unexpected error occurred"},
-            "meta": {"request_id": request_id},
-        },
-    )
-
-
 # For backward compatibility in tests
 health = health_endpoint
 
@@ -90,6 +79,9 @@ def create_app(settings: HostedSettings | None = None) -> FastAPI:
 
     if settings is None:
         settings = get_hosted_settings()
+
+    # Store environment for error handlers
+    app.state.omnidapter_env = settings.omnidapter_env
 
     # Override server's auth with hosted auth (resolves tenant + rate limits)
     app.dependency_overrides[_server_get_auth_context] = get_hosted_auth_context
@@ -140,7 +132,7 @@ def create_app(settings: HostedSettings | None = None) -> FastAPI:
     app.include_router(oauth.router)
 
     app.get("/health")(health_endpoint)
-    app.exception_handler(Exception)(unhandled_exception_handler)
+    app.exception_handler(Exception)(make_unhandled_exception_handler(settings.omnidapter_env))
 
     return app
 

@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from omnidapter_server.config import Settings, get_settings
+from omnidapter_server.errors import make_unhandled_exception_handler
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
 from omnidapter_server.routers import (
@@ -27,17 +27,6 @@ logger = logging.getLogger(__name__)
 
 async def health_endpoint() -> dict[str, str]:
     return {"status": "ok"}
-
-
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    request_id = getattr(request.state, "request_id", "req_unknown")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": {"code": "internal_error", "message": "An unexpected error occurred"},
-            "meta": {"request_id": request_id},
-        },
-    )
 
 
 async def _sync_managed_api_key() -> None:
@@ -121,6 +110,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # Store environment for error handlers
+    app.state.omnidapter_env = settings.omnidapter_env
+
     # Middleware
     app.add_middleware(RequestIdMiddleware)
 
@@ -150,7 +142,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(oauth.router)  # /oauth is not under /v1
 
     app.get("/health")(health_endpoint)
-    app.exception_handler(Exception)(unhandled_exception_handler)
+    app.exception_handler(Exception)(make_unhandled_exception_handler(settings.omnidapter_env))
 
     return app
 

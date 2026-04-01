@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from omnidapter_server.config import Settings
+from pydantic import model_validator
 
 
 class HostedSettings(Settings):
@@ -32,6 +33,13 @@ class HostedSettings(Settings):
 
     # Free tier call limit per tenant per month (calendar API calls)
     hosted_free_tier_calls: int = 1000
+
+    @model_validator(mode="after")
+    def _require_jwt_secret_in_prod(self) -> HostedSettings:
+        """Require JWT_SECRET to be set in production to prevent session invalidation on restart."""
+        if self.omnidapter_env == "PROD" and not self.jwt_secret.strip():
+            raise ValueError("JWT_SECRET is required when OMNIDAPTER_ENV=PROD")
+        return self
 
 
 _settings: HostedSettings | None = None

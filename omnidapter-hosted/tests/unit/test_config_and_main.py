@@ -14,7 +14,6 @@ from omnidapter_hosted.main import (
     create_app,
     health,
     run,
-    unhandled_exception_handler,
 )
 from omnidapter_server.config import Settings as ServerSettings
 from omnidapter_server.config import get_settings as server_get_settings
@@ -80,10 +79,13 @@ async def test_hosted_health_endpoint() -> None:
 
 @pytest.mark.asyncio
 async def test_unhandled_exception_handler_formats_error() -> None:
+    from omnidapter_server.errors import make_unhandled_exception_handler
+
+    handler = make_unhandled_exception_handler("PROD")
     request = Request({"type": "http", "method": "GET", "path": "/", "headers": []})
     request.state.request_id = "req_123"
 
-    response = await unhandled_exception_handler(request, RuntimeError("boom"))
+    response = await handler(request, RuntimeError("boom"))
     body = json.loads(bytes(response.body))
 
     assert response.status_code == 500
@@ -106,3 +108,39 @@ def test_run_invokes_uvicorn() -> None:
         port=8000,
         reload=True,
     )
+
+
+def test_hosted_settings_require_jwt_secret_in_prod(monkeypatch: pytest.MonkeyPatch) -> None:
+    """JWT_SECRET must be set in production to prevent session invalidation on restart."""
+    from pydantic import ValidationError
+
+    monkeypatch.setenv("OMNIDAPTER_ENV", "PROD")
+    monkeypatch.setenv("OMNIDAPTER_ENCRYPTION_KEY", "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdA==")
+    monkeypatch.setenv("JWT_SECRET", "")
+
+    with pytest.raises(ValidationError, match="JWT_SECRET is required"):
+        hosted_config.HostedSettings()
+
+
+def test_hosted_settings_jwt_secret_not_required_in_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+    """JWT_SECRET is optional in DEV environment."""
+    monkeypatch.setenv("OMNIDAPTER_ENV", "DEV")
+    monkeypatch.setenv("JWT_SECRET", "")
+
+    # Should not raise
+    settings = hosted_config.HostedSettings()
+    assert settings.omnidapter_env == "DEV"
+    assert settings.jwt_secret == ""
+
+
+def test_hosted_settings_jwt_secret_not_required_in_local(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """JWT_SECRET is optional in LOCAL environment."""
+    monkeypatch.setenv("OMNIDAPTER_ENV", "LOCAL")
+    monkeypatch.setenv("JWT_SECRET", "")
+
+    # Should not raise
+    settings = hosted_config.HostedSettings()
+    assert settings.omnidapter_env == "LOCAL"
+    assert settings.jwt_secret == ""

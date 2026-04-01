@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import secrets
 import uuid
 
 from fastapi import HTTPException
@@ -16,24 +15,29 @@ from omnidapter_hosted.models.user import HostedUser
 
 logger = logging.getLogger(__name__)
 
-# Module-level fallback — replaced by JWT_SECRET env var in production.
-# Rotates on restart when env var is not set.
-_fallback_jwt_secret: str | None = None
+# Hardcoded fallback secret for development — keeps sessions valid across restarts.
+# MUST be overridden in production via JWT_SECRET environment variable.
+_DEV_FALLBACK_JWT_SECRET = "dev-key-do-not-use-in-production-keep-sessions-alive-12345"
 
 
 def get_jwt_secret(settings: object) -> str:
-    """Return the JWT signing secret, generating a fallback if not configured."""
-    global _fallback_jwt_secret
-    jwt_secret = getattr(settings, "jwt_secret", "")
+    """Return the JWT signing secret.
+
+    In production, JWT_SECRET must be explicitly set (enforced by HostedSettings validator).
+    In development, falls back to a hardcoded secret so sessions persist across server restarts.
+    """
+    jwt_secret = getattr(settings, "jwt_secret", "").strip()
     if jwt_secret:
         return jwt_secret
-    if _fallback_jwt_secret is None:
-        _fallback_jwt_secret = secrets.token_hex(32)
-        logger.warning(
-            "JWT_SECRET is not configured — using a randomly generated secret. "
-            "Dashboard sessions will be invalidated on restart. Set JWT_SECRET in production."
-        )
-    return _fallback_jwt_secret
+
+    # Check environment — DEV/LOCAL use hardcoded fallback, PROD should not reach here
+    env = getattr(settings, "omnidapter_env", "PROD")
+    if env in ("DEV", "LOCAL"):
+        logger.debug("Using hardcoded JWT secret for development — sessions survive restarts")
+        return _DEV_FALLBACK_JWT_SECRET
+
+    # This should not happen in PROD due to config validation, but fail explicitly
+    raise RuntimeError("JWT_SECRET is required in production")
 
 
 def issue_jwt(user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, settings: object) -> str:

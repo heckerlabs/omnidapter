@@ -546,3 +546,88 @@ async def test_default_caldav_validator_allows_public_hostname(
             "password": "p",
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_localhost() -> None:
+    """localhost should be blocked by hostname blocklist."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "http://localhost:8008/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_internal_suffix() -> None:
+    """.internal suffix should be blocked."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://my-server.internal/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_corp_suffix() -> None:
+    """.corp suffix should be blocked."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://intranet.corp/caldav/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_blocks_ipv6_scope_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """IPv6 addresses with scope IDs should be rejected, not silently skipped."""
+    import socket as socket_mod
+
+    # Return an IPv6 address with a scope ID in the tuple
+    # Note: socket.getaddrinfo returns tuples of (family, type, proto, canonname, sockaddr)
+    # where sockaddr for IPv6 is (host, port, flowinfo, scope_id)
+    # We'll simulate a scenario where the ip_str itself looks like it has a scope ID
+    ipv6_with_scope_infos = [
+        (socket_mod.AF_INET6, socket_mod.SOCK_STREAM, 0, "", ("fe80::1%eth0", 0))
+    ]
+    monkeypatch.setattr("socket.getaddrinfo", lambda *a, **kw: ipv6_with_scope_infos)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator(
+            "caldav",
+            {
+                "server_url": "https://link-local.example.com/",
+                "username": "u",
+                "password": "p",
+            },
+        )
+
+    assert exc_info.value.status_code == 422
+    detail = cast(dict[str, Any], exc_info.value.detail)
+    assert detail["code"] == "invalid_credentials"

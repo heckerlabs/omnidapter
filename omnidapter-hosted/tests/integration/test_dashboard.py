@@ -25,7 +25,9 @@ async def test_get_profile(dashboard_client: AsyncClient, test_user: HostedUser)
     assert data["name"] == test_user.name
 
 
-async def test_update_profile(dashboard_client: AsyncClient, db_session: AsyncSession, test_user: HostedUser):
+async def test_update_profile(
+    dashboard_client: AsyncClient, db_session: AsyncSession, test_user: HostedUser
+):
     """Test PATCH /v1/dashboard/profile."""
     new_name = "Updated Name"
     response = await dashboard_client.patch("/v1/dashboard/profile", json={"name": new_name})
@@ -47,7 +49,9 @@ async def test_get_tenant(dashboard_client: AsyncClient, test_tenant: Tenant):
     assert data["name"] == test_tenant.name
 
 
-async def test_patch_tenant_as_owner(dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant):
+async def test_patch_tenant_as_owner(
+    dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant
+):
     """Test PATCH /v1/dashboard/tenant as an owner (should succeed)."""
     new_name = "New Tenant Name"
     response = await dashboard_client.patch("/v1/dashboard/tenant", json={"name": new_name})
@@ -70,7 +74,9 @@ async def test_get_members(dashboard_client: AsyncClient, test_user: HostedUser)
     assert test_user.email in emails
 
 
-async def test_api_key_lifecycle(dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant):
+async def test_api_key_lifecycle(
+    dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant
+):
     """Test creating, listing, and revoking API keys via the dashboard."""
     # 1. Create
     response = await dashboard_client.post("/v1/dashboard/api-keys", json={"name": "New Key"})
@@ -108,7 +114,9 @@ async def test_provider_configs_lifecycle(
         "client_secret": "test_secret",
         "scopes": ["user.read", "calendar.read"],
     }
-    response = await dashboard_client.put(f"/v1/dashboard/provider-configs/{provider_key}", json=payload)
+    response = await dashboard_client.put(
+        f"/v1/dashboard/provider-configs/{provider_key}", json=payload
+    )
     assert response.status_code == 200
     assert response.json()["data"]["provider_key"] == provider_key
 
@@ -136,14 +144,18 @@ async def test_get_usage(dashboard_client: AsyncClient):
     assert "plan" in data
 
 
-async def test_delete_member(dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant):
+async def test_delete_member(
+    dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant
+):
     """Test DELETE /v1/dashboard/members/{user_id}."""
     # Create another user to delete
     other_user = HostedUser(id=uuid.uuid4(), email="other@example.com", name="Other")
     db_session.add(other_user)
     await db_session.flush()
-    
-    membership = HostedMembership(id=uuid.uuid4(), tenant_id=test_tenant.id, user_id=other_user.id, role=MemberRole.MEMBER)
+
+    membership = HostedMembership(
+        id=uuid.uuid4(), tenant_id=test_tenant.id, user_id=other_user.id, role=MemberRole.MEMBER
+    )
     db_session.add(membership)
     await db_session.flush()
 
@@ -157,15 +169,17 @@ async def test_delete_member(dashboard_client: AsyncClient, db_session: AsyncSes
     assert result.scalar_one_or_none() is None
 
 
-async def test_revoke_connection(dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant):
+async def test_revoke_connection(
+    dashboard_client: AsyncClient, db_session: AsyncSession, test_tenant: Tenant
+):
     """Test DELETE /v1/dashboard/connections/{id}."""
     # Create a connection owner row (the connection itself is in the server's DB)
     # But dashboard.py calls revoke_connection_flow which expects a connection_id.
     # In integration tests, we can just point to a random UUID if we mock the server service,
     # or just create a dummy row if needed.
-    
+
     conn_id = uuid.uuid4()
-    # This might fail if the service does a hard check in the server DB, 
+    # This might fail if the service does a hard check in the server DB,
     # but let's see if we can at least reach the service.
     response = await dashboard_client.delete(f"/v1/dashboard/connections/{conn_id}")
     # It might return 404 if not found in server DB, which is also coverage!

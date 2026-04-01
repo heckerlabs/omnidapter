@@ -27,6 +27,7 @@ async def test_auth_me(dashboard_client: AsyncClient, test_user: HostedUser, tes
 
 async def test_auth_login_redirect(db_session: AsyncSession):
     """Test GET /v1/auth/login returns a WorkOS URL."""
+
     async def _get_session_override():
         yield db_session
 
@@ -40,32 +41,31 @@ async def test_auth_login_redirect(db_session: AsyncSession):
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
         response = await ac.get("/v1/auth/login")
-    
+
     assert response.status_code == 200
     assert "url" in response.json()
     assert "workos.com" in response.json()["url"]
 
 
 @unittest.mock.patch("omnidapter_hosted.routers.auth.AsyncWorkOSClient")
-async def test_auth_callback_provisioning(
-    mock_workos_class, 
-    db_session: AsyncSession
-):
+async def test_auth_callback_provisioning(mock_workos_class, db_session: AsyncSession):
     """Test GET /v1/auth/callback provisions a new user/tenant."""
     mock_workos = mock_workos_class.return_value
-    
+
     # Mock WorkOS user response
     mock_user = unittest.mock.MagicMock()
     mock_user.id = "workos_user_123"
     mock_user.email = "newuser@example.com"
     mock_user.first_name = "New"
     mock_user.last_name = "User"
-    
+
     mock_auth_response = unittest.mock.MagicMock()
     mock_auth_response.user = mock_user
-    
+
     # Use AsyncMock for the async method
-    mock_workos.user_management.authenticate_with_code = unittest.mock.AsyncMock(return_value=mock_auth_response)
+    mock_workos.user_management.authenticate_with_code = unittest.mock.AsyncMock(
+        return_value=mock_auth_response
+    )
 
     async def _get_session_override():
         yield db_session
@@ -80,19 +80,19 @@ async def test_auth_callback_provisioning(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
         response = await ac.get("/v1/auth/callback?code=test_code")
-        
+
     assert response.status_code == 200
     data = response.json()["data"]
     assert "access_token" in data
     assert data["user"]["email"] == "newuser@example.com"
-    
+
     # Verify provisioning in DB
     result = await db_session.execute(
         select(HostedUser).where(HostedUser.email == "newuser@example.com")
     )
     user = result.scalar_one()
     assert user.workos_user_id == "workos_user_123"
-    
+
     # Verify tenant/membership
     result = await db_session.execute(
         select(HostedMembership).where(HostedMembership.user_id == user.id)
@@ -103,15 +103,15 @@ async def test_auth_callback_provisioning(
 
 @unittest.mock.patch("omnidapter_hosted.routers.auth.AsyncWorkOSClient")
 async def test_auth_callback_existing_user(
-    mock_workos_class, 
+    mock_workos_class,
     db_session: AsyncSession,
     test_user: HostedUser,
     test_tenant: Tenant,
-    test_membership: HostedMembership
+    test_membership: HostedMembership,
 ):
     """Test GET /v1/auth/callback with an existing user (re-login)."""
     mock_workos = mock_workos_class.return_value
-    
+
     # Update user with workos_id for lookup
     test_user.workos_user_id = "existing_workos_id"
     await db_session.flush()
@@ -121,10 +121,12 @@ async def test_auth_callback_existing_user(
     mock_user.email = test_user.email
     mock_user.first_name = "Test"
     mock_user.last_name = "User"
-    
+
     mock_auth_response = unittest.mock.MagicMock()
     mock_auth_response.user = mock_user
-    mock_workos.user_management.authenticate_with_code = unittest.mock.AsyncMock(return_value=mock_auth_response)
+    mock_workos.user_management.authenticate_with_code = unittest.mock.AsyncMock(
+        return_value=mock_auth_response
+    )
 
     async def _get_session_override():
         yield db_session
@@ -139,7 +141,7 @@ async def test_auth_callback_existing_user(
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as ac:
         response = await ac.get("/v1/auth/callback?code=test_code")
-        
+
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["user"]["id"] == str(test_user.id)

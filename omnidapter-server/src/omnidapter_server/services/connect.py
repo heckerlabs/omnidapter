@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import ipaddress
+import socket
+import urllib.parse
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
 from fastapi import HTTPException
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.core.metadata import AuthKind, ConnectionConfigField, ProviderMetadata
@@ -18,6 +24,18 @@ from omnidapter_server.config import Settings
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
+
+# CalDAV SSRF prevention: well-known private hostnames that must always be blocked
+_BLOCKED_HOSTNAMES = frozenset(
+    {
+        "localhost",
+        "localhost.localdomain",
+        "ip6-localhost",
+        "ip6-loopback",
+        "broadcasthost",
+    }
+)
+_BLOCKED_SUFFIXES = (".local", ".localhost", ".internal", ".corp", ".home", ".lan", ".intranet")
 
 # ---------------------------------------------------------------------------
 # Credential schema building
@@ -198,26 +216,6 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
             detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
         )
 
-    import asyncio
-    import base64
-    import ipaddress
-    import socket
-    import urllib.parse
-
-    import httpx
-
-    # Hostnames that must always be blocked regardless of IP resolution
-    _BLOCKED_HOSTNAMES = frozenset(
-        {
-            "localhost",
-            "localhost.localdomain",
-            "ip6-localhost",
-            "ip6-loopback",
-            "broadcasthost",
-        }
-    )
-    _BLOCKED_SUFFIXES = (".local", ".localhost", ".internal", ".corp", ".home", ".lan", ".intranet")
-
     # Validate URL to prevent SSRF
     try:
         parsed = urllib.parse.urlparse(server_url)
@@ -275,7 +273,11 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                             detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                         )
                 except ValueError:
-                    pass  # IPv6 addresses with scope IDs don't parse — skip
+                    # Reject invalid IP addresses (e.g., IPv6 with scope IDs)
+                    raise HTTPException(
+                        status_code=422,
+                        detail={"code": "invalid_credentials", "message": "Invalid server URL"},
+                    ) from None
     except HTTPException:
         raise
     except Exception as exc:
