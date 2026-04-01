@@ -24,7 +24,7 @@ class CreateLinkTokenRequest(BaseModel):
     allowed_providers: list[str] | None = None
     redirect_uri: str | None = None
     # min 60s, max 24h; defaults to settings.link_token_ttl_seconds if omitted
-    ttl_seconds: int | None = Field(default=None, gt=0, le=86400)
+    ttl_seconds: int | None = Field(default=None, ge=60, le=86400)
     # Reconnect: lock this token to an existing connection
     connection_id: uuid.UUID | None = None
 
