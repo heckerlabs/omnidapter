@@ -129,3 +129,33 @@ async def test_list_connections_returns_pagination_shape() -> None:
     assert response["meta"]["request_id"] == "req_1"
     assert response["meta"]["pagination"]["total"] == 1
     assert response["data"][0].id == str(conn.id)
+
+
+@pytest.mark.asyncio
+async def test_delete_connection_removes_owner_row() -> None:
+    """When a connection is deleted, the hosted_connection_owners row should be cleaned up."""
+    from omnidapter_hosted.routers.connections import delete_connection
+
+    auth = _auth()
+    conn = Connection(
+        id=uuid.uuid4(),
+        provider_key="google",
+        status=ConnectionStatus.ACTIVE,
+        created_at=_now(),
+        updated_at=_now(),
+    )
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=_ScalarResult(one=conn))
+    session.commit = AsyncMock()
+
+    await delete_connection(
+        connection_id=str(conn.id),
+        auth=auth,
+        session=session,
+    )
+
+    # Verify that session.execute was called at least twice:
+    # once for _load_connection (SELECT) and once for the DELETE
+    assert session.execute.await_count >= 2
+    # Verify commit was called
+    session.commit.assert_awaited()

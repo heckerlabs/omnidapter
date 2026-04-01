@@ -25,7 +25,7 @@ from omnidapter_server.services.connection_flows import (
 from omnidapter_server.services.connection_health import transition_to_revoked
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
@@ -265,6 +265,11 @@ async def delete_connection(
 ):
     conn = await _load_connection(connection_id, session, auth.tenant_id)
     await transition_to_revoked(conn.id, session, reason="Deleted by API")
+    # Clean up the hosted connection owner record
+    await session.execute(
+        delete(HostedConnectionOwner).where(HostedConnectionOwner.connection_id == conn.id)
+    )
+    await session.commit()
 
 
 @router.post("/{connection_id}/reauthorize", status_code=200)
