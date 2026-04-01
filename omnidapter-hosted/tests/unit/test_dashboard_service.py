@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -38,7 +39,7 @@ async def test_remove_member_owner_forbidden():
             session=mock_session,
         )
     assert exc.value.status_code == 400
-    assert exc.value.detail["code"] == "cannot_remove_owner"
+    assert cast(dict[str, Any], exc.value.detail)["code"] == "cannot_remove_owner"
 
 
 @pytest.mark.asyncio
@@ -62,7 +63,7 @@ async def test_remove_member_self_forbidden():
             session=mock_session,
         )
     assert exc.value.status_code == 400
-    assert exc.value.detail["code"] == "cannot_remove_self"
+    assert cast(dict[str, Any], exc.value.detail)["code"] == "cannot_remove_self"
 
 
 @pytest.mark.asyncio
@@ -81,7 +82,7 @@ async def test_revoke_connection_not_found():
             session=mock_session,
         )
     assert exc.value.status_code == 404
-    assert exc.value.detail["code"] == "not_found"
+    assert cast(dict[str, Any], exc.value.detail)["code"] == "not_found"
 
 
 @pytest.mark.asyncio

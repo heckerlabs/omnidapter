@@ -225,7 +225,7 @@ async def test_get_dashboard_auth_context_expired_token() -> None:
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail["code"] == "token_expired"
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "token_expired"
 
 
 @pytest.mark.asyncio
@@ -242,7 +242,7 @@ async def test_get_dashboard_auth_context_invalid_token() -> None:
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail["code"] == "invalid_token"
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_token"
 
 
 @pytest.mark.asyncio
@@ -267,4 +267,4 @@ async def test_get_dashboard_auth_context_user_not_found() -> None:
         )
 
     assert exc_info.value.status_code == 401
-    assert exc_info.value.detail["code"] == "user_not_found"
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "user_not_found"
