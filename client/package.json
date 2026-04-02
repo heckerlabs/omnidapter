@@ -8,6 +8,6 @@
   "scripts": {
     "build": "npm run build -w @omnidapter/connect-sdk && npm run build -w @omnidapter/connect-ui",
     "dev": "npm run dev -w @omnidapter/connect-ui",
-    "test": "npm run test -w @omnidapter/connect-sdk"
+    "test": "npm run test -w @omnidapter/connect-sdk && npm run test -w @omnidapter/connect-ui"
   }
 }

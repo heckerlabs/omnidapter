@@ -10,5 +10,10 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: { "/connect": { target, changeOrigin: true } },
     },
+    test: {
+      environment: "jsdom",
+      globals: true,
+      setupFiles: ["./src/test/setup.ts"],
+    },
   };
 });

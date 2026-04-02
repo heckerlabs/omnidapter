@@ -114,10 +114,11 @@ describe("open() — popup opened", () => {
     )?.[1] as EventListener;
     expect(listener).toBeDefined();
 
-    // Simulate postMessage from the correct origin
+    // Simulate postMessage from the correct origin and source (the popup window)
     listener(
       new MessageEvent("message", {
         origin: "https://omnidapter.heckerlabs.ai",
+        source: mockPopup as unknown as Window,
         data: {
           type: "omnidapter:success",
           connectionId: "conn_123",
@@ -160,6 +161,7 @@ describe("open() — popup opened", () => {
     listener(
       new MessageEvent("message", {
         origin: "https://omnidapter.heckerlabs.ai",
+        source: mockPopup as unknown as Window,
         data: { type: "omnidapter:error", code: "user_denied", message: "The user denied access." },
       })
     );
@@ -200,6 +202,7 @@ describe("open() — popup opened", () => {
     listener(
       new MessageEvent("message", {
         origin: "https://omnidapter.heckerlabs.ai",
+        source: mockPopup as unknown as Window,
         data: { type: "omnidapter:success", connectionId: "conn_abc", provider: "google" },
       })
     );
