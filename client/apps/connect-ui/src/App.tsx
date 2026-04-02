@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from "react";
-import { listProviders, createConnection } from "./api";
+import { createSession, listProviders, createConnection } from "./api";
 import { LoadingView } from "./views/Loading";
 import { ProviderSelectionView } from "./views/ProviderSelection";
 import { OAuthInitView } from "./views/OAuthInit";
@@ -9,11 +9,13 @@ import { ErrorView } from "./views/Error";
 import type { AppState, Provider } from "./types";
 
 // ---------------------------------------------------------------------------
-// Token extraction — the SPA receives the link token via URL parameter on
-// first load, then holds it in memory only.
+// URL parameter extraction helpers
 // ---------------------------------------------------------------------------
 
-function extractToken(): string | null {
+// The bootstrap lt_ token arrives here only to be immediately exchanged.
+// After exchange it is removed from the URL and the cs_ session token lives
+// in memory (+ sessionStorage for OAuth round-trip survival) only.
+function extractBootstrapToken(): string | null {
   const params = new URLSearchParams(window.location.search);
   return params.get("token");
 }
@@ -70,6 +72,7 @@ function isPopup(): boolean {
 // ---------------------------------------------------------------------------
 
 type Action =
+  | { type: "SESSION_READY"; token: string }
   | { type: "PROVIDERS_LOADED"; providers: Provider[] }
   | { type: "PROVIDERS_EMPTY" }
   | { type: "LOAD_ERROR"; code: string; message: string }
@@ -84,6 +87,11 @@ type Action =
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+    case "SESSION_READY":
+      // Bootstrap token has been exchanged; store session token and proceed to
+      // load providers (the loading view useEffect triggers on token change).
+      return { ...state, token: action.token };
+
     case "PROVIDERS_LOADED":
       if (action.providers.length === 1) {
         const p = action.providers[0];
@@ -178,23 +186,33 @@ const initialState: AppState = {
 // App
 // ---------------------------------------------------------------------------
 
+const _SESSION_STORAGE_KEY = "omnidapter_session";
+
 export function App() {
   const [state, dispatch] = useReducer(reducer, {
     ...initialState,
-    token: extractToken(),
+    // token starts null; the mount effect either restores from sessionStorage
+    // (OAuth return) or exchanges the bootstrap token for a session token.
+    token: null,
     openerOrigin: extractOpenerOrigin(),
     redirectUri: extractRedirectUri(),
   });
 
   const popup = isPopup();
 
-  // On mount: check for OAuth return params, else load providers
+  // On mount: handle OAuth return or exchange the bootstrap token.
   useEffect(() => {
     const { connectionId, errorCode, errorMessage } = extractOAuthReturn();
 
+    // --- OAuth return path ---
     if (connectionId && !errorCode) {
       const savedProviderKey = sessionStorage.getItem("omnidapter_provider_key") ?? "";
       sessionStorage.removeItem("omnidapter_provider_key");
+      // Session token was stored before the OAuth redirect; restore it now.
+      const savedSession = sessionStorage.getItem(_SESSION_STORAGE_KEY);
+      if (savedSession) {
+        dispatch({ type: "SESSION_READY", token: savedSession });
+      }
       dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey });
       return;
     }
@@ -208,7 +226,9 @@ export function App() {
       return;
     }
 
-    if (!state.token) {
+    // --- Fresh load path: exchange the bootstrap lt_ token ---
+    const bootstrapToken = extractBootstrapToken();
+    if (!bootstrapToken) {
       dispatch({
         type: "LOAD_ERROR",
         code: "missing_token",
@@ -216,6 +236,33 @@ export function App() {
       });
       return;
     }
+
+    // Remove the bootstrap token from the URL immediately so it never sits in
+    // browser history or gets captured by referrer headers.
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("token");
+    window.history.replaceState({}, "", cleanUrl.toString());
+
+    createSession(bootstrapToken)
+      .then((sessionToken) => {
+        // Hold the session token in sessionStorage so it survives the OAuth
+        // redirect round-trip (page navigates away and back).
+        sessionStorage.setItem(_SESSION_STORAGE_KEY, sessionToken);
+        dispatch({ type: "SESSION_READY", token: sessionToken });
+      })
+      .catch((err: { code?: string; message?: string }) => {
+        dispatch({
+          type: "LOAD_ERROR",
+          code: err.code ?? "session_error",
+          message: err.message ?? "Failed to start session.",
+        });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Once a session token is available, load providers.
+  useEffect(() => {
+    if (state.view !== "loading" || !state.token) return;
 
     listProviders(state.token)
       .then((providers) => {
@@ -232,17 +279,17 @@ export function App() {
           message: err.message ?? "Failed to load providers.",
         });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state.token, state.view]);
 
   // When entering oauth_init view, trigger the OAuth flow
   useEffect(() => {
     if (state.view !== "oauth_init" || !state.selectedProvider || !state.token) return;
 
+    // The redirect_uri points back to /connect with NO token in the URL.
+    // The session token will be read from sessionStorage on return.
     const redirectUri = new URL(window.location.href);
     redirectUri.search = "";
     redirectUri.hash = "";
-    redirectUri.searchParams.set("token", state.token);
 
     sessionStorage.setItem("omnidapter_provider_key", state.selectedProvider.key);
     if (state.redirectUri) {
@@ -329,6 +376,7 @@ export function App() {
     case "success": {
       const redirectUri = state.redirectUri ?? sessionStorage.getItem("omnidapter_redirect_uri");
       sessionStorage.removeItem("omnidapter_redirect_uri");
+      sessionStorage.removeItem(_SESSION_STORAGE_KEY);
       return (
         <SuccessView
           connectionId={state.connectionId ?? ""}
