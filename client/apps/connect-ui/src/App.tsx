@@ -78,7 +78,7 @@ type Action =
   | { type: "LOAD_ERROR"; code: string; message: string }
   | { type: "SELECT_PROVIDER"; provider: Provider }
   | { type: "OAUTH_REDIRECT_STARTED" }
-  | { type: "OAUTH_RETURN_SUCCESS"; connectionId: string; provider: string }
+  | { type: "OAUTH_RETURN_SUCCESS"; connectionId: string; provider: string; redirectUri: string | null }
   | { type: "OAUTH_RETURN_ERROR"; code: string; message: string }
   | { type: "CREDENTIAL_SUBMIT_START" }
   | { type: "CREDENTIAL_SUBMIT_SUCCESS"; connectionId: string }
@@ -127,7 +127,15 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, view: "oauth_init" };
 
     case "OAUTH_RETURN_SUCCESS":
-      return { ...state, view: "success", connectionId: action.connectionId, oauthProvider: action.provider };
+      return {
+        ...state,
+        view: "success",
+        connectionId: action.connectionId,
+        oauthProvider: action.provider,
+        // Restore the redirect_uri that was saved before the OAuth redirect.
+        // Keep the existing state value if nothing was saved (e.g. popup mode).
+        redirectUri: action.redirectUri ?? state.redirectUri,
+      };
 
     case "OAUTH_RETURN_ERROR":
       return { ...state, view: "error", errorCode: action.code, errorMessage: action.message };
@@ -207,13 +215,15 @@ export function App() {
     // --- OAuth return path ---
     if (connectionId && !errorCode) {
       const savedProviderKey = sessionStorage.getItem("omnidapter_provider_key") ?? "";
+      const savedRedirectUri = sessionStorage.getItem("omnidapter_redirect_uri");
       sessionStorage.removeItem("omnidapter_provider_key");
+      sessionStorage.removeItem("omnidapter_redirect_uri");
       // Session token was stored before the OAuth redirect; restore it now.
       const savedSession = sessionStorage.getItem(_SESSION_STORAGE_KEY);
       if (savedSession) {
         dispatch({ type: "SESSION_READY", token: savedSession });
       }
-      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey });
+      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey, redirectUri: savedRedirectUri });
       return;
     }
 
@@ -374,14 +384,12 @@ export function App() {
       );
 
     case "success": {
-      const redirectUri = state.redirectUri ?? sessionStorage.getItem("omnidapter_redirect_uri");
-      sessionStorage.removeItem("omnidapter_redirect_uri");
       sessionStorage.removeItem(_SESSION_STORAGE_KEY);
       return (
         <SuccessView
           connectionId={state.connectionId ?? ""}
           provider={state.selectedProvider?.key ?? state.oauthProvider ?? ""}
-          redirectUri={redirectUri}
+          redirectUri={state.redirectUri}
           isPopup={popup}
           openerOrigin={state.openerOrigin}
         />

@@ -52,7 +52,9 @@ export async function createSession(bootstrapToken: string): Promise<string> {
   });
   const data = await res.json();
   if (!res.ok) {
-    const err = (data as { error?: { code?: string; message?: string } })?.error ?? {};
+    // FastAPI error format uses `detail`; fall back to `error` for compatibility
+    const detail = data as { detail?: { code?: string; message?: string }; error?: { code?: string; message?: string } };
+    const err = detail?.detail ?? detail?.error ?? {};
     throw { status: res.status, code: err.code ?? "api_error", message: err.message ?? "Unknown error" };
   }
   return (data as { data: { session_token: string } }).data.session_token;
