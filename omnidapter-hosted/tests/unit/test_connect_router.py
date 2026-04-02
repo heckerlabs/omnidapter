@@ -547,3 +547,147 @@ async def test_create_connection_oauth_deactivates_token() -> None:
         )
 
     mock_deactivate.assert_awaited_once_with(link_token_id, session)
+
+
+# ---------------------------------------------------------------------------
+# POST /connect/session (hosted — with tenant ownership pre-flight)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_success() -> None:
+    """Valid bootstrap token belonging to a tenant returns a cs_ session token."""
+    import uuid
+
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = uuid.uuid4()
+    session = AsyncMock()
+
+    # verify_link_token returns the model → tenant ownership check passes →
+    # create_connect_session succeeds
+    owner_mock = MagicMock()
+
+    class _OwnerResult:
+        def scalar_one_or_none(self):
+            return owner_mock
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.create_connect_session",
+            new=AsyncMock(return_value=("cs_hostedsession1234567890123456", fake_lt)),
+        ),
+    ):
+        session.execute = AsyncMock(return_value=_OwnerResult())
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_hosted_1",
+            session=session,
+        )
+
+    assert resp["data"].session_token.startswith("cs_")
+    assert resp["data"].expires_in == 900
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_no_tenant_ownership_returns_401() -> None:
+    """Token not associated with a hosted tenant is rejected."""
+    import uuid
+
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = uuid.uuid4()
+    session = AsyncMock()
+
+    class _EmptyOwner:
+        def scalar_one_or_none(self):
+            return None  # no tenant ownership row
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        session.execute = AsyncMock(return_value=_EmptyOwner())
+        await create_session(
+            body=ConnectSessionRequest(token="lt_orphantoken123456789012345678"),
+            request_id="req_hosted_2",
+            session=session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "session_expired"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_invalid_bootstrap_token_returns_401() -> None:
+    """Invalid/expired bootstrap token is rejected before the exchange."""
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+
+    session = AsyncMock()
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=None),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await create_session(
+            body=ConnectSessionRequest(token="lt_invalid12345678901234567890123"),
+            request_id="req_hosted_3",
+            session=session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "session_expired"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_already_consumed_returns_token_already_used() -> None:
+    """Consumed bootstrap token returns token_already_used."""
+    import uuid
+
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = uuid.uuid4()
+    session = AsyncMock()
+
+    owner_mock = MagicMock()
+
+    class _OwnerResult:
+        def scalar_one_or_none(self):
+            return owner_mock
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.create_connect_session",
+            new=AsyncMock(side_effect=ValueError("token_already_used")),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        session.execute = AsyncMock(return_value=_OwnerResult())
+        await create_session(
+            body=ConnectSessionRequest(token="lt_usedtoken12345678901234567890"),
+            request_id="req_hosted_4",
+            session=session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "token_already_used"  # type: ignore[index]

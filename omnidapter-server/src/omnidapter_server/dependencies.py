@@ -121,8 +121,13 @@ async def get_link_token_context(
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> LinkTokenContext:
-    """Extract and validate a link token (lt_*) from Authorization header."""
-    from omnidapter_server.services.link_tokens import verify_link_token
+    """Validate a cs_* session token from Authorization header and return context.
+
+    Session tokens are issued by ``POST /connect/session`` in exchange for the
+    one-time bootstrap ``lt_*`` token.  Bootstrap tokens are intentionally
+    rejected here — they may only be used at the session exchange endpoint.
+    """
+    from omnidapter_server.services.link_tokens import verify_session_token
 
     if bearer_credentials is None:
         raise HTTPException(
@@ -131,17 +136,17 @@ async def get_link_token_context(
         )
 
     raw_token = bearer_credentials.credentials
-    if not raw_token.startswith("lt_"):
+    if not raw_token.startswith("cs_"):
         raise HTTPException(
             status_code=401,
-            detail={"code": "unauthenticated", "message": "Invalid link token"},
+            detail={"code": "unauthenticated", "message": "Invalid session token"},
         )
 
-    link_token = await verify_link_token(raw_token, session)
+    link_token = await verify_session_token(raw_token, session)
     if link_token is None:
         raise HTTPException(
             status_code=401,
-            detail={"code": "unauthenticated", "message": "Invalid or expired link token"},
+            detail={"code": "session_expired", "message": "Session expired or invalid"},
         )
 
     return LinkTokenContext(

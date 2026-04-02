@@ -1,8 +1,9 @@
 /**
  * Connect UI API client.
  *
- * All requests use the link token stored in memory — never persisted to
- * localStorage or sessionStorage.
+ * The bootstrap lt_ token is exchanged for a short-lived cs_ session token via
+ * createSession() on mount.  All subsequent requests use the session token as
+ * Bearer — it is held in memory only and never put back into any URL.
  */
 
 import type { Provider } from "./types";
@@ -32,6 +33,29 @@ async function request<T>(
   }
 
   return data as T;
+}
+
+/**
+ * Exchange a one-time bootstrap lt_ token for a cs_ session token.
+ *
+ * The bootstrap token is passed in the request body — not as a Bearer header —
+ * so it is never recorded in server access logs.  The session token is returned
+ * and should be held in memory (and sessionStorage for OAuth round-trip survival).
+ *
+ * Throws on invalid/consumed/expired tokens with a typed error object.
+ */
+export async function createSession(bootstrapToken: string): Promise<string> {
+  const res = await fetch("/connect/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: bootstrapToken }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = (data as { error?: { code?: string; message?: string } })?.error ?? {};
+    throw { status: res.status, code: err.code ?? "api_error", message: err.message ?? "Unknown error" };
+  }
+  return (data as { data: { session_token: string } }).data.session_token;
 }
 
 export async function listProviders(token: string): Promise<Provider[]> {

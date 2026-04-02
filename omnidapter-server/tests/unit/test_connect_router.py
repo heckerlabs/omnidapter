@@ -344,3 +344,79 @@ async def test_create_connection_reconnect_oauth() -> None:
         )
 
     assert resp["data"].authorization_url is not None
+
+
+# ---------------------------------------------------------------------------
+# POST /connect/session
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_session_success() -> None:
+    """Valid bootstrap token returns a cs_ session token."""
+    from omnidapter_server.models.link_token import LinkToken
+    from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
+
+    fake_lt = MagicMock(spec=LinkToken)
+    session = AsyncMock()
+
+    with patch(
+        "omnidapter_server.routers.connect.create_connect_session",
+        new=AsyncMock(return_value=("cs_fakesessiontoken12345678901234", fake_lt)),
+    ):
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_sess_1",
+            session=session,
+        )
+
+    assert resp["data"].session_token.startswith("cs_")
+    assert resp["data"].expires_in == 900
+
+
+@pytest.mark.asyncio
+async def test_create_session_invalid_token_returns_401() -> None:
+    """Invalid/expired bootstrap token raises 401 with session_expired."""
+    from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
+
+    session = AsyncMock()
+
+    with (
+        patch(
+            "omnidapter_server.routers.connect.create_connect_session",
+            new=AsyncMock(side_effect=ValueError("invalid_token")),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await create_session(
+            body=ConnectSessionRequest(token="lt_badtoken1234567890123456789"),
+            request_id="req_sess_2",
+            session=session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "session_expired"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_create_session_already_used_token_returns_token_already_used() -> None:
+    """Consumed bootstrap token raises 401 with token_already_used."""
+    from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
+
+    session = AsyncMock()
+
+    with (
+        patch(
+            "omnidapter_server.routers.connect.create_connect_session",
+            new=AsyncMock(side_effect=ValueError("token_already_used")),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await create_session(
+            body=ConnectSessionRequest(token="lt_usedtoken123456789012345678"),
+            request_id="req_sess_3",
+            session=session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.detail["code"] == "token_already_used"  # type: ignore[index]

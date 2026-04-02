@@ -115,3 +115,113 @@ async def deactivate_link_token(token_id: uuid.UUID, session: AsyncSession) -> N
     """Mark a link token as inactive (consumed)."""
     await session.execute(update(LinkToken).where(LinkToken.id == token_id).values(is_active=False))
     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Session token (cs_*) — issued in exchange for a bootstrap lt_ token
+# ---------------------------------------------------------------------------
+
+_SESSION_TOKEN_TTL_SECONDS = 900  # 15 minutes
+
+
+def generate_session_token() -> tuple[str, str, str]:
+    """Generate a connect session token.
+
+    Returns:
+        (raw_token, token_hash, token_prefix)
+
+    The ``cs_`` prefix distinguishes session tokens from bootstrap ``lt_`` tokens
+    so that each can only be used in its designated slot.
+    """
+    alphabet = string.ascii_letters + string.digits
+    random_part = "".join(secrets.choice(alphabet) for _ in range(_RAW_TOKEN_LENGTH))
+    raw_token = f"cs_{random_part}"
+    token_prefix = raw_token[:16]
+    token_hash = bcrypt.hashpw(raw_token.encode(), bcrypt.gensalt()).decode()
+    return raw_token, token_hash, token_prefix
+
+
+async def create_connect_session(
+    raw_bootstrap_token: str,
+    session: AsyncSession,
+) -> tuple[str, LinkToken]:
+    """Exchange a bootstrap lt_ token for a short-lived cs_ session token.
+
+    This is the server-side half of the one-time exchange flow:
+
+    1. Verify the bootstrap token is valid and not yet consumed.
+    2. Mark it as consumed (``consumed_at`` is set — irreversible).
+    3. Generate a fresh ``cs_`` session token.
+    4. Store the session token hash + prefix + expiry on the ``LinkToken`` record.
+    5. Return ``(raw_session_token, link_token)``.
+
+    Raises ``ValueError`` with a descriptive message on any failure so callers
+    can map it to the appropriate HTTP response.
+    """
+    link_token = await verify_link_token(raw_bootstrap_token, session)
+    if link_token is None:
+        raise ValueError("invalid_token")
+
+    if link_token.consumed_at is not None:
+        raise ValueError("token_already_used")
+
+    raw_session, session_hash, session_prefix = generate_session_token()
+    now = datetime.now(timezone.utc)
+    # Session TTL is capped by the remaining link-token lifetime so a session
+    # can never outlive its parent bootstrap token's original intent.
+    remaining = (link_token.expires_at - now).total_seconds()
+    session_ttl = min(_SESSION_TOKEN_TTL_SECONDS, max(0, remaining))
+    session_expires_at = datetime.fromtimestamp(now.timestamp() + session_ttl, tz=timezone.utc)
+
+    await session.execute(
+        update(LinkToken)
+        .where(LinkToken.id == link_token.id)
+        .values(
+            consumed_at=now,
+            session_token_hash=session_hash,
+            session_token_prefix=session_prefix,
+            session_expires_at=session_expires_at,
+        )
+    )
+    await session.commit()
+    await session.refresh(link_token)
+    return raw_session, link_token
+
+
+async def verify_session_token(
+    raw_token: str,
+    session: AsyncSession,
+) -> LinkToken | None:
+    """Verify a cs_ session token and return the parent LinkToken if valid.
+
+    Checks:
+    - ``cs_`` prefix
+    - Prefix lookup against ``session_token_prefix``
+    - bcrypt hash match against ``session_token_hash``
+    - ``session_expires_at`` not in the past
+    - ``is_active`` still True (link token not deactivated by connection creation)
+    """
+    if not raw_token.startswith("cs_"):
+        return None
+
+    prefix = raw_token[:16]
+    result = await session.execute(
+        select(LinkToken)
+        .where(LinkToken.session_token_prefix == prefix)
+        .where(LinkToken.is_active.is_(True))
+    )
+    candidates = result.scalars().all()
+
+    now = datetime.now(timezone.utc)
+    for link_token in candidates:
+        if link_token.session_expires_at is None or link_token.session_expires_at < now:
+            continue
+        if link_token.session_token_hash is None:
+            continue
+        try:
+            if bcrypt.checkpw(raw_token.encode(), link_token.session_token_hash.encode()):
+                return link_token
+        except Exception:
+            continue
+
+    return None

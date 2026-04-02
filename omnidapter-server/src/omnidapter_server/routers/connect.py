@@ -43,6 +43,7 @@ from omnidapter_server.services.connection_flows import (
     create_connection_flow,
     reauthorize_connection_flow,
 )
+from omnidapter_server.services.link_tokens import create_connect_session
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
 
@@ -80,6 +81,67 @@ class ConnectCreateConnectionResponse(BaseModel):
     connection_id: str
     status: str
     authorization_url: str | None
+
+
+class ConnectSessionRequest(BaseModel):
+    """Bootstrap token submitted in the request body — never in the URL."""
+
+    token: str
+
+
+class ConnectSessionResponse(BaseModel):
+    session_token: str
+    expires_in: int
+
+
+# ---------------------------------------------------------------------------
+# POST /connect/session — one-time bootstrap token exchange
+# ---------------------------------------------------------------------------
+
+
+@router.post("/session", status_code=200)
+async def create_session(
+    body: ConnectSessionRequest,
+    request_id: str = Depends(get_request_id),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Exchange a one-time bootstrap link token (lt_*) for a short-lived session token (cs_*).
+
+    The bootstrap token is consumed immediately and permanently on first call —
+    subsequent calls with the same token return ``token_already_used``.  The
+    returned ``cs_`` session token is used as the ``Authorization: Bearer``
+    credential for all other ``/connect/*`` endpoints.
+
+    This endpoint requires **no** Authorization header.  The bootstrap token
+    is passed in the request body so it never appears in server logs or the
+    browser's address bar after the initial page load.
+    """
+    try:
+        raw_session, _ = await create_connect_session(body.token, session)
+    except ValueError as exc:
+        code = str(exc)
+        if code == "token_already_used":
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "code": "token_already_used",
+                    "message": "This link has already been opened. Please request a new one.",
+                },
+            ) from exc
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "session_expired", "message": "Invalid or expired link token"},
+        ) from exc
+
+    from omnidapter_server.services.link_tokens import _SESSION_TOKEN_TTL_SECONDS
+
+    return {
+        "data": ConnectSessionResponse(
+            session_token=raw_session,
+            expires_in=_SESSION_TOKEN_TTL_SECONDS,
+        ),
+        "meta": {"request_id": request_id},
+    }
 
 
 # ---------------------------------------------------------------------------

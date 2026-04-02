@@ -17,6 +17,7 @@ class LinkToken(Base):
     __table_args__ = (
         Index("ix_link_tokens_token_prefix", "token_prefix"),
         Index("ix_link_tokens_is_active", "is_active"),
+        Index("ix_link_tokens_session_token_prefix", "session_token_prefix"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -40,3 +41,12 @@ class LinkToken(Base):
     connection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Provider key locked to the connection (derived at token creation for reconnect)
     locked_provider_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # One-time exchange: set when the bootstrap lt_ token is consumed via POST /connect/session.
+    # Once set the bootstrap token is permanently unusable — only the cs_ session token works.
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Session token (cs_*) issued in exchange for the bootstrap lt_ token.
+    session_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    session_token_prefix: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    session_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
