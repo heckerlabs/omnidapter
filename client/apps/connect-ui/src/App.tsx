@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { createSession, listProviders, createConnection } from "./api";
 import { LoadingView } from "./views/Loading";
 import { ProviderSelectionView } from "./views/ProviderSelection";
@@ -208,8 +208,14 @@ export function App() {
 
   const popup = isPopup();
 
+  // Guard against React StrictMode double-invocation: the first run cleans the
+  // token from the URL, so a second run would find no token and error.
+  const bootstrapRan = useRef(false);
+
   // On mount: handle OAuth return or exchange the bootstrap token.
   useEffect(() => {
+    if (bootstrapRan.current) return;
+    bootstrapRan.current = true;
     const { connectionId, errorCode, errorMessage } = extractOAuthReturn();
 
     // --- OAuth return path ---
