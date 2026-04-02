@@ -19,15 +19,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import omnidapter_hosted.models  # noqa: F401, E402
 import omnidapter_server.models  # noqa: F401, E402
 from omnidapter_hosted.database import HostedBase  # noqa: E402
+from omnidapter_server.database import Base as ServerBase  # noqa: E402
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Use combined metadata (server + hosted tables)
-# We pass server Base.metadata as well so Alembic knows about existing tables
+# Hosted migration only manages hosted tables; server tables are managed by
+# the server migration and should be excluded from autogenerate comparison.
+_hosted_table_names = set(HostedBase.metadata.tables.keys())
 target_metadata = HostedBase.metadata
+
+
+def include_object(object, name, type_, reflected, compare_to):  # noqa: A002
+    if type_ == "table":
+        return name in _hosted_table_names
+    return True
 
 
 def get_url() -> str:
@@ -43,14 +51,18 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        include_schemas=True,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: SAConnection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
