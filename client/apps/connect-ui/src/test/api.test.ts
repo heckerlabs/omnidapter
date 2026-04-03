@@ -22,7 +22,8 @@ describe("createSession", () => {
     );
 
     const token = await createSession("lt_bootstrap");
-    expect(token).toBe("cs_abc123");
+    expect(token.sessionToken).toBe("cs_abc123");
+    expect(token.redirectUri).toBe(null);
   });
 
   it("throws with code and message from FastAPI detail on failure", async () => {

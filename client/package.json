@@ -1,6 +1,7 @@
 {
   "name": "@omnidapter/client",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*"
