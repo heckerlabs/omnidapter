@@ -118,7 +118,7 @@ export class OmnidapterConnect {
       return;
     }
 
-    const connectUrl = `${this._baseUrl}/connect?token=${encodeURIComponent(token)}&opener_origin=${encodeURIComponent(window.location.origin)}`;
+    const connectUrl = `${this._baseUrl}?token=${encodeURIComponent(token)}&opener_origin=${encodeURIComponent(window.location.origin)}`;
     const popupFeatures = _centeredPopupFeatures(width, height);
     this._popup = window.open(connectUrl, "omnidapter_connect", popupFeatures);
 

@@ -296,8 +296,11 @@ async def create_connection(
     # Effective external_id (prefer body, fall back to token's end_user_id)
     external_id = body.external_id or link_token.end_user_id
 
-    # redirect_uri is always taken from the link token — the UI is untrusted
-    redirect_uri = link_token.redirect_uri
+    # body.redirect_uri is the OAuth callback URL (where the provider returns the
+    # user to the Connect UI).  link_token.redirect_uri is the final app
+    # destination after connection; it is returned to the UI via the session
+    # exchange and used client-side only — not here.
+    redirect_uri = body.redirect_uri or link_token.redirect_uri
 
     # Determine provider metadata to check auth_kind
     omni = _metadata_omni()

@@ -470,8 +470,65 @@ async def test_create_session_returns_null_redirect_uri_when_not_set() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_connection_uses_link_token_redirect_uri() -> None:
-    """redirect_uri always comes from the link token, not the request body."""
+async def test_create_connection_body_redirect_uri_used_as_oauth_callback() -> None:
+    """body.redirect_uri (OAuth callback URL) takes priority; link token's is the fallback."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class _FlowResult:
+        connection_id: str = str(uuid.uuid4())
+        status: str = "pending"
+        authorization_url: str = "https://accounts.google.com/o/oauth2/auth?..."
+
+    captured: list[dict] = []
+
+    async def _mock_flow(*, body, **kwargs):  # type: ignore[override]
+        captured.append({"redirect_url": body.redirect_url})
+        return _FlowResult()
+
+    session = AsyncMock()
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+    )
+    encryption = MagicMock()
+    settings = MagicMock(omnidapter_allowed_origin_domains="*", omnidapter_env="LOCAL")
+    request = MagicMock()
+
+    with (
+        patch(
+            "omnidapter_server.routers.connect._metadata_omni",
+            return_value=MagicMock(
+                describe_provider=MagicMock(
+                    return_value=MagicMock(auth_kinds=[MagicMock(value="oauth2")])
+                )
+            ),
+        ),
+        patch("omnidapter_server.routers.connect.is_provider_available", return_value=True),
+        patch(
+            "omnidapter_server.routers.connect.create_connection_flow",
+            new=AsyncMock(side_effect=_mock_flow),
+        ),
+    ):
+        # body.redirect_uri is the OAuth callback (Connect UI URL) — it wins
+        await create_connection(
+            body=ConnectCreateConnectionRequest(
+                provider_key="google",
+                redirect_uri="https://connect-ui.example.com/",
+            ),
+            request=request,
+            link_token=_link_token(redirect_uri="https://app.example.com/done"),
+            encryption=encryption,
+            session=session,
+            settings=settings,
+            request_id="req_redirect_1",
+        )
+
+    assert captured[0]["redirect_url"] == "https://connect-ui.example.com/"
+
+
+@pytest.mark.asyncio
+async def test_create_connection_falls_back_to_link_token_redirect_uri() -> None:
+    """Falls back to link_token.redirect_uri when body provides none."""
     from dataclasses import dataclass
 
     @dataclass
@@ -510,16 +567,13 @@ async def test_create_connection_uses_link_token_redirect_uri() -> None:
         ),
     ):
         await create_connection(
-            body=ConnectCreateConnectionRequest(
-                provider_key="google",
-                redirect_uri="https://body.example.com/ignored",
-            ),
+            body=ConnectCreateConnectionRequest(provider_key="google"),
             request=request,
-            link_token=_link_token(redirect_uri="https://token.example.com/done"),
+            link_token=_link_token(redirect_uri="https://app.example.com/done"),
             encryption=encryption,
             session=session,
             settings=settings,
-            request_id="req_redirect_1",
+            request_id="req_redirect_2",
         )
 
-    assert captured[0]["redirect_url"] == "https://token.example.com/done"
+    assert captured[0]["redirect_url"] == "https://app.example.com/done"

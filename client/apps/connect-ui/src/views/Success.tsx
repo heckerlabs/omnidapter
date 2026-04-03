@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import type { PostMessageSuccess } from "../types";
 
 interface Props {
@@ -9,8 +9,36 @@ interface Props {
   openerOrigin: string | null;
 }
 
+const REDIRECT_DELAY_S = 3;
+
 export function SuccessView({ connectionId, provider, redirectUri, isPopup, openerOrigin }: Props) {
+  const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
+
   useEffect(() => {
+    const canClose = (isPopup && window.opener && openerOrigin) || redirectUri;
+    if (!canClose) return;
+
+    // Start the countdown timer
+    const interval = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(interval);
+          // Execute the final action when countdown reaches 0
+          if (isPopup && window.opener && openerOrigin) {
+            window.close();
+          } else if (redirectUri) {
+            const url = new URL(redirectUri);
+            url.searchParams.set("connection_id", connectionId);
+            url.searchParams.set("status", "active");
+            window.location.href = url.toString();
+          }
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+
+    // Send postMessage immediately for popup mode
     if (isPopup && window.opener && openerOrigin) {
       const msg: PostMessageSuccess = {
         type: "omnidapter:success",
@@ -18,15 +46,9 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
         provider,
       };
       window.opener.postMessage(msg, openerOrigin);
-      setTimeout(() => window.close(), 300);
-    } else if (redirectUri) {
-      const url = new URL(redirectUri);
-      url.searchParams.set("connection_id", connectionId);
-      url.searchParams.set("status", "active");
-      setTimeout(() => {
-        window.location.href = url.toString();
-      }, 1500);
     }
+
+    return () => clearInterval(interval);
   }, [connectionId, isPopup, provider, redirectUri, openerOrigin]);
 
   return (
@@ -34,9 +56,7 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
       <div style={check}>✓</div>
       <h2 style={heading}>Connected!</h2>
       <p style={sub}>Your calendar has been connected successfully.</p>
-      {!isPopup && redirectUri && (
-        <p style={{ ...sub, marginTop: 8 }}>Redirecting you back…</p>
-      )}
+      <p style={{ ...sub, marginTop: 8 }}>Sending you back in {countdown}…</p>
     </div>
   );
 }
