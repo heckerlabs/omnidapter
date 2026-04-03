@@ -9,7 +9,7 @@
     "jsx": "react-jsx",
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@omnidapter/connect-sdk": ["../../packages/connect-sdk/src/index.ts"]
+      "@heckerlabs/omnidapter-connect": ["../../packages/connect-sdk/src/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

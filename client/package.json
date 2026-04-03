@@ -1,5 +1,5 @@
 {
-  "name": "@omnidapter/client",
+  "name": "@heckerlabs/omnidapter-workspace",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -7,19 +7,26 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @omnidapter/connect-sdk && npm run build -w @omnidapter/connect-ui",
-    "dev": "npm run dev -w @omnidapter/connect-ui",
-    "dev:demo": "npm run dev -w @omnidapter/connect-demo",
-    "test": "npm run test -w @omnidapter/connect-sdk && npm run test -w @omnidapter/connect-ui",
+    "dev:ui": "npm run dev -w @heckerlabs/omnidapter-connect-ui",
+    "dev:demo": "npm run dev -w @heckerlabs/omnidapter-connect-demo",
+    "build:ui": "npm run build -w @heckerlabs/omnidapter-connect-ui",
+    "build:sdk": "npm run build -w @heckerlabs/omnidapter-connect",
+    "build:demo": "npm run build -w @heckerlabs/omnidapter-connect-demo",
+    "build": "npm run build --workspaces --if-present",
+    "test:ui": "npm run test -w @heckerlabs/omnidapter-connect-ui",
+    "test:sdk": "npm run test -w @heckerlabs/omnidapter-connect",
+    "test:demo": "npm run test -w @heckerlabs/omnidapter-connect-demo",
+    "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "check": "npm run format && npm run lint && npm run build && npm run test"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.1.0",
-    "eslint-config-prettier": "^10.1.8",
+    "@eslint/js": "^9.39.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
