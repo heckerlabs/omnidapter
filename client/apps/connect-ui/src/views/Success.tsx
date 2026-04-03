@@ -15,40 +15,34 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
   const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
 
   useEffect(() => {
-    const canClose = (isPopup && window.opener && openerOrigin) || redirectUri;
-    if (!canClose) return;
+    const msg: PostMessageSuccess = { type: "omnidapter:success", connectionId, provider };
 
-    // Start the countdown timer
-    const interval = setInterval(() => {
-      setCountdown((n) => {
-        if (n <= 1) {
-          clearInterval(interval);
-          // Execute the final action when countdown reaches 0
-          if (isPopup && window.opener && openerOrigin) {
-            window.close();
-          } else if (redirectUri) {
-            const url = new URL(redirectUri);
-            url.searchParams.set("connection_id", connectionId);
-            url.searchParams.set("status", "active");
-            window.location.href = url.toString();
-          }
-          return 0;
-        }
-        return n - 1;
-      });
-    }, 1000);
-
-    // Send postMessage immediately for popup mode
-    if (isPopup && window.opener && openerOrigin) {
-      const msg: PostMessageSuccess = {
-        type: "omnidapter:success",
-        connectionId,
-        provider,
-      };
-      window.opener.postMessage(msg, openerOrigin);
+    // Redirect / embed: navigate immediately, no countdown.
+    if (!isPopup && redirectUri) {
+      const url = new URL(redirectUri);
+      url.searchParams.set("connection_id", connectionId);
+      url.searchParams.set("status", "active");
+      window.location.href = url.toString();
+      return;
     }
 
-    return () => clearInterval(interval);
+    // Popup: postMessage immediately, then close after countdown.
+    if (isPopup && window.opener && openerOrigin) {
+      window.opener.postMessage(msg, openerOrigin);
+
+      const interval = setInterval(() => {
+        setCountdown((n) => {
+          if (n <= 1) {
+            clearInterval(interval);
+            window.close();
+            return 0;
+          }
+          return n - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
   }, [connectionId, isPopup, provider, redirectUri, openerOrigin]);
 
   return (
@@ -56,7 +50,7 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
       <div style={check}>✓</div>
       <h2 style={heading}>Connected!</h2>
       <p style={sub}>Your calendar has been connected successfully.</p>
-      <p style={{ ...sub, marginTop: 8 }}>Sending you back in {countdown}…</p>
+      {isPopup && <p style={{ ...sub, marginTop: 8 }}>Sending you back in {countdown}…</p>}
     </div>
   );
 }

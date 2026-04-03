@@ -134,19 +134,41 @@ export function App() {
     }
   });
 
-  const [mode, setMode] = useState<Mode>("popup");
+  const [mode, setMode] = useState<Mode>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (["popup", "redirect", "embed"] as Mode[]).includes(parsed?.mode)
+        ? parsed.mode
+        : "popup";
+    } catch {
+      return "popup";
+    }
+  });
   const [loading, setLoading] = useState(false);
-  const [log, setLog] = useState<LogEntry[]>([]);
+  const [log, setLog] = useState<LogEntry[]>(() => {
+    try {
+      const saved = sessionStorage.getItem("omnidapter_demo_log");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [embedSrc, setEmbedSrc] = useState<string | null>(null);
   const logIdRef = useRef(0);
   const sdkRef = useRef<OmnidapterConnect | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
-  // Persist config
+  // Persist config and mode
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  }, [config]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, mode }));
+  }, [config, mode]);
+
+  // Persist log to sessionStorage so redirect navigations don't wipe it
+  useEffect(() => {
+    sessionStorage.setItem("omnidapter_demo_log", JSON.stringify(log));
+  }, [log]);
 
   // Scroll log to bottom
   useEffect(() => {
@@ -170,6 +192,8 @@ export function App() {
   // -------------------------------------------------------------------------
   // Initialization: handle embed callback or redirect callback (mount only)
   // -------------------------------------------------------------------------
+
+  const s = getStyles(isDark);
 
   if (isEmbedCallback) {
     // Handle embed callback in effect (only runs once)
@@ -325,8 +349,6 @@ export function App() {
     embed: "Open Embedded",
   };
 
-  const s = getStyles(isDark);
-
   return (
     <div style={s.root}>
       <style>{`
@@ -393,7 +415,7 @@ export function App() {
         <div style={s.right} className="demo-log">
           <div style={s.logHeader}>
             <h2 style={s.sectionTitle}>Event Log</h2>
-            <button style={s.clearBtn} onClick={() => setLog([])}>
+            <button style={s.clearBtn} onClick={() => { setLog([]); sessionStorage.removeItem("omnidapter_demo_log"); }}>
               Clear
             </button>
           </div>
@@ -630,7 +652,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
   tabActive: {
     background: colors.headerBg,
     color: colors.text,
-    borderColor: colors.headerBg,
+    border: `1px solid ${colors.headerBg}`,
   },
   modeDesc: {
     fontSize: 12,
