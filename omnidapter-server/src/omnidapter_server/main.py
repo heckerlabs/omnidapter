@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.errors import make_unhandled_exception_handler
@@ -143,6 +145,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.get("/health")(health_endpoint)
     app.exception_handler(Exception)(make_unhandled_exception_handler(settings.omnidapter_env))
+
+    # Serve connect-ui at root — registered last so all API routes take priority
+    connect_ui_dist = Path("/app/connect-ui-dist")
+    if connect_ui_dist.exists():
+        app.mount("/", StaticFiles(directory=connect_ui_dist, html=True), name="connect-ui")
 
     return app
 
