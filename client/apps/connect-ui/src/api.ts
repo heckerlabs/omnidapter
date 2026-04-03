@@ -10,29 +10,28 @@ import type { Provider } from "./types";
 
 const BASE = "";
 
-async function request<T>(
-  method: string,
-  path: string,
-  token: string,
-  body?: unknown
-): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+async function request<T>(method: string, path: string, token: string, body?: unknown): Promise<T> {
+    const res = await fetch(`${BASE}${path}`, {
+        method,
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!res.ok) {
-    const err = data?.error ?? data?.detail ?? {};
-    throw { status: res.status, code: err.code ?? "api_error", message: err.message ?? "Unknown error" };
-  }
+    if (!res.ok) {
+        const err = data?.error ?? data?.detail ?? {};
+        throw {
+            status: res.status,
+            code: err.code ?? "api_error",
+            message: err.message ?? "Unknown error",
+        };
+    }
 
-  return data as T;
+    return data as T;
 }
 
 /**
@@ -45,51 +44,58 @@ async function request<T>(
  * Throws on invalid/consumed/expired tokens with a typed error object.
  */
 export interface SessionResult {
-  sessionToken: string;
-  redirectUri: string | null;
+    sessionToken: string;
+    redirectUri: string | null;
 }
 
 export async function createSession(bootstrapToken: string): Promise<SessionResult> {
-  const res = await fetch("/connect/session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: bootstrapToken }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    // FastAPI error format uses `detail`; fall back to `error` for compatibility
-    const detail = data as { detail?: { code?: string; message?: string }; error?: { code?: string; message?: string } };
-    const err = detail?.detail ?? detail?.error ?? {};
-    throw { status: res.status, code: err.code ?? "api_error", message: err.message ?? "Unknown error" };
-  }
-  const d = (data as { data: { session_token: string; redirect_uri: string | null } }).data;
-  return { sessionToken: d.session_token, redirectUri: d.redirect_uri ?? null };
+    const res = await fetch("/connect/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: bootstrapToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        // FastAPI error format uses `detail`; fall back to `error` for compatibility
+        const detail = data as {
+            detail?: { code?: string; message?: string };
+            error?: { code?: string; message?: string };
+        };
+        const err = detail?.detail ?? detail?.error ?? {};
+        throw {
+            status: res.status,
+            code: err.code ?? "api_error",
+            message: err.message ?? "Unknown error",
+        };
+    }
+    const d = (data as { data: { session_token: string; redirect_uri: string | null } }).data;
+    return { sessionToken: d.session_token, redirectUri: d.redirect_uri ?? null };
 }
 
 export async function listProviders(token: string): Promise<Provider[]> {
-  const data = await request<{ providers: Provider[] }>("GET", "/connect/providers", token);
-  return data.providers;
+    const data = await request<{ providers: Provider[] }>("GET", "/connect/providers", token);
+    return data.providers;
 }
 
 export interface CreateConnectionResult {
-  connection_id: string;
-  status: string;
-  authorization_url: string | null;
+    connection_id: string;
+    status: string;
+    authorization_url: string | null;
 }
 
 export async function createConnection(
-  token: string,
-  payload: {
-    provider_key: string;
-    redirect_uri?: string;
-    credentials?: Record<string, string>;
-  }
+    token: string,
+    payload: {
+        provider_key: string;
+        redirect_uri?: string;
+        credentials?: Record<string, string>;
+    }
 ): Promise<CreateConnectionResult> {
-  const data = await request<{ data: CreateConnectionResult }>(
-    "POST",
-    "/connect/connections",
-    token,
-    payload
-  );
-  return data.data;
+    const data = await request<{ data: CreateConnectionResult }>(
+        "POST",
+        "/connect/connections",
+        token,
+        payload
+    );
+    return data.data;
 }

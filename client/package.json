@@ -10,6 +10,22 @@
     "build": "npm run build -w @omnidapter/connect-sdk && npm run build -w @omnidapter/connect-ui",
     "dev": "npm run dev -w @omnidapter/connect-ui",
     "dev:demo": "npm run dev -w @omnidapter/connect-demo",
-    "test": "npm run test -w @omnidapter/connect-sdk && npm run test -w @omnidapter/connect-ui"
+    "test": "npm run test -w @omnidapter/connect-sdk && npm run test -w @omnidapter/connect-ui",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.58.0"
   }
 }
