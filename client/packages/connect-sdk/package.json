@@ -1,5 +1,5 @@
 {
-  "name": "@omnidapter/connect-sdk",
+  "name": "@heckerlabs/omnidapter-connect",
   "version": "1.0.0",
   "type": "module",
   "description": "Omnidapter Connect — embed a calendar authorization flow in your app",
