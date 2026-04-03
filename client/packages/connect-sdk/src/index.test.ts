@@ -11,12 +11,12 @@ import { OmnidapterConnect } from "./index";
 // ---------------------------------------------------------------------------
 
 function createMockPopup(closed = false) {
-  return {
-    closed,
-    focus: vi.fn(),
-    close: vi.fn(),
-    postMessage: vi.fn(),
-  };
+    return {
+        closed,
+        focus: vi.fn(),
+        close: vi.fn(),
+        postMessage: vi.fn(),
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -24,16 +24,18 @@ function createMockPopup(closed = false) {
 // ---------------------------------------------------------------------------
 
 describe("OmnidapterConnect constructor", () => {
-  it("uses default baseUrl", () => {
-    const c = new OmnidapterConnect();
-    // Access private via type cast
-    expect((c as any)._baseUrl).toBe("https://omnidapter.heckerlabs.ai");
-  });
+    it("uses default baseUrl", () => {
+        const c = new OmnidapterConnect();
+        // Access private via type cast
+        expect((c as unknown as { _baseUrl: string })._baseUrl).toBe(
+            "https://omnidapter.heckerlabs.ai"
+        );
+    });
 
-  it("uses provided baseUrl (strips trailing slash)", () => {
-    const c = new OmnidapterConnect({ baseUrl: "https://custom.example.com/" });
-    expect((c as any)._baseUrl).toBe("https://custom.example.com");
-  });
+    it("uses provided baseUrl (strips trailing slash)", () => {
+        const c = new OmnidapterConnect({ baseUrl: "https://custom.example.com/" });
+        expect((c as unknown as { _baseUrl: string })._baseUrl).toBe("https://custom.example.com");
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -41,21 +43,21 @@ describe("OmnidapterConnect constructor", () => {
 // ---------------------------------------------------------------------------
 
 describe("open() — popup blocked", () => {
-  it("calls onError with popup_blocked when window.open returns null", () => {
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-    const onError = vi.fn();
+    it("calls onError with popup_blocked when window.open returns null", () => {
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+        const onError = vi.fn();
 
-    c.open({ token: "lt_abc", onError });
+        c.open({ token: "lt_abc", onError });
 
-    expect(openSpy).toHaveBeenCalledOnce();
-    expect(onError).toHaveBeenCalledWith({
-      code: "popup_blocked",
-      message: expect.stringContaining("blocked"),
+        expect(openSpy).toHaveBeenCalledOnce();
+        expect(onError).toHaveBeenCalledWith({
+            code: "popup_blocked",
+            message: expect.stringContaining("blocked"),
+        });
+
+        openSpy.mockRestore();
     });
-
-    openSpy.mockRestore();
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -63,152 +65,156 @@ describe("open() — popup blocked", () => {
 // ---------------------------------------------------------------------------
 
 describe("open() — popup opened", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let openSpy: MockInstance<(...args: any[]) => any>;
-  let mockPopup: ReturnType<typeof createMockPopup>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let addEventListenerSpy: MockInstance<(...args: any[]) => any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let removeEventListenerSpy: MockInstance<(...args: any[]) => any>;
+    let openSpy: MockInstance;
+    let mockPopup: ReturnType<typeof createMockPopup>;
+    let addEventListenerSpy: MockInstance;
+    let removeEventListenerSpy: MockInstance;
 
-  beforeEach(() => {
-    mockPopup = createMockPopup();
-    openSpy = vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
-    addEventListenerSpy = vi.spyOn(window, "addEventListener");
-    removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
-    vi.useFakeTimers();
-  });
+    beforeEach(() => {
+        mockPopup = createMockPopup();
+        openSpy = vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
+        addEventListenerSpy = vi.spyOn(window, "addEventListener");
+        removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+        vi.useFakeTimers();
+    });
 
-  afterEach(() => {
-    openSpy.mockRestore();
-    addEventListenerSpy.mockRestore();
-    removeEventListenerSpy.mockRestore();
-    vi.useRealTimers();
-  });
+    afterEach(() => {
+        openSpy.mockRestore();
+        addEventListenerSpy.mockRestore();
+        removeEventListenerSpy.mockRestore();
+        vi.useRealTimers();
+    });
 
-  it("opens popup with correct URL including token", () => {
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_testtoken" });
+    it("opens popup with correct URL including token", () => {
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_testtoken" });
 
-    expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining("lt_testtoken"),
-      "omnidapter_connect",
-      expect.any(String)
-    );
-  });
+        expect(openSpy).toHaveBeenCalledWith(
+            expect.stringContaining("lt_testtoken"),
+            "omnidapter_connect",
+            expect.any(String)
+        );
+    });
 
-  it("adds a message event listener", () => {
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x" });
-    expect(addEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function));
-  });
+    it("adds a message event listener", () => {
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x" });
+        expect(addEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function));
+    });
 
-  it("fires onSuccess when receiving success postMessage from correct origin", () => {
-    const onSuccess = vi.fn();
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x", onSuccess });
+    it("fires onSuccess when receiving success postMessage from correct origin", () => {
+        const onSuccess = vi.fn();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x", onSuccess });
 
-    // Extract the message listener that was registered
-    const listener = addEventListenerSpy.mock.calls.find(
-      ([type]) => type === "message"
-    )?.[1] as EventListener;
-    expect(listener).toBeDefined();
+        // Extract the message listener that was registered
+        const listener = addEventListenerSpy.mock.calls.find(
+            ([type]) => type === "message"
+        )?.[1] as EventListener;
+        expect(listener).toBeDefined();
 
-    // Simulate postMessage from the correct origin and source (the popup window)
-    listener(
-      new MessageEvent("message", {
-        origin: "https://omnidapter.heckerlabs.ai",
-        source: mockPopup as unknown as Window,
-        data: {
-          type: "omnidapter:success",
-          connectionId: "conn_123",
-          provider: "google",
-        },
-      })
-    );
+        // Simulate postMessage from the correct origin and source (the popup window)
+        listener(
+            new MessageEvent("message", {
+                origin: "https://omnidapter.heckerlabs.ai",
+                source: mockPopup as unknown as Window,
+                data: {
+                    type: "omnidapter:success",
+                    connectionId: "conn_123",
+                    provider: "google",
+                },
+            })
+        );
 
-    expect(onSuccess).toHaveBeenCalledWith({ connectionId: "conn_123", provider: "google" });
-  });
+        expect(onSuccess).toHaveBeenCalledWith({ connectionId: "conn_123", provider: "google" });
+    });
 
-  it("ignores postMessage from wrong origin", () => {
-    const onSuccess = vi.fn();
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x", onSuccess });
+    it("ignores postMessage from wrong origin", () => {
+        const onSuccess = vi.fn();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x", onSuccess });
 
-    const listener = addEventListenerSpy.mock.calls.find(
-      ([type]) => type === "message"
-    )?.[1] as EventListener;
+        const listener = addEventListenerSpy.mock.calls.find(
+            ([type]) => type === "message"
+        )?.[1] as EventListener;
 
-    listener(
-      new MessageEvent("message", {
-        origin: "https://evil.attacker.com",
-        data: { type: "omnidapter:success", connectionId: "conn_hack", provider: "google" },
-      })
-    );
+        listener(
+            new MessageEvent("message", {
+                origin: "https://evil.attacker.com",
+                data: { type: "omnidapter:success", connectionId: "conn_hack", provider: "google" },
+            })
+        );
 
-    expect(onSuccess).not.toHaveBeenCalled();
-  });
+        expect(onSuccess).not.toHaveBeenCalled();
+    });
 
-  it("fires onError when receiving error postMessage", () => {
-    const onError = vi.fn();
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x", onError });
+    it("fires onError when receiving error postMessage", () => {
+        const onError = vi.fn();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x", onError });
 
-    const listener = addEventListenerSpy.mock.calls.find(
-      ([type]) => type === "message"
-    )?.[1] as EventListener;
+        const listener = addEventListenerSpy.mock.calls.find(
+            ([type]) => type === "message"
+        )?.[1] as EventListener;
 
-    listener(
-      new MessageEvent("message", {
-        origin: "https://omnidapter.heckerlabs.ai",
-        source: mockPopup as unknown as Window,
-        data: { type: "omnidapter:error", code: "user_denied", message: "The user denied access." },
-      })
-    );
+        listener(
+            new MessageEvent("message", {
+                origin: "https://omnidapter.heckerlabs.ai",
+                source: mockPopup as unknown as Window,
+                data: {
+                    type: "omnidapter:error",
+                    code: "user_denied",
+                    message: "The user denied access.",
+                },
+            })
+        );
 
-    expect(onError).toHaveBeenCalledWith({ code: "user_denied", message: "The user denied access." });
-  });
+        expect(onError).toHaveBeenCalledWith({
+            code: "user_denied",
+            message: "The user denied access.",
+        });
+    });
 
-  it("fires onClose when popup is manually closed", () => {
-    const onClose = vi.fn();
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x", onClose });
+    it("fires onClose when popup is manually closed", () => {
+        const onClose = vi.fn();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x", onClose });
 
-    // Simulate user closing the popup
-    mockPopup.closed = true;
-    vi.advanceTimersByTime(600);
+        // Simulate user closing the popup
+        mockPopup.closed = true;
+        vi.advanceTimersByTime(600);
 
-    expect(onClose).toHaveBeenCalledOnce();
-  });
+        expect(onClose).toHaveBeenCalledOnce();
+    });
 
-  it("focuses existing popup instead of opening a second one", () => {
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x" });
-    c.open({ token: "lt_x" }); // second call
+    it("focuses existing popup instead of opening a second one", () => {
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x" });
+        c.open({ token: "lt_x" }); // second call
 
-    expect(openSpy).toHaveBeenCalledOnce(); // only one popup opened
-    expect(mockPopup.focus).toHaveBeenCalledOnce();
-  });
+        expect(openSpy).toHaveBeenCalledOnce(); // only one popup opened
+        expect(mockPopup.focus).toHaveBeenCalledOnce();
+    });
 
-  it("removes event listener after success", () => {
-    const onSuccess = vi.fn();
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x", onSuccess });
+    it("removes event listener after success", () => {
+        const onSuccess = vi.fn();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x", onSuccess });
 
-    const listener = addEventListenerSpy.mock.calls.find(
-      ([type]) => type === "message"
-    )?.[1] as EventListener;
+        const listener = addEventListenerSpy.mock.calls.find(
+            ([type]) => type === "message"
+        )?.[1] as EventListener;
 
-    listener(
-      new MessageEvent("message", {
-        origin: "https://omnidapter.heckerlabs.ai",
-        source: mockPopup as unknown as Window,
-        data: { type: "omnidapter:success", connectionId: "conn_abc", provider: "google" },
-      })
-    );
+        listener(
+            new MessageEvent("message", {
+                origin: "https://omnidapter.heckerlabs.ai",
+                source: mockPopup as unknown as Window,
+                data: { type: "omnidapter:success", connectionId: "conn_abc", provider: "google" },
+            })
+        );
 
-    expect(removeEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function));
-  });
+        expect(removeEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function));
+    });
 });
 
 // ---------------------------------------------------------------------------
@@ -216,16 +222,16 @@ describe("open() — popup opened", () => {
 // ---------------------------------------------------------------------------
 
 describe("close()", () => {
-  it("closes the popup window", () => {
-    const mockPopup = createMockPopup();
-    vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
-    vi.useFakeTimers();
+    it("closes the popup window", () => {
+        const mockPopup = createMockPopup();
+        vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
+        vi.useFakeTimers();
 
-    const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
-    c.open({ token: "lt_x" });
-    c.close();
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
+        c.open({ token: "lt_x" });
+        c.close();
 
-    expect(mockPopup.close).toHaveBeenCalled();
-    vi.useRealTimers();
-  });
+        expect(mockPopup.close).toHaveBeenCalled();
+        vi.useRealTimers();
+    });
 });
