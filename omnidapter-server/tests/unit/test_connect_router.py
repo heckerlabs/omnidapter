@@ -358,6 +358,7 @@ async def test_create_session_success() -> None:
     from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
 
     fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.redirect_uri = None
     session = AsyncMock()
 
     with patch(
@@ -420,3 +421,105 @@ async def test_create_session_already_used_token_returns_token_already_used() ->
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail["code"] == "token_already_used"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_create_session_returns_redirect_uri() -> None:
+    """Session response includes redirect_uri from the link token."""
+    from omnidapter_server.models.link_token import LinkToken
+    from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.redirect_uri = "https://app.example.com/done"
+    session = AsyncMock()
+
+    with patch(
+        "omnidapter_server.routers.connect.create_connect_session",
+        new=AsyncMock(return_value=("cs_fakesessiontoken12345678901234", fake_lt)),
+    ):
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_sess_4",
+            session=session,
+        )
+
+    assert resp["data"].redirect_uri == "https://app.example.com/done"
+
+
+@pytest.mark.asyncio
+async def test_create_session_returns_null_redirect_uri_when_not_set() -> None:
+    """Session response has redirect_uri=None when the link token has none."""
+    from omnidapter_server.models.link_token import LinkToken
+    from omnidapter_server.routers.connect import ConnectSessionRequest, create_session
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.redirect_uri = None
+    session = AsyncMock()
+
+    with patch(
+        "omnidapter_server.routers.connect.create_connect_session",
+        new=AsyncMock(return_value=("cs_fakesessiontoken12345678901234", fake_lt)),
+    ):
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_sess_5",
+            session=session,
+        )
+
+    assert resp["data"].redirect_uri is None
+
+
+@pytest.mark.asyncio
+async def test_create_connection_uses_link_token_redirect_uri() -> None:
+    """redirect_uri always comes from the link token, not the request body."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class _FlowResult:
+        connection_id: str = str(uuid.uuid4())
+        status: str = "pending"
+        authorization_url: str = "https://accounts.google.com/o/oauth2/auth?..."
+
+    captured: list[dict] = []
+
+    async def _mock_flow(*, body, **kwargs):  # type: ignore[override]
+        captured.append({"redirect_url": body.redirect_url})
+        return _FlowResult()
+
+    session = AsyncMock()
+    session.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+    )
+    encryption = MagicMock()
+    settings = MagicMock(omnidapter_allowed_origin_domains="*", omnidapter_env="LOCAL")
+    request = MagicMock()
+
+    with (
+        patch(
+            "omnidapter_server.routers.connect._metadata_omni",
+            return_value=MagicMock(
+                describe_provider=MagicMock(
+                    return_value=MagicMock(auth_kinds=[MagicMock(value="oauth2")])
+                )
+            ),
+        ),
+        patch("omnidapter_server.routers.connect.is_provider_available", return_value=True),
+        patch(
+            "omnidapter_server.routers.connect.create_connection_flow",
+            new=AsyncMock(side_effect=_mock_flow),
+        ),
+    ):
+        await create_connection(
+            body=ConnectCreateConnectionRequest(
+                provider_key="google",
+                redirect_uri="https://body.example.com/ignored",
+            ),
+            request=request,
+            link_token=_link_token(redirect_uri="https://token.example.com/done"),
+            encryption=encryption,
+            session=session,
+            settings=settings,
+            request_id="req_redirect_1",
+        )
+
+    assert captured[0]["redirect_url"] == "https://token.example.com/done"
