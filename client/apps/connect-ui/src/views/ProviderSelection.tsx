@@ -4,9 +4,10 @@ import type { Provider } from "../types";
 interface Props {
   providers: Provider[];
   onSelect: (provider: Provider) => void;
+  onCancel: () => void;
 }
 
-export function ProviderSelectionView({ providers, onSelect }: Props) {
+export function ProviderSelectionView({ providers, onSelect, onCancel }: Props) {
   if (providers.length === 0) {
     return (
       <div style={card}>
@@ -30,6 +31,7 @@ export function ProviderSelectionView({ providers, onSelect }: Props) {
           </button>
         ))}
       </div>
+      <button style={cancelBtn} onClick={onCancel}>Cancel</button>
     </div>
   );
 }
@@ -69,6 +71,18 @@ const providerBtn: React.CSSProperties = {
   fontSize: 15,
   textAlign: "left",
   transition: "border-color 0.15s, background-color 0.15s",
+};
+
+const cancelBtn: React.CSSProperties = {
+  marginTop: 20,
+  width: "100%",
+  padding: "8px 0",
+  background: "transparent",
+  color: "var(--text-sub)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  cursor: "pointer",
+  fontSize: 14,
 };
 
 const providerIcon: React.CSSProperties = {

@@ -9,7 +9,7 @@ interface Props {
   openerOrigin: string | null;
 }
 
-const REDIRECT_DELAY_S = 3;
+const REDIRECT_DELAY_S = 5;
 
 export function SuccessView({ connectionId, provider, redirectUri, isPopup, openerOrigin }: Props) {
   const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
