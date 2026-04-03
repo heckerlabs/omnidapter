@@ -33,19 +33,6 @@ function extractOpenerOrigin(): string | null {
   }
 }
 
-function extractRedirectUri(): string | null {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get("redirect_uri");
-  if (!raw) return null;
-  try {
-    // Validate it's a real URL
-    new URL(raw);
-    return raw;
-  } catch {
-    return null;
-  }
-}
-
 function extractOAuthReturn(): {
   connectionId: string | null;
   errorCode: string | null;
@@ -72,7 +59,7 @@ function isPopup(): boolean {
 // ---------------------------------------------------------------------------
 
 type Action =
-  | { type: "SESSION_READY"; token: string }
+  | { type: "SESSION_READY"; token: string; redirectUri: string | null }
   | { type: "PROVIDERS_LOADED"; providers: Provider[] }
   | { type: "PROVIDERS_EMPTY" }
   | { type: "LOAD_ERROR"; code: string; message: string }
@@ -88,9 +75,9 @@ type Action =
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case "SESSION_READY":
-      // Bootstrap token has been exchanged; store session token and proceed to
-      // load providers (the loading view useEffect triggers on token change).
-      return { ...state, token: action.token };
+      // Bootstrap token has been exchanged; store session token and redirect_uri
+      // from the link token. Provider loading triggers on token change.
+      return { ...state, token: action.token, redirectUri: action.redirectUri };
 
     case "PROVIDERS_LOADED":
       if (action.providers.length === 1) {
@@ -203,7 +190,6 @@ export function App() {
     // (OAuth return) or exchanges the bootstrap token for a session token.
     token: null,
     openerOrigin: extractOpenerOrigin(),
-    redirectUri: extractRedirectUri(),
   });
 
   const popup = isPopup();
@@ -227,7 +213,7 @@ export function App() {
       // Session token was stored before the OAuth redirect; restore it now.
       const savedSession = sessionStorage.getItem(_SESSION_STORAGE_KEY);
       if (savedSession) {
-        dispatch({ type: "SESSION_READY", token: savedSession });
+        dispatch({ type: "SESSION_READY", token: savedSession, redirectUri: savedRedirectUri });
       }
       dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey, redirectUri: savedRedirectUri });
       return;
@@ -260,11 +246,14 @@ export function App() {
     window.history.replaceState({}, "", cleanUrl.toString());
 
     createSession(bootstrapToken)
-      .then((sessionToken) => {
+      .then(({ sessionToken, redirectUri }) => {
         // Hold the session token in sessionStorage so it survives the OAuth
         // redirect round-trip (page navigates away and back).
         sessionStorage.setItem(_SESSION_STORAGE_KEY, sessionToken);
-        dispatch({ type: "SESSION_READY", token: sessionToken });
+        if (redirectUri) {
+          sessionStorage.setItem("omnidapter_redirect_uri", redirectUri);
+        }
+        dispatch({ type: "SESSION_READY", token: sessionToken, redirectUri });
       })
       .catch((err: { code?: string; message?: string }) => {
         dispatch({
@@ -308,9 +297,6 @@ export function App() {
     redirectUri.hash = "";
 
     sessionStorage.setItem("omnidapter_provider_key", state.selectedProvider.key);
-    if (state.redirectUri) {
-      sessionStorage.setItem("omnidapter_redirect_uri", state.redirectUri);
-    }
 
     createConnection(state.token, {
       provider_key: state.selectedProvider.key,

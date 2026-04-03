@@ -564,6 +564,7 @@ async def test_hosted_create_session_success() -> None:
 
     fake_lt = MagicMock(spec=LinkToken)
     fake_lt.id = uuid.uuid4()
+    fake_lt.redirect_uri = None
     session = AsyncMock()
 
     # verify_link_token returns the model → tenant ownership check passes →
@@ -691,3 +692,81 @@ async def test_hosted_create_session_already_consumed_returns_token_already_used
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail["code"] == "token_already_used"  # type: ignore[index]
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_returns_redirect_uri() -> None:
+    """Hosted session response includes redirect_uri from the link token."""
+    import uuid
+
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = uuid.uuid4()
+    fake_lt.redirect_uri = "https://app.example.com/done"
+    session = AsyncMock()
+
+    owner_mock = MagicMock()
+
+    class _OwnerResult:
+        def scalar_one_or_none(self):
+            return owner_mock
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.create_connect_session",
+            new=AsyncMock(return_value=("cs_hostedsession1234567890123456", fake_lt)),
+        ),
+    ):
+        session.execute = AsyncMock(return_value=_OwnerResult())
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_hosted_5",
+            session=session,
+        )
+
+    assert resp["data"].redirect_uri == "https://app.example.com/done"
+
+
+@pytest.mark.asyncio
+async def test_hosted_create_session_returns_null_redirect_uri_when_not_set() -> None:
+    """Hosted session response has redirect_uri=None when the link token has none."""
+    import uuid
+
+    from omnidapter_hosted.routers.connect import ConnectSessionRequest, create_session
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = uuid.uuid4()
+    fake_lt.redirect_uri = None
+    session = AsyncMock()
+
+    owner_mock = MagicMock()
+
+    class _OwnerResult:
+        def scalar_one_or_none(self):
+            return owner_mock
+
+    with (
+        patch(
+            "omnidapter_hosted.routers.connect.verify_link_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        patch(
+            "omnidapter_hosted.routers.connect.create_connect_session",
+            new=AsyncMock(return_value=("cs_hostedsession1234567890123456", fake_lt)),
+        ),
+    ):
+        session.execute = AsyncMock(return_value=_OwnerResult())
+        resp = await create_session(
+            body=ConnectSessionRequest(token="lt_validtoken12345678901234567890"),
+            request_id="req_hosted_6",
+            session=session,
+        )
+
+    assert resp["data"].redirect_uri is None

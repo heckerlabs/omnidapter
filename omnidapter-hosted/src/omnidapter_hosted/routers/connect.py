@@ -99,6 +99,7 @@ class ConnectSessionRequest(BaseModel):
 class ConnectSessionResponse(BaseModel):
     session_token: str
     expires_in: int
+    redirect_uri: str | None
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +145,7 @@ async def create_session(
         )
 
     try:
-        raw_session, _ = await create_connect_session(raw_token, session)
+        raw_session, link_token = await create_connect_session(raw_token, session)
     except ValueError as exc:
         code = str(exc)
         if code == "token_already_used":
@@ -164,6 +165,7 @@ async def create_session(
         "data": ConnectSessionResponse(
             session_token=raw_session,
             expires_in=_SESSION_TOKEN_TTL_SECONDS,
+            redirect_uri=link_token.redirect_uri,
         ),
         "meta": {"request_id": request_id},
     }
@@ -298,8 +300,8 @@ async def create_connection(
     # Effective external_id (prefer body, fall back to token's end_user_id)
     external_id = body.external_id or link_token.end_user_id
 
-    # Effective redirect_uri (prefer body override, fall back to token's)
-    redirect_uri = body.redirect_uri or link_token.redirect_uri
+    # redirect_uri is always taken from the link token — the UI is untrusted
+    redirect_uri = link_token.redirect_uri
 
     # Determine provider metadata to check auth_kind
     omni = _metadata_omni()

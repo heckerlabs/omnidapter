@@ -135,6 +135,22 @@ async def test_raw_lt_token_rejected_on_connect_providers(
 
 @pytest.mark.asyncio
 @pytest.mark.integration
+async def test_post_connect_session_returns_redirect_uri(
+    public_client: AsyncClient,
+    session: AsyncSession,
+):
+    """Session exchange response includes redirect_uri from the link token."""
+    raw_lt = await _create_link_token(session)
+
+    response = await public_client.post("/connect/session", json={"token": raw_lt})
+    assert response.status_code == 200
+
+    data = response.json()["data"]
+    assert data["redirect_uri"] == "https://example.com/callback"
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_cs_token_accepted_on_connect_providers(
     public_client: AsyncClient,
     session: AsyncSession,

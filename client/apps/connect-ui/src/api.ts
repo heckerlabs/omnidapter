@@ -44,7 +44,12 @@ async function request<T>(
  *
  * Throws on invalid/consumed/expired tokens with a typed error object.
  */
-export async function createSession(bootstrapToken: string): Promise<string> {
+export interface SessionResult {
+  sessionToken: string;
+  redirectUri: string | null;
+}
+
+export async function createSession(bootstrapToken: string): Promise<SessionResult> {
   const res = await fetch("/connect/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -57,7 +62,8 @@ export async function createSession(bootstrapToken: string): Promise<string> {
     const err = detail?.detail ?? detail?.error ?? {};
     throw { status: res.status, code: err.code ?? "api_error", message: err.message ?? "Unknown error" };
   }
-  return (data as { data: { session_token: string } }).data.session_token;
+  const d = (data as { data: { session_token: string; redirect_uri: string | null } }).data;
+  return { sessionToken: d.session_token, redirectUri: d.redirect_uri ?? null };
 }
 
 export async function listProviders(token: string): Promise<Provider[]> {

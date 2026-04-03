@@ -19,7 +19,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import omnidapter_hosted.models  # noqa: F401, E402
 import omnidapter_server.models  # noqa: F401, E402
 from omnidapter_hosted.database import HostedBase  # noqa: E402
-from omnidapter_server.database import Base as ServerBase  # noqa: E402
 
 config = context.config
 
