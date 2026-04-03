@@ -98,6 +98,20 @@ async function fetchLinkToken(
 
 export function App() {
   // -------------------------------------------------------------------------
+  // Dark mode detection
+  // -------------------------------------------------------------------------
+  const [isDark, setIsDark] = useState(() =>
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // -------------------------------------------------------------------------
   // Iframe / redirect callback detection — runs synchronously before render
   // -------------------------------------------------------------------------
   const params = new URLSearchParams(window.location.search);
@@ -105,35 +119,6 @@ export function App() {
   const cbError = params.get("error");
   const cbErrorDesc = params.get("error_description");
   const isEmbedCallback = inIframe() && (cbConnectionId !== null || cbError !== null);
-
-  // If we're the iframe callback page, postMessage parent and show minimal UI
-  useEffect(() => {
-    if (!isEmbedCallback) return;
-    if (cbConnectionId) {
-      window.parent.postMessage(
-        { type: "omnidapter:success", connectionId: cbConnectionId, provider: "" },
-        "*"
-      );
-    } else {
-      window.parent.postMessage(
-        { type: "omnidapter:error", code: cbError, message: cbErrorDesc ?? "" },
-        "*"
-      );
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (isEmbedCallback) {
-    return (
-      <div style={s.iframeCallback}>
-        <span style={{ color: cbConnectionId ? "#16a34a" : "#dc2626", fontSize: 32 }}>
-          {cbConnectionId ? "✓" : "✕"}
-        </span>
-        <p style={{ marginTop: 8, color: "#555", fontSize: 14 }}>
-          {cbConnectionId ? "Connected! Returning…" : "Error. Returning…"}
-        </p>
-      </div>
-    );
-  }
 
   // -------------------------------------------------------------------------
   // State
@@ -155,6 +140,7 @@ export function App() {
   const logIdRef = useRef(0);
   const sdkRef = useRef<OmnidapterConnect | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+  const initRef = useRef(false);
 
   // Persist config
   useEffect(() => {
@@ -180,24 +166,60 @@ export function App() {
     []
   );
 
-  // Handle top-level redirect callback (redirect mode return)
+  // -------------------------------------------------------------------------
+  // Initialization: handle embed callback or redirect callback (mount only)
+  // -------------------------------------------------------------------------
+
+  if (isEmbedCallback) {
+    // Handle embed callback in effect (only runs once)
+    useEffect(() => {
+      if (initRef.current) return;
+      initRef.current = true;
+
+      if (cbConnectionId) {
+        window.parent.postMessage(
+          { type: "omnidapter:success", connectionId: cbConnectionId, provider: "" },
+          "*"
+        );
+      } else {
+        window.parent.postMessage(
+          { type: "omnidapter:error", code: cbError, message: cbErrorDesc ?? "" },
+          "*"
+        );
+      }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Show minimal UI for embed callback
+    return (
+      <div style={s.iframeCallback}>
+        <span style={{ color: cbConnectionId ? "#16a34a" : "#dc2626", fontSize: 32 }}>
+          {cbConnectionId ? "✓" : "✕"}
+        </span>
+        <p style={{ marginTop: 8, color: "#555", fontSize: 14 }}>
+          {cbConnectionId ? "Connected! Returning…" : "Error. Returning…"}
+        </p>
+      </div>
+    );
+  }
+
+  // Handle redirect callback (mount only)
   useEffect(() => {
-    if (inIframe()) return; // embed callback handled above
+    if (initRef.current) return;
+    initRef.current = true;
+
     if (cbConnectionId) {
       addLog("success", "Connected via redirect", `connection_id: ${cbConnectionId}`);
       window.history.replaceState({}, "", window.location.pathname);
     } else if (cbError) {
-      addLog(
-        "error",
-        `Error via redirect: ${cbError}`,
-        cbErrorDesc ?? undefined
-      );
+      addLog("error", `Error via redirect: ${cbError}`, cbErrorDesc ?? undefined);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Listen for postMessage from embed iframe
+  // Listen for postMessage from embed iframe (only when embed is active)
   useEffect(() => {
+    if (!embedSrc) return;
+
     const handler = (event: MessageEvent) => {
       const data = event.data as { type?: string; connectionId?: string; code?: string; message?: string; provider?: string } | undefined;
       if (!data?.type?.startsWith("omnidapter:")) return;
@@ -215,7 +237,7 @@ export function App() {
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [addLog]);
+  }, [addLog, embedSrc]);
 
   // -------------------------------------------------------------------------
   // Connect
@@ -294,6 +316,52 @@ export function App() {
     embed: "Open Embedded",
   };
 
+  const s = getStyles(isDark);
+
+  const Field = ({
+    label,
+    value,
+    onChange,
+    placeholder,
+    type = "text",
+    warning,
+  }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    type?: string;
+    warning?: string;
+  }) => {
+    const [tipVisible, setTipVisible] = useState(false);
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <label style={s.fieldLabel}>{label}</label>
+        <div style={{ position: "relative" }}>
+          <input
+            type={type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            style={{ ...s.input, ...(warning ? { paddingRight: 28 } : {}) }}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          {warning && (
+            <span
+              style={s.warnIcon}
+              onMouseEnter={() => setTipVisible(true)}
+              onMouseLeave={() => setTipVisible(false)}
+            >
+              ⚠
+              {tipVisible && <span style={s.warnTooltip}>{warning}</span>}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={s.root}>
       <style>{`
@@ -358,6 +426,7 @@ export function App() {
               onChange={(v) => setConfig((c) => ({ ...c, apiKey: v }))}
               placeholder="omni_live_…"
               type="password"
+              warning="API keys are server-side secrets. Only use one here for local testing — never in production client-side code."
             />
             <Field
               label="End User ID"
@@ -458,43 +527,41 @@ export function App() {
 }
 
 // ---------------------------------------------------------------------------
-// Field component
-// ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={s.fieldLabel}>{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={s.input}
-        spellCheck={false}
-        autoComplete="off"
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
 
-const s: Record<string, React.CSSProperties> = {
+function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
+  const colors = isDark
+    ? {
+        bgMain: "#1f2937",
+        bgSecondary: "#111827",
+        text: "#f3f4f6",
+        textSecondary: "#d1d5db",
+        textTertiary: "#9ca3af",
+        border: "#374151",
+        inputBorder: "#4b5563",
+        label: "#e5e7eb",
+        headerBg: "#0f172a",
+        warnText: "#fbbf24",
+        warnBg: "#1c1a0e",
+        warnBorder: "#78490a",
+      }
+    : {
+        bgMain: "#fff",
+        bgSecondary: "#fafafa",
+        text: "#111",
+        textSecondary: "#6b7280",
+        textTertiary: "#9ca3af",
+        border: "#e5e7eb",
+        inputBorder: "#d1d5db",
+        label: "#374151",
+        headerBg: "#111",
+        warnText: "#92400e",
+        warnBg: "#fffbeb",
+        warnBorder: "#fde68a",
+      };
+
+  return {
   root: {
     minHeight: "100vh",
     display: "flex",
@@ -502,8 +569,8 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   header: {
-    background: "#111",
-    color: "#fff",
+    background: colors.headerBg,
+    color: colors.text,
     padding: "20px 32px",
     display: "flex",
     alignItems: "center",
@@ -516,7 +583,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   subtitle: {
     fontSize: 13,
-    color: "#888",
+    color: colors.textTertiary,
     marginTop: 2,
   },
 
@@ -529,8 +596,8 @@ const s: Record<string, React.CSSProperties> = {
 
   left: {
     padding: 24,
-    borderRight: "1px solid #e5e7eb",
-    background: "#fff",
+    borderRight: `1px solid ${colors.border}`,
+    background: colors.bgMain,
     display: "flex",
     flexDirection: "column",
     gap: 4,
@@ -540,7 +607,7 @@ const s: Record<string, React.CSSProperties> = {
   right: {
     display: "flex",
     flexDirection: "column",
-    background: "#fafafa",
+    background: colors.bgSecondary,
   },
 
   section: {
@@ -551,7 +618,7 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: 0.8,
-    color: "#6b7280",
+    color: colors.textSecondary,
     marginBottom: 10,
   },
 
@@ -565,29 +632,54 @@ const s: Record<string, React.CSSProperties> = {
     padding: "7px 0",
     fontSize: 13,
     fontWeight: 500,
-    border: "1px solid #e5e7eb",
+    border: `1px solid ${colors.border}`,
     borderRadius: 6,
-    background: "#fff",
+    background: colors.bgMain,
     cursor: "pointer",
-    color: "#6b7280",
+    color: colors.textSecondary,
     transition: "all 0.1s",
   },
   tabActive: {
-    background: "#111",
-    color: "#fff",
-    borderColor: "#111",
+    background: colors.headerBg,
+    color: colors.text,
+    borderColor: colors.headerBg,
   },
   modeDesc: {
     fontSize: 12,
-    color: "#6b7280",
+    color: colors.textSecondary,
     lineHeight: 1.5,
+  },
+  warnIcon: {
+    position: "absolute",
+    right: 8,
+    top: "50%",
+    transform: "translateY(-50%)",
+    fontSize: 13,
+    color: colors.warnText,
+    cursor: "default",
+    lineHeight: 1,
+  },
+  warnTooltip: {
+    position: "absolute",
+    right: 0,
+    bottom: "calc(100% + 6px)",
+    background: colors.warnBg,
+    border: `1px solid ${colors.warnBorder}`,
+    color: colors.warnText,
+    borderRadius: 6,
+    padding: "6px 10px",
+    fontSize: 11,
+    lineHeight: 1.5,
+    width: 240,
+    zIndex: 10,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
   },
 
   fieldLabel: {
     display: "block",
     fontSize: 12,
     fontWeight: 500,
-    color: "#374151",
+    color: colors.label,
     marginBottom: 5,
   },
   input: {
@@ -595,11 +687,11 @@ const s: Record<string, React.CSSProperties> = {
     boxSizing: "border-box",
     padding: "8px 10px",
     fontSize: 13,
-    border: "1px solid #d1d5db",
+    border: `1px solid ${colors.inputBorder}`,
     borderRadius: 6,
     outline: "none",
-    background: "#fff",
-    color: "#111",
+    background: colors.bgMain,
+    color: colors.text,
     fontFamily: "inherit",
   },
 
@@ -608,8 +700,8 @@ const s: Record<string, React.CSSProperties> = {
     padding: "10px 0",
     fontSize: 14,
     fontWeight: 600,
-    background: "#111",
-    color: "#fff",
+    background: colors.headerBg,
+    color: colors.text,
     border: "none",
     borderRadius: 8,
     cursor: "pointer",
@@ -625,14 +717,14 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 20px",
-    borderBottom: "1px solid #e5e7eb",
-    background: "#fff",
+    borderBottom: `1px solid ${colors.border}`,
+    background: colors.bgMain,
   },
   clearBtn: {
     fontSize: 12,
-    color: "#6b7280",
+    color: colors.textSecondary,
     background: "none",
-    border: "1px solid #e5e7eb",
+    border: `1px solid ${colors.border}`,
     borderRadius: 4,
     padding: "3px 8px",
     cursor: "pointer",
@@ -647,21 +739,21 @@ const s: Record<string, React.CSSProperties> = {
   },
   logEmpty: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: colors.textTertiary,
     marginTop: 8,
   },
   logEntry: {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
-    borderLeft: "3px solid #9ca3af",
+    borderLeft: `3px solid ${colors.textTertiary}`,
     paddingLeft: 10,
     paddingTop: 3,
     paddingBottom: 3,
   },
   logTime: {
     fontSize: 11,
-    color: "#9ca3af",
+    color: colors.textTertiary,
     fontVariantNumeric: "tabular-nums",
     flexShrink: 0,
     paddingTop: 1,
@@ -675,7 +767,7 @@ const s: Record<string, React.CSSProperties> = {
   },
   logDetail: {
     fontSize: 11,
-    color: "#6b7280",
+    color: colors.textSecondary,
     fontFamily: "monospace",
   },
 
@@ -690,7 +782,7 @@ const s: Record<string, React.CSSProperties> = {
     zIndex: 100,
   },
   modal: {
-    background: "#fff",
+    background: colors.bgMain,
     borderRadius: 12,
     overflow: "hidden",
     boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
@@ -703,19 +795,19 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 16px",
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom: `1px solid ${colors.border}`,
   },
   modalTitle: {
     fontSize: 14,
     fontWeight: 600,
-    color: "#111",
+    color: colors.text,
   },
   modalClose: {
     background: "none",
     border: "none",
     cursor: "pointer",
     fontSize: 16,
-    color: "#6b7280",
+    color: colors.textSecondary,
     lineHeight: 1,
     padding: 4,
   },
@@ -735,4 +827,5 @@ const s: Record<string, React.CSSProperties> = {
     height: "100vh",
     fontFamily: "system-ui",
   },
-};
+  };
+}
