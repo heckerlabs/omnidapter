@@ -466,7 +466,7 @@ export function App() {
           formError={state.formError}
           submitting={state.submitting}
           onSubmit={handleCredentialSubmit}
-          onBack={handleBack}
+          onBack={state.providers.length > 1 ? handleBack : handleCancel}
         />
       );
 
