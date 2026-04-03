@@ -116,9 +116,10 @@ export function App() {
   // -------------------------------------------------------------------------
   const params = new URLSearchParams(window.location.search);
   const cbConnectionId = params.get("connection_id");
+  const cbStatus = params.get("status");
   const cbError = params.get("error");
   const cbErrorDesc = params.get("error_description");
-  const isEmbedCallback = inIframe() && (cbConnectionId !== null || cbError !== null);
+  const isEmbedCallback = inIframe() && (cbConnectionId !== null || cbError !== null || cbStatus === "cancelled");
 
   // -------------------------------------------------------------------------
   // State
@@ -181,6 +182,8 @@ export function App() {
           { type: "omnidapter:success", connectionId: cbConnectionId, provider: "" },
           "*"
         );
+      } else if (cbStatus === "cancelled") {
+        window.parent.postMessage({ type: "omnidapter:close" }, "*");
       } else {
         window.parent.postMessage(
           { type: "omnidapter:error", code: cbError, message: cbErrorDesc ?? "" },
@@ -210,6 +213,9 @@ export function App() {
     if (cbConnectionId) {
       addLog("success", "Connected via redirect", `connection_id: ${cbConnectionId}`);
       window.history.replaceState({}, "", window.location.pathname);
+    } else if (cbStatus === "cancelled") {
+      addLog("info", "Cancelled via redirect");
+      window.history.replaceState({}, "", window.location.pathname);
     } else if (cbError) {
       addLog("error", `Error via redirect: ${cbError}`, cbErrorDesc ?? undefined);
       window.history.replaceState({}, "", window.location.pathname);
@@ -229,6 +235,9 @@ export function App() {
           "Connected via embed",
           `connection_id: ${data.connectionId}${data.provider ? `, provider: ${data.provider}` : ""}`
         );
+        setEmbedSrc(null);
+      } else if (data.type === "omnidapter:close") {
+        addLog("info", "Cancelled via embed");
         setEmbedSrc(null);
       } else if (data.type === "omnidapter:error") {
         addLog("error", `Error via embed: ${data.code}`, data.message);
@@ -318,50 +327,6 @@ export function App() {
 
   const s = getStyles(isDark);
 
-  const Field = ({
-    label,
-    value,
-    onChange,
-    placeholder,
-    type = "text",
-    warning,
-  }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    placeholder?: string;
-    type?: string;
-    warning?: string;
-  }) => {
-    const [tipVisible, setTipVisible] = useState(false);
-    return (
-      <div style={{ marginBottom: 14 }}>
-        <label style={s.fieldLabel}>{label}</label>
-        <div style={{ position: "relative" }}>
-          <input
-            type={type}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            style={{ ...s.input, ...(warning ? { paddingRight: 28 } : {}) }}
-            spellCheck={false}
-            autoComplete="off"
-          />
-          {warning && (
-            <span
-              style={s.warnIcon}
-              onMouseEnter={() => setTipVisible(true)}
-              onMouseLeave={() => setTipVisible(false)}
-            >
-              ⚠
-              {tipVisible && <span style={s.warnTooltip}>{warning}</span>}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div style={s.root}>
       <style>{`
@@ -408,38 +373,11 @@ export function App() {
           {/* Config */}
           <section style={s.section}>
             <h2 style={s.sectionTitle}>Configuration</h2>
-            <Field
-              label="API URL"
-              value={config.apiUrl}
-              onChange={(v) => setConfig((c) => ({ ...c, apiUrl: v }))}
-              placeholder="http://localhost:8000"
-            />
-            <Field
-              label="Connect UI URL"
-              value={config.connectUiUrl}
-              onChange={(v) => setConfig((c) => ({ ...c, connectUiUrl: v }))}
-              placeholder="http://localhost:5173"
-            />
-            <Field
-              label="API Key"
-              value={config.apiKey}
-              onChange={(v) => setConfig((c) => ({ ...c, apiKey: v }))}
-              placeholder="omni_live_…"
-              type="password"
-              warning="API keys are server-side secrets. Only use one here for local testing — never in production client-side code."
-            />
-            <Field
-              label="End User ID"
-              value={config.endUserId}
-              onChange={(v) => setConfig((c) => ({ ...c, endUserId: v }))}
-              placeholder="user_123"
-            />
-            <Field
-              label="Allowed Providers"
-              value={config.allowedProviders}
-              onChange={(v) => setConfig((c) => ({ ...c, allowedProviders: v }))}
-              placeholder="google, microsoft  (blank = all)"
-            />
+            <Field s={s} label="API URL" value={config.apiUrl} onChange={(v) => setConfig((c) => ({ ...c, apiUrl: v }))} placeholder="http://localhost:8000" />
+            <Field s={s} label="Connect UI URL" value={config.connectUiUrl} onChange={(v) => setConfig((c) => ({ ...c, connectUiUrl: v }))} placeholder="http://localhost:5123" />
+            <Field s={s} label="API Key" value={config.apiKey} onChange={(v) => setConfig((c) => ({ ...c, apiKey: v }))} placeholder="omni_live_…" type="password" warning="API keys are server-side secrets. Only use one here for local testing — never in production client-side code." />
+            <Field s={s} label="End User ID" value={config.endUserId} onChange={(v) => setConfig((c) => ({ ...c, endUserId: v }))} placeholder="user_123" />
+            <Field s={s} label="Allowed Providers" value={config.allowedProviders} onChange={(v) => setConfig((c) => ({ ...c, allowedProviders: v }))} placeholder="google, microsoft  (blank = all)" />
           </section>
 
           <button
@@ -522,6 +460,56 @@ export function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Field component
+// ---------------------------------------------------------------------------
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  warning,
+  s,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  warning?: string;
+  s: Record<string, React.CSSProperties>;
+}) {
+  const [tipVisible, setTipVisible] = useState(false);
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={s.fieldLabel}>{label}</label>
+      <div style={{ position: "relative" }}>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          style={{ ...s.input, ...(warning ? { paddingRight: 28 } : {}) }}
+          spellCheck={false}
+          autoComplete="off"
+        />
+        {warning && (
+          <span
+            style={s.warnIcon}
+            onMouseEnter={() => setTipVisible(true)}
+            onMouseLeave={() => setTipVisible(false)}
+          >
+            ⚠
+            {tipVisible && <span style={s.warnTooltip}>{warning}</span>}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

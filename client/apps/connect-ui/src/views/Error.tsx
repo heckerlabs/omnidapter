@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { PostMessageError } from "../types";
 
 interface Props {
@@ -6,21 +6,44 @@ interface Props {
   message: string;
   isPopup: boolean;
   openerOrigin: string | null;
+  redirectUri: string | null;
   onRetry?: () => void;
 }
 
 const RETRY_CODES = new Set(["user_denied", "invalid_credentials", "server_unreachable"]);
+const REDIRECT_DELAY_S = 5;
 
-export function ErrorView({ code, message, isPopup, openerOrigin, onRetry }: Props) {
+export function ErrorView({ code, message, isPopup, openerOrigin, redirectUri, onRetry }: Props) {
   const canRetry = RETRY_CODES.has(code) && onRetry != null;
+  const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
 
-  const handleClose = () => {
-    if (isPopup && window.opener && openerOrigin) {
-      const msg: PostMessageError = { type: "omnidapter:error", code, message };
-      window.opener.postMessage(msg, openerOrigin);
-      window.close();
-    }
-  };
+  useEffect(() => {
+    if (canRetry) return;
+    const canClose = (isPopup && window.opener && openerOrigin) || redirectUri;
+    if (!canClose) return;
+
+    const interval = setInterval(() => {
+      setCountdown((n) => {
+        if (n <= 1) {
+          clearInterval(interval);
+          if (isPopup && window.opener && openerOrigin) {
+            const msg: PostMessageError = { type: "omnidapter:error", code, message };
+            window.opener.postMessage(msg, openerOrigin);
+            window.close();
+          } else if (redirectUri) {
+            const url = new URL(redirectUri);
+            url.searchParams.set("error", code);
+            url.searchParams.set("error_description", message);
+            window.location.href = url.toString();
+          }
+          return 0;
+        }
+        return n - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [canRetry, isPopup, openerOrigin, redirectUri, code, message]);
 
   return (
     <div style={card}>
@@ -32,15 +55,8 @@ export function ErrorView({ code, message, isPopup, openerOrigin, onRetry }: Pro
           Try again
         </button>
       )}
-      {isPopup && (
-        <button style={closeBtn} onClick={handleClose}>
-          Close
-        </button>
-      )}
-      {!isPopup && !canRetry && (
-        <p style={{ ...sub, marginTop: 16 }}>
-          Please return to the application and try again.
-        </p>
+      {!canRetry && (
+        <p style={{ ...sub, marginTop: 16 }}>Sending you back in {countdown}…</p>
       )}
     </div>
   );

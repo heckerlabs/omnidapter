@@ -431,6 +431,17 @@ export function App() {
     dispatch({ type: "RETRY" });
   };
 
+  const handleCancel = () => {
+    if (popup && window.opener && state.openerOrigin) {
+      window.opener.postMessage({ type: "omnidapter:close" }, state.openerOrigin);
+      window.close();
+    } else if (state.redirectUri) {
+      const url = new URL(state.redirectUri);
+      url.searchParams.set("status", "cancelled");
+      window.location.href = url.toString();
+    }
+  };
+
   switch (state.view) {
     case "loading":
       return <LoadingView />;
@@ -440,6 +451,7 @@ export function App() {
         <ProviderSelectionView
           providers={state.providers}
           onSelect={(p) => dispatch({ type: "SELECT_PROVIDER", provider: p })}
+          onCancel={handleCancel}
         />
       );
 
@@ -478,6 +490,7 @@ export function App() {
           message={state.errorMessage ?? "An unexpected error occurred."}
           isPopup={popup}
           openerOrigin={state.openerOrigin}
+          redirectUri={state.redirectUri}
           onRetry={
             state.errorCode && ["user_denied", "invalid_credentials"].includes(state.errorCode)
               ? () => dispatch({ type: "RETRY" })
