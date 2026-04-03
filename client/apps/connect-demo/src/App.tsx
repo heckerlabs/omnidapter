@@ -14,6 +14,7 @@ interface Config {
 }
 
 type Mode = "popup" | "redirect" | "embed";
+type Theme = "system" | "light" | "dark";
 
 interface LogEntry {
   id: number;
@@ -98,18 +99,24 @@ async function fetchLinkToken(
 
 export function App() {
   // -------------------------------------------------------------------------
-  // Dark mode detection
+  // Theme
   // -------------------------------------------------------------------------
-  const [isDark, setIsDark] = useState(() =>
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  );
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : null;
+      return (["system", "light", "dark"] as Theme[]).includes(parsed?.theme)
+        ? parsed.theme
+        : "system";
+    } catch {
+      return "system";
+    }
+  });
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("light", theme === "light");
+  }, [theme]);
 
   // -------------------------------------------------------------------------
   // Iframe / redirect callback detection — runs synchronously before render
@@ -155,15 +162,15 @@ export function App() {
     }
   });
   const [embedSrc, setEmbedSrc] = useState<string | null>(null);
-  const logIdRef = useRef(0);
+  const logIdRef = useRef(log.reduce((max, e) => Math.max(max, e.id), 0));
   const sdkRef = useRef<OmnidapterConnect | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const initRef = useRef(false);
 
-  // Persist config and mode
+  // Persist config, mode, and theme
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, mode }));
-  }, [config, mode]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...config, mode, theme }));
+  }, [config, mode, theme]);
 
   // Persist log to sessionStorage so redirect navigations don't wipe it
   useEffect(() => {
@@ -193,7 +200,7 @@ export function App() {
   // Initialization: handle embed callback or redirect callback (mount only)
   // -------------------------------------------------------------------------
 
-  const s = getStyles(isDark);
+  const s = getStyles();
 
   if (isEmbedCallback) {
     // Handle embed callback in effect (only runs once)
@@ -357,16 +364,29 @@ export function App() {
           .demo-body { grid-template-columns: 1fr; }
           .demo-log { border-top: 1px solid #e5e7eb; border-left: none; }
           .demo-log-panel { max-height: 280px; }
+          .demo-title { font-size: 16px !important; }
         }
+        * { scrollbar-width: thin; scrollbar-color: var(--input-border) var(--bg-secondary); }
+        *::-webkit-scrollbar { width: 6px; height: 6px; }
+        *::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        *::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 3px; }
+        *::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
       `}</style>
       {/* ------------------------------------------------------------------ */}
       {/* Header                                                              */}
       {/* ------------------------------------------------------------------ */}
       <header style={s.header}>
         <div>
-          <h1 style={s.title}>Omnidapter Connect Demo</h1>
+          <h1 style={s.title} className="demo-title">Omnidapter Connect Demo</h1>
           <p style={s.subtitle}>Test all Connect UI integration modes</p>
         </div>
+        <button
+          style={s.themeBtn}
+          onClick={() => setTheme(t => t === "light" ? "dark" : t === "dark" ? "system" : "light")}
+          title={theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System"}
+        >
+          {theme === "light" ? "☀" : theme === "dark" ? "☾" : "◑"}
+        </button>
       </header>
 
       {/* ------------------------------------------------------------------ */}
@@ -414,7 +434,7 @@ export function App() {
         {/* Right panel — log */}
         <div style={s.right} className="demo-log">
           <div style={s.logHeader}>
-            <h2 style={s.sectionTitle}>Event Log</h2>
+            <h2 style={{ ...s.sectionTitle, marginBottom: 0 }}>Event Log</h2>
             <button style={s.clearBtn} onClick={() => { setLog([]); sessionStorage.removeItem("omnidapter_demo_log"); }}>
               Clear
             </button>
@@ -540,48 +560,19 @@ function Field({
 // Styles
 // ---------------------------------------------------------------------------
 
-function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
-  const colors = isDark
-    ? {
-        bgMain: "#1f2937",
-        bgSecondary: "#111827",
-        text: "#f3f4f6",
-        textSecondary: "#d1d5db",
-        textTertiary: "#9ca3af",
-        border: "#374151",
-        inputBorder: "#4b5563",
-        label: "#e5e7eb",
-        headerBg: "#0f172a",
-        warnText: "#fbbf24",
-        warnBg: "#1c1a0e",
-        warnBorder: "#78490a",
-      }
-    : {
-        bgMain: "#fff",
-        bgSecondary: "#fafafa",
-        text: "#111",
-        textSecondary: "#6b7280",
-        textTertiary: "#9ca3af",
-        border: "#e5e7eb",
-        inputBorder: "#d1d5db",
-        label: "#374151",
-        headerBg: "#111",
-        warnText: "#92400e",
-        warnBg: "#fffbeb",
-        warnBorder: "#fde68a",
-      };
-
+function getStyles(): Record<string, React.CSSProperties> {
   return {
   root: {
-    minHeight: "100vh",
+    height: "100vh",
     display: "flex",
     flexDirection: "column",
+    overflow: "hidden",
   },
 
   header: {
-    background: colors.headerBg,
-    color: colors.text,
-    padding: "20px 32px",
+    background: "var(--header-bg)",
+    color: "#fff",
+    padding: "20px 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -593,8 +584,24 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
   },
   subtitle: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: "var(--text-tertiary)",
     marginTop: 2,
+  },
+
+  themeBtn: {
+    background: "var(--theme-btn-bg)",
+    border: "none",
+    color: "var(--theme-btn-color)",
+    cursor: "pointer",
+    fontSize: 18,
+    lineHeight: 1,
+    padding: 4,
+    width: 32,
+    height: 32,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 6,
   },
 
   body: {
@@ -606,18 +613,21 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
 
   left: {
     padding: 24,
-    borderRight: `1px solid ${colors.border}`,
-    background: colors.bgMain,
+    borderRight: "1px solid var(--border)",
+    background: "var(--bg-main)",
     display: "flex",
     flexDirection: "column",
     gap: 4,
     minWidth: 0,
+    overflowY: "auto",
   },
 
   right: {
     display: "flex",
     flexDirection: "column",
-    background: colors.bgSecondary,
+    background: "var(--bg-secondary)",
+    minHeight: 0,
+    overflow: "hidden",
   },
 
   section: {
@@ -628,7 +638,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: 0.8,
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     marginBottom: 10,
   },
 
@@ -642,21 +652,21 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     padding: "7px 0",
     fontSize: 13,
     fontWeight: 500,
-    border: `1px solid ${colors.border}`,
+    border: "1px solid var(--border)",
     borderRadius: 6,
-    background: colors.bgMain,
+    background: "var(--bg-main)",
     cursor: "pointer",
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     transition: "all 0.1s",
   },
   tabActive: {
-    background: colors.headerBg,
-    color: colors.text,
-    border: `1px solid ${colors.headerBg}`,
+    background: "var(--btn-active-bg)",
+    color: "var(--btn-active-text)",
+    border: "1px solid var(--btn-active-bg)",
   },
   modeDesc: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     lineHeight: 1.5,
   },
   warnIcon: {
@@ -665,7 +675,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     top: "50%",
     transform: "translateY(-50%)",
     fontSize: 13,
-    color: colors.warnText,
+    color: "var(--warn-text)",
     cursor: "default",
     lineHeight: 1,
   },
@@ -673,9 +683,9 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     position: "absolute",
     right: 0,
     bottom: "calc(100% + 6px)",
-    background: colors.warnBg,
-    border: `1px solid ${colors.warnBorder}`,
-    color: colors.warnText,
+    background: "var(--warn-bg)",
+    border: "1px solid var(--warn-border)",
+    color: "var(--warn-text)",
     borderRadius: 6,
     padding: "6px 10px",
     fontSize: 11,
@@ -689,7 +699,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     display: "block",
     fontSize: 12,
     fontWeight: 500,
-    color: colors.label,
+    color: "var(--label)",
     marginBottom: 5,
   },
   input: {
@@ -697,11 +707,11 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     boxSizing: "border-box",
     padding: "8px 10px",
     fontSize: 13,
-    border: `1px solid ${colors.inputBorder}`,
+    border: "1px solid var(--input-border)",
     borderRadius: 6,
     outline: "none",
-    background: colors.bgMain,
-    color: colors.text,
+    background: "var(--bg-main)",
+    color: "var(--text)",
     fontFamily: "inherit",
   },
 
@@ -710,8 +720,8 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     padding: "10px 0",
     fontSize: 14,
     fontWeight: 600,
-    background: colors.headerBg,
-    color: colors.text,
+    background: "var(--btn-active-bg)",
+    color: "var(--btn-active-text)",
     border: "none",
     borderRadius: 8,
     cursor: "pointer",
@@ -726,15 +736,15 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 20px",
-    borderBottom: `1px solid ${colors.border}`,
-    background: colors.bgMain,
+    padding: "12px 24px",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--bg-main)",
   },
   clearBtn: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     background: "none",
-    border: `1px solid ${colors.border}`,
+    border: "1px solid var(--border)",
     borderRadius: 4,
     padding: "3px 8px",
     cursor: "pointer",
@@ -742,28 +752,28 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
   logPanel: {
     flex: 1,
     overflowY: "auto",
-    padding: "12px 20px",
+    padding: "12px 24px",
     display: "flex",
     flexDirection: "column",
     gap: 6,
   },
   logEmpty: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: "var(--text-tertiary)",
     marginTop: 8,
   },
   logEntry: {
     display: "flex",
     gap: 10,
     alignItems: "flex-start",
-    borderLeft: `3px solid ${colors.textTertiary}`,
+    borderLeft: "3px solid var(--text-tertiary)",
     paddingLeft: 10,
     paddingTop: 3,
     paddingBottom: 3,
   },
   logTime: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: "var(--text-tertiary)",
     fontVariantNumeric: "tabular-nums",
     flexShrink: 0,
     paddingTop: 1,
@@ -777,7 +787,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
   },
   logDetail: {
     fontSize: 11,
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     fontFamily: "monospace",
   },
 
@@ -792,7 +802,7 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     zIndex: 100,
   },
   modal: {
-    background: colors.bgMain,
+    background: "var(--bg-main)",
     borderRadius: 12,
     overflow: "hidden",
     boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
@@ -805,19 +815,19 @@ function getStyles(isDark: boolean): Record<string, React.CSSProperties> {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "12px 16px",
-    borderBottom: `1px solid ${colors.border}`,
+    borderBottom: "1px solid var(--border)",
   },
   modalTitle: {
     fontSize: 14,
     fontWeight: 600,
-    color: colors.text,
+    color: "var(--text)",
   },
   modalClose: {
     background: "none",
     border: "none",
     cursor: "pointer",
     fontSize: 16,
-    color: colors.textSecondary,
+    color: "var(--text-secondary)",
     lineHeight: 1,
     padding: 4,
   },
