@@ -54,6 +54,14 @@ function isPopup(): boolean {
   }
 }
 
+function isInIframe(): boolean {
+  try {
+    return window !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // State reducer
 // ---------------------------------------------------------------------------
@@ -65,7 +73,7 @@ type Action =
   | { type: "LOAD_ERROR"; code: string; message: string }
   | { type: "SELECT_PROVIDER"; provider: Provider }
   | { type: "OAUTH_REDIRECT_STARTED" }
-  | { type: "OAUTH_RETURN_SUCCESS"; connectionId: string; provider: string; redirectUri: string | null }
+  | { type: "OAUTH_RETURN_SUCCESS"; connectionId: string; provider: string; redirectUri: string | null; openerOrigin: string | null }
   | { type: "OAUTH_RETURN_ERROR"; code: string; message: string }
   | { type: "CREDENTIAL_SUBMIT_START" }
   | { type: "CREDENTIAL_SUBMIT_SUCCESS"; connectionId: string }
@@ -119,9 +127,8 @@ function reducer(state: AppState, action: Action): AppState {
         view: "success",
         connectionId: action.connectionId,
         oauthProvider: action.provider,
-        // Restore the redirect_uri that was saved before the OAuth redirect.
-        // Keep the existing state value if nothing was saved (e.g. popup mode).
         redirectUri: action.redirectUri ?? state.redirectUri,
+        openerOrigin: action.openerOrigin ?? state.openerOrigin,
       };
 
     case "OAUTH_RETURN_ERROR":
@@ -204,18 +211,38 @@ export function App() {
     bootstrapRan.current = true;
     const { connectionId, errorCode, errorMessage } = extractOAuthReturn();
 
+    // --- Embed OAuth popup return path ---
+    // When Connect UI is in an iframe, OAuth opens in a popup to avoid provider
+    // iframe restrictions.  On return the popup postMessages the result to the
+    // iframe (window.opener) and closes itself.
+    if (connectionId && !errorCode && window.opener && localStorage.getItem("omnidapter_embed_oauth") === "true") {
+      localStorage.removeItem("omnidapter_embed_oauth");
+      const opener = window.opener as Window;
+      // Read saved context from the iframe's sessionStorage (same-origin access)
+      const savedProviderKey = opener.sessionStorage.getItem("omnidapter_provider_key") ?? "";
+      const savedRedirectUri = opener.sessionStorage.getItem("omnidapter_redirect_uri");
+      opener.postMessage(
+        { type: "omnidapter:oauth_complete", connectionId, provider: savedProviderKey, redirectUri: savedRedirectUri },
+        window.location.origin
+      );
+      window.close();
+      return;
+    }
+
     // --- OAuth return path ---
     if (connectionId && !errorCode) {
       const savedProviderKey = sessionStorage.getItem("omnidapter_provider_key") ?? "";
       const savedRedirectUri = sessionStorage.getItem("omnidapter_redirect_uri");
+      const savedOpenerOrigin = sessionStorage.getItem("omnidapter_opener_origin");
       sessionStorage.removeItem("omnidapter_provider_key");
       sessionStorage.removeItem("omnidapter_redirect_uri");
+      sessionStorage.removeItem("omnidapter_opener_origin");
       // Session token was stored before the OAuth redirect; restore it now.
       const savedSession = sessionStorage.getItem(_SESSION_STORAGE_KEY);
       if (savedSession) {
         dispatch({ type: "SESSION_READY", token: savedSession, redirectUri: savedRedirectUri });
       }
-      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey, redirectUri: savedRedirectUri });
+      dispatch({ type: "OAUTH_RETURN_SUCCESS", connectionId, provider: savedProviderKey, redirectUri: savedRedirectUri, openerOrigin: savedOpenerOrigin });
       return;
     }
 
@@ -297,6 +324,9 @@ export function App() {
     redirectUri.hash = "";
 
     sessionStorage.setItem("omnidapter_provider_key", state.selectedProvider.key);
+    if (state.openerOrigin) {
+      sessionStorage.setItem("omnidapter_opener_origin", state.openerOrigin);
+    }
 
     createConnection(state.token, {
       provider_key: state.selectedProvider.key,
@@ -304,7 +334,22 @@ export function App() {
     })
       .then((result) => {
         if (result.authorization_url) {
-          window.location.href = result.authorization_url;
+          if (isInIframe()) {
+            // OAuth providers block their pages from loading inside iframes.
+            // Open the authorization URL in a popup instead; the popup will
+            // postMessage the result back to this iframe on return.
+            localStorage.setItem("omnidapter_embed_oauth", "true");
+            const w = 520, h = 640;
+            const left = Math.round(Math.max(0, (screen.width - w) / 2 + (screenX ?? 0)));
+            const top = Math.round(Math.max(0, (screen.height - h) / 2 + (screenY ?? 0)));
+            window.open(
+              result.authorization_url,
+              "omnidapter_oauth",
+              `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            );
+          } else {
+            window.location.href = result.authorization_url;
+          }
         }
       })
       .catch((err: { code?: string; message?: string }) => {
@@ -315,6 +360,44 @@ export function App() {
         });
       });
   }, [state.view, state.selectedProvider, state.token]);
+
+  // When in an iframe, receive the OAuth result from the popup that was opened
+  // to avoid provider iframe restrictions (see oauth_init effect above).
+  useEffect(() => {
+    if (!isInIframe()) return;
+
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as {
+        type?: string;
+        connectionId?: string;
+        provider?: string;
+        redirectUri?: string | null;
+      };
+      if (data?.type !== "omnidapter:oauth_complete") return;
+
+      // Clean up sessionStorage now that the OAuth round-trip is done
+      const savedSession = sessionStorage.getItem(_SESSION_STORAGE_KEY);
+      const savedRedirectUri = sessionStorage.getItem("omnidapter_redirect_uri");
+      sessionStorage.removeItem("omnidapter_provider_key");
+      sessionStorage.removeItem("omnidapter_redirect_uri");
+      sessionStorage.removeItem("omnidapter_opener_origin");
+
+      if (savedSession) {
+        dispatch({ type: "SESSION_READY", token: savedSession, redirectUri: data.redirectUri ?? savedRedirectUri });
+      }
+      dispatch({
+        type: "OAUTH_RETURN_SUCCESS",
+        connectionId: data.connectionId ?? "",
+        provider: data.provider ?? "",
+        redirectUri: data.redirectUri ?? savedRedirectUri,
+        openerOrigin: null,
+      });
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   const handleCredentialSubmit = async (values: Record<string, string>) => {
     if (!state.token || !state.selectedProvider) return;
