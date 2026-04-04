@@ -304,7 +304,10 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         if not server_url or not username or not password:
             raise HTTPException(
                 status_code=400,
-                detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
+                detail={
+                    "code": "invalid_credentials",
+                    "message": "Missing required credential fields",
+                },
             )
         await _validate_caldav_url(server_url)
     elif provider_key == "apple":
@@ -314,7 +317,10 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
         if not username or not password:
             raise HTTPException(
                 status_code=400,
-                detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
+                detail={
+                    "code": "invalid_credentials",
+                    "message": "Missing required credential fields",
+                },
             )
     else:
         raise ValueError(f"No credential validator implemented for provider '{provider_key}'")

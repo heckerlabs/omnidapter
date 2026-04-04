@@ -19,6 +19,7 @@ from omnidapter_server.services.connect import (
     create_credential_connection,
     is_provider_available,
     list_available_providers,
+    update_credential_connection,
 )
 
 
@@ -458,6 +459,114 @@ async def test_create_credential_connection_validation_failure() -> None:
 
 
 # ---------------------------------------------------------------------------
+# update_credential_connection
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_update_credential_connection_success() -> None:
+    conn_id = uuid.uuid4()
+    existing_conn = Connection(
+        id=conn_id,
+        provider_key="caldav",
+        external_id=None,
+        status="active",
+        created_at=_now(),
+        updated_at=_now(),
+    )
+
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=existing_conn)
+    session.execute = AsyncMock(return_value=result)
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+
+    encryption = MagicMock()
+    encryption.encrypt.return_value = "enc_creds"
+
+    async def noop_validate(provider_key: str, creds: dict[str, str]) -> None:
+        pass
+
+    conn = await update_credential_connection(
+        connection_id=conn_id,
+        credentials={"server_url": "https://dav.example.com/", "username": "u", "password": "p"},
+        session=session,
+        encryption=encryption,
+        validate=noop_validate,
+    )
+
+    assert conn is existing_conn
+    session.commit.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_credential_connection_not_found() -> None:
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=None)
+    session.execute = AsyncMock(return_value=result)
+
+    encryption = MagicMock()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_credential_connection(
+            connection_id=uuid.uuid4(),
+            credentials={
+                "server_url": "https://dav.example.com/",
+                "username": "u",
+                "password": "p",
+            },
+            session=session,
+            encryption=encryption,
+        )
+
+    assert exc_info.value.status_code == 404
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "connection_not_found"
+
+
+@pytest.mark.asyncio
+async def test_update_credential_connection_validation_failure() -> None:
+    conn_id = uuid.uuid4()
+    existing_conn = Connection(
+        id=conn_id,
+        provider_key="caldav",
+        external_id=None,
+        status="active",
+        created_at=_now(),
+        updated_at=_now(),
+    )
+
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=existing_conn)
+    session.execute = AsyncMock(return_value=result)
+
+    encryption = MagicMock()
+
+    async def failing_validate(provider_key: str, creds: dict[str, str]) -> None:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "invalid_credentials", "message": "Bad creds"},
+        )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await update_credential_connection(
+            connection_id=conn_id,
+            credentials={
+                "server_url": "https://dav.example.com/",
+                "username": "u",
+                "password": "bad",
+            },
+            session=session,
+            encryption=encryption,
+            validate=failing_validate,
+        )
+
+    assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
 # _default_caldav_validator — Apple provider
 # ---------------------------------------------------------------------------
 
@@ -485,7 +594,9 @@ async def test_default_caldav_validator_apple_valid_credentials(
 
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
 
-    await _default_caldav_validator("apple", {"username": "user@example.com", "password": "app-specific-pw"})
+    await _default_caldav_validator(
+        "apple", {"username": "user@example.com", "password": "app-specific-pw"}
+    )
 
 
 @pytest.mark.asyncio
@@ -511,7 +622,9 @@ async def test_default_caldav_validator_apple_invalid_credentials(
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
 
     with pytest.raises(HTTPException) as exc_info:
-        await _default_caldav_validator("apple", {"username": "user@example.com", "password": "wrong"})
+        await _default_caldav_validator(
+            "apple", {"username": "user@example.com", "password": "wrong"}
+        )
 
     assert exc_info.value.status_code == 400
     assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_credentials"
