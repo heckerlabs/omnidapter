@@ -77,6 +77,7 @@ class ProviderRegistry:
         from omnidapter.core.errors import ProviderNotConfiguredError
         from omnidapter.core.metadata import AuthKind
         from omnidapter.providers.apple.provider import AppleProvider
+        from omnidapter.providers.caldav.provider import CalDAVProvider
         from omnidapter.providers.google.provider import GoogleProvider
         from omnidapter.providers.microsoft.provider import MicrosoftProvider
         from omnidapter.providers.zoho.provider import ZohoProvider
@@ -84,7 +85,13 @@ class ProviderRegistry:
         registered_count = 0
         oauth_registered_count = 0
 
-        for provider_cls in [GoogleProvider, MicrosoftProvider, ZohoProvider, AppleProvider]:
+        for provider_cls in [
+            GoogleProvider,
+            MicrosoftProvider,
+            ZohoProvider,
+            CalDAVProvider,
+            AppleProvider,
+        ]:
             try:
                 provider = provider_cls()
                 provider_key = provider.metadata.provider_key
@@ -116,6 +123,15 @@ class ProviderRegistry:
                     ):
                         registry_logger.info(
                             "Skipping built-in provider %r: set OMNIDAPTER_APPLE_ENABLED=1 "
+                            "to enable auto-registration",
+                            provider_key,
+                        )
+                        continue
+                    elif provider_key == "caldav" and not _env_flag_enabled(
+                        "OMNIDAPTER_CALDAV_ENABLED"
+                    ):
+                        registry_logger.info(
+                            "Skipping built-in provider %r: set OMNIDAPTER_CALDAV_ENABLED=1 "
                             "to enable auto-registration",
                             provider_key,
                         )

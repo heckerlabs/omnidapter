@@ -90,7 +90,11 @@ async def create_link_token_endpoint(
             session=session,
         )
 
-    ttl = body.ttl_seconds if body.ttl_seconds is not None else settings.omnidapter_link_token_ttl_seconds
+    ttl = (
+        body.ttl_seconds
+        if body.ttl_seconds is not None
+        else settings.omnidapter_link_token_ttl_seconds
+    )
     raw_token, link_token = await create_link_token(
         tenant_id=auth.tenant_id,
         end_user_id=body.end_user_id,
