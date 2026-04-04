@@ -73,7 +73,7 @@ async def test_auth_callback_provisioning(mock_workos_class, db_session: AsyncSe
     settings = HostedSettings()
     settings.workos_api_key = "test_api_key"
     settings.workos_client_id = "test_client_id"
-    settings.jwt_secret = "a" * 32
+    settings.hosted_jwt_secret = "a" * 32
 
     app = create_app(settings=settings)
     app.dependency_overrides[get_session] = _get_session_override
@@ -134,7 +134,7 @@ async def test_auth_callback_existing_user(
     settings = HostedSettings()
     settings.workos_api_key = "test_api_key"
     settings.workos_client_id = "test_client_id"
-    settings.jwt_secret = "a" * 32
+    settings.hosted_jwt_secret = "a" * 32
 
     app = create_app(settings=settings)
     app.dependency_overrides[get_session] = _get_session_override

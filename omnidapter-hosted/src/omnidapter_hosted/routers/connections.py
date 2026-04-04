@@ -174,7 +174,7 @@ async def create_connection(
         session=session,
         tenant_id=auth.tenant_id,
         provider_key=body.provider,
-        limit=settings.omnidapter_fallback_connection_limit,
+        limit=settings.hosted_fallback_connection_limit,
     )
     flow_result = await create_connection_flow(
         body=body,

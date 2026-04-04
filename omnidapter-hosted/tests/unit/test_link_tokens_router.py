@@ -143,7 +143,7 @@ async def test_create_link_token_no_connection_id() -> None:
             body=CreateLinkTokenRequest(end_user_id="u1", redirect_uri="https://app.example.com"),
             auth=auth,
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_1",
         )
 
@@ -174,7 +174,7 @@ async def test_create_link_token_with_valid_connection_id() -> None:
             body=CreateLinkTokenRequest(connection_id=conn_id),
             auth=auth,
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_2",
         )
 
@@ -198,7 +198,7 @@ async def test_create_link_token_connection_not_found() -> None:
             body=CreateLinkTokenRequest(connection_id=uuid.uuid4()),
             auth=auth,
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_3",
         )
     assert exc_info.value.status_code == 404

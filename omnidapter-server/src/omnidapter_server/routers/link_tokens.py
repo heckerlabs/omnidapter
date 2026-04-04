@@ -23,7 +23,7 @@ class CreateLinkTokenRequest(BaseModel):
     end_user_id: str | None = None
     allowed_providers: list[str] | None = None
     redirect_uri: str | None = None
-    # min 60s, max 24h; defaults to settings.link_token_ttl_seconds if omitted
+    # min 60s, max 24h; defaults to settings.omnidapter_link_token_ttl_seconds if omitted
     ttl_seconds: int | None = Field(default=None, ge=60, le=86400)
     # Reconnect: lock this token to an existing connection
     connection_id: uuid.UUID | None = None
@@ -69,7 +69,7 @@ async def create_link_token_endpoint(
             session=session,
         )
 
-    ttl = body.ttl_seconds if body.ttl_seconds is not None else settings.link_token_ttl_seconds
+    ttl = body.ttl_seconds if body.ttl_seconds is not None else settings.omnidapter_link_token_ttl_seconds
     raw_token, link_token = await create_link_token(
         end_user_id=body.end_user_id,
         allowed_providers=body.allowed_providers,

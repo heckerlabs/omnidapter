@@ -22,12 +22,12 @@ class HostedSettings(Settings):
     # JWT signing secret for dashboard sessions (HS256).
     # Auto-generated on startup if empty, but will rotate on each restart — set explicitly in prod.
     # Generate with: `openssl rand -base64 32`
-    jwt_secret: str = ""
+    hosted_jwt_secret: str = ""
     # Dashboard session TTL in seconds (default 24 hours)
-    jwt_ttl_seconds: int = 86400
+    hosted_jwt_ttl_seconds: int = 86400
 
     # Connection limit when using fallback (hosted-owned) OAuth app
-    omnidapter_fallback_connection_limit: int = 5
+    hosted_fallback_connection_limit: int = 5
 
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60
@@ -39,9 +39,9 @@ class HostedSettings(Settings):
 
     @model_validator(mode="after")
     def _require_jwt_secret_in_prod(self) -> HostedSettings:
-        """Require JWT_SECRET to be set in production to prevent session invalidation on restart."""
-        if self.omnidapter_env == "PROD" and not self.jwt_secret.strip():
-            raise ValueError("JWT_SECRET is required when OMNIDAPTER_ENV=PROD")
+        """Require HOSTED_JWT_SECRET to be set in production to prevent session invalidation on restart."""
+        if self.omnidapter_env == "PROD" and not self.hosted_jwt_secret.strip():
+            raise ValueError("HOSTED_JWT_SECRET is required when OMNIDAPTER_ENV=PROD")
         return self
 
 

@@ -221,7 +221,7 @@ async def test_get_dashboard_auth_context_expired_token() -> None:
         await get_dashboard_auth_context(
             bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
             session=AsyncMock(),
-            settings=HostedSettings(jwt_secret="a" * 32),
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
         )
 
     assert exc_info.value.status_code == 401
@@ -238,7 +238,7 @@ async def test_get_dashboard_auth_context_invalid_token() -> None:
                 scheme="Bearer", credentials="not-a-jwt"
             ),
             session=AsyncMock(),
-            settings=HostedSettings(jwt_secret="a" * 32),
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
         )
 
     assert exc_info.value.status_code == 401
@@ -263,7 +263,7 @@ async def test_get_dashboard_auth_context_user_not_found() -> None:
         await get_dashboard_auth_context(
             bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
             session=mock_session,
-            settings=HostedSettings(jwt_secret="a" * 32),
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
         )
 
     assert exc_info.value.status_code == 401

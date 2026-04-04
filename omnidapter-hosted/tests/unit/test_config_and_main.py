@@ -116,21 +116,21 @@ def test_hosted_settings_require_jwt_secret_in_prod(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setenv("OMNIDAPTER_ENV", "PROD")
     monkeypatch.setenv("OMNIDAPTER_ENCRYPTION_KEY", "dGVzdGtleXRlc3RrZXl0ZXN0a2V5dGVzdA==")
-    monkeypatch.setenv("JWT_SECRET", "")
+    monkeypatch.setenv("HOSTED_JWT_SECRET", "")
 
-    with pytest.raises(ValidationError, match="JWT_SECRET is required"):
+    with pytest.raises(ValidationError, match="HOSTED_JWT_SECRET is required"):
         hosted_config.HostedSettings()
 
 
 def test_hosted_settings_jwt_secret_not_required_in_dev(monkeypatch: pytest.MonkeyPatch) -> None:
     """JWT_SECRET is optional in DEV environment."""
     monkeypatch.setenv("OMNIDAPTER_ENV", "DEV")
-    monkeypatch.setenv("JWT_SECRET", "")
+    monkeypatch.setenv("HOSTED_JWT_SECRET", "")
 
     # Should not raise
     settings = hosted_config.HostedSettings()
     assert settings.omnidapter_env == "DEV"
-    assert settings.jwt_secret == ""
+    assert settings.hosted_jwt_secret == ""
 
 
 def test_hosted_settings_jwt_secret_not_required_in_local(
@@ -138,9 +138,9 @@ def test_hosted_settings_jwt_secret_not_required_in_local(
 ) -> None:
     """JWT_SECRET is optional in LOCAL environment."""
     monkeypatch.setenv("OMNIDAPTER_ENV", "LOCAL")
-    monkeypatch.setenv("JWT_SECRET", "")
+    monkeypatch.setenv("HOSTED_JWT_SECRET", "")
 
     # Should not raise
     settings = hosted_config.HostedSettings()
     assert settings.omnidapter_env == "LOCAL"
-    assert settings.jwt_secret == ""
+    assert settings.hosted_jwt_secret == ""

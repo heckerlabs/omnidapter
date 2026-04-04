@@ -34,7 +34,7 @@ async def link_token_client(
     )
 
     settings = HostedSettings()
-    settings.jwt_secret = "a" * 32
+    settings.hosted_jwt_secret = "a" * 32
     settings.omnidapter_google_client_id = "test-google-id"
     settings.omnidapter_google_client_secret = "test-google-secret"
     app = create_app(settings=settings)

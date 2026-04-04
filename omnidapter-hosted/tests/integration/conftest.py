@@ -217,7 +217,7 @@ async def dashboard_client(
     test_settings = HostedSettings()
     test_settings.omnidapter_database_url = postgres_url
     test_settings.hosted_rate_limit_redis_url = redis_url
-    test_settings.jwt_secret = "a" * 32
+    test_settings.hosted_jwt_secret = "a" * 32
 
     app = create_app(settings=test_settings)
     app.dependency_overrides[get_session] = _get_session_override
@@ -262,7 +262,7 @@ async def second_dashboard_client(
     test_settings = HostedSettings()
     test_settings.omnidapter_database_url = postgres_url
     test_settings.hosted_rate_limit_redis_url = redis_url
-    test_settings.jwt_secret = "a" * 32
+    test_settings.hosted_jwt_secret = "a" * 32
 
     app = create_app(settings=test_settings)
     app.dependency_overrides[get_session] = _get_session_override

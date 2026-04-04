@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     # Managed API key for server authentication.
     omnidapter_api_key: str = ""
 
-    # Link token TTL in seconds (default 30 minutes)
-    link_token_ttl_seconds: int = 1800
+    # Link token TTL in seconds (default 60 seconds)
+    omnidapter_link_token_ttl_seconds: int = 60
 
     @field_validator("omnidapter_env", mode="before")
     @classmethod

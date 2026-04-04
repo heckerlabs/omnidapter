@@ -77,7 +77,7 @@ def _membership(
 def _settings(
     secret: str = "mysecret_long_enough_for_hs256_signing", ttl: int = 3600, env: str = "PROD"
 ) -> object:
-    return SimpleNamespace(jwt_secret=secret, jwt_ttl_seconds=ttl, omnidapter_env=env)
+    return SimpleNamespace(hosted_jwt_secret=secret, hosted_jwt_ttl_seconds=ttl, omnidapter_env=env)
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +91,7 @@ def test_get_jwt_secret_uses_configured_value() -> None:
 
 
 def test_get_jwt_secret_dev_uses_hardcoded_fallback() -> None:
-    """In DEV, empty JWT_SECRET falls back to hardcoded value."""
+    """In DEV, empty HOSTED_JWT_SECRET falls back to hardcoded value."""
     settings = _settings(secret="", env="DEV")
     secret = get_jwt_secret(settings)
     assert secret == "dev-key-do-not-use-in-production-keep-sessions-alive-12345"
@@ -107,21 +107,21 @@ def test_get_jwt_secret_dev_fallback_is_stable_across_calls() -> None:
 
 
 def test_get_jwt_secret_local_uses_hardcoded_fallback() -> None:
-    """In LOCAL, empty JWT_SECRET falls back to hardcoded value."""
+    """In LOCAL, empty HOSTED_JWT_SECRET falls back to hardcoded value."""
     settings = _settings(secret="", env="LOCAL")
     secret = get_jwt_secret(settings)
     assert secret == "dev-key-do-not-use-in-production-keep-sessions-alive-12345"
 
 
 def test_get_jwt_secret_prod_raises_without_configured_secret() -> None:
-    """In PROD, missing JWT_SECRET raises RuntimeError (should be caught by config validator)."""
+    """In PROD, missing HOSTED_JWT_SECRET raises RuntimeError (should be caught by config validator)."""
     settings = _settings(secret="", env="PROD")
-    with pytest.raises(RuntimeError, match="JWT_SECRET is required in production"):
+    with pytest.raises(RuntimeError, match="HOSTED_JWT_SECRET is required in production"):
         get_jwt_secret(settings)
 
 
 def test_get_jwt_secret_configured_overrides_fallback() -> None:
-    """Explicitly configured JWT_SECRET is always used, even in DEV/LOCAL."""
+    """Explicitly configured HOSTED_JWT_SECRET is always used, even in DEV/LOCAL."""
     settings = _settings(secret="explicit_secret", env="DEV")
     assert get_jwt_secret(settings) == "explicit_secret"
 

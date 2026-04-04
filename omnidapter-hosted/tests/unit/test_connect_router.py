@@ -53,7 +53,7 @@ def _settings() -> MagicMock:
     s.omnidapter_allowed_origin_domains = "*"
     s.omnidapter_env = "DEV"
     s.omnidapter_base_url = "http://localhost:8000"
-    s.omnidapter_fallback_connection_limit = 5
+    s.hosted_fallback_connection_limit = 5
     return s
 
 

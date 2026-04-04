@@ -101,7 +101,7 @@ async def test_create_link_token_success() -> None:
             body=CreateLinkTokenRequest(end_user_id="u1", redirect_uri="https://app.example.com"),
             auth=_auth(),
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_1",
         )
 
@@ -131,7 +131,7 @@ async def test_create_link_token_with_reconnect() -> None:
             body=CreateLinkTokenRequest(connection_id=conn_id),
             auth=_auth(),
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_2",
         )
 
@@ -153,7 +153,7 @@ async def test_create_link_token_reconnect_connection_not_found() -> None:
             body=CreateLinkTokenRequest(connection_id=uuid.uuid4()),
             auth=_auth(),
             session=session,
-            settings=MagicMock(link_token_ttl_seconds=1800),
+            settings=MagicMock(omnidapter_link_token_ttl_seconds=60),
             request_id="req_3",
         )
 

@@ -36,7 +36,7 @@ async def api_key_client(
     await db_session.flush()
 
     settings = HostedSettings()
-    settings.jwt_secret = "a" * 32
+    settings.hosted_jwt_secret = "a" * 32
     app = create_app(settings=settings)
 
     async def _get_session_override():

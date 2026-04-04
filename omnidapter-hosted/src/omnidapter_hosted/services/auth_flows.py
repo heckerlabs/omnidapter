@@ -16,17 +16,17 @@ from omnidapter_hosted.models.user import HostedUser
 logger = logging.getLogger(__name__)
 
 # Hardcoded fallback secret for development — keeps sessions valid across restarts.
-# MUST be overridden in production via JWT_SECRET environment variable.
+# MUST be overridden in production via HOSTED_JWT_SECRET environment variable.
 _DEV_FALLBACK_JWT_SECRET = "dev-key-do-not-use-in-production-keep-sessions-alive-12345"
 
 
 def get_jwt_secret(settings: object) -> str:
     """Return the JWT signing secret.
 
-    In production, JWT_SECRET must be explicitly set (enforced by HostedSettings validator).
+    In production, HOSTED_JWT_SECRET must be explicitly set (enforced by HostedSettings validator).
     In development, falls back to a hardcoded secret so sessions persist across server restarts.
     """
-    jwt_secret = getattr(settings, "jwt_secret", "").strip()
+    jwt_secret = getattr(settings, "hosted_jwt_secret", "").strip()
     if jwt_secret:
         return jwt_secret
 
@@ -37,7 +37,7 @@ def get_jwt_secret(settings: object) -> str:
         return _DEV_FALLBACK_JWT_SECRET
 
     # This should not happen in PROD due to config validation, but fail explicitly
-    raise RuntimeError("JWT_SECRET is required in production")
+    raise RuntimeError("HOSTED_JWT_SECRET is required in production")
 
 
 def issue_jwt(user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, settings: object) -> str:
@@ -47,7 +47,7 @@ def issue_jwt(user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, settings: obj
     import jwt
 
     secret = get_jwt_secret(settings)
-    ttl = getattr(settings, "jwt_ttl_seconds", 86400)
+    ttl = getattr(settings, "hosted_jwt_ttl_seconds", 86400)
     payload = {
         "sub": str(user_id),
         "tenant_id": str(tenant_id),
