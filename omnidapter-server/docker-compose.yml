@@ -24,7 +24,7 @@ services:
     restart: "no"
     env_file: .env
     environment:
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
+      OMNIDAPTER_DATABASE_URL: ${OMNIDAPTER_DATABASE_URL:-postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter}
     depends_on:
       db:
         condition: service_healthy
@@ -51,8 +51,8 @@ services:
       - "${PORT:-8000}:${PORT:-8000}"
     env_file: .env
     environment:
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
-      OMNIDAPTER_OAUTH_STATE_REDIS_URL: redis://redis:6379/0
+      OMNIDAPTER_DATABASE_URL: ${OMNIDAPTER_DATABASE_URL:-postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter}
+      OMNIDAPTER_OAUTH_STATE_REDIS_URL: ${OMNIDAPTER_OAUTH_STATE_REDIS_URL:-redis://redis:6379/0}
     depends_on:
       db:
         condition: service_healthy
