@@ -458,6 +458,83 @@ async def test_create_credential_connection_validation_failure() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _default_caldav_validator — Apple provider
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_apple_valid_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Apple validation hits iCloud URL directly without SSRF checks."""
+    import httpx
+
+    mock_response = MagicMock()
+    mock_response.status_code = 207
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, method: str, url: str, **kw: Any) -> MagicMock:
+            assert "caldav.icloud.com" in url
+            return mock_response
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+
+    await _default_caldav_validator("apple", {"username": "user@example.com", "password": "app-specific-pw"})
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_apple_invalid_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Apple validation raises 400 on 401 from iCloud."""
+    import httpx
+
+    mock_response = MagicMock()
+    mock_response.status_code = 401
+
+    class _MockClient:
+        async def __aenter__(self) -> _MockClient:
+            return self
+
+        async def __aexit__(self, *a: Any) -> None:
+            pass
+
+        async def request(self, *a: Any, **kw: Any) -> MagicMock:
+            return mock_response
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _MockClient())
+
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator("apple", {"username": "user@example.com", "password": "wrong"})
+
+    assert exc_info.value.status_code == 400
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_apple_missing_fields() -> None:
+    """Apple validation raises 400 when username or password is missing."""
+    with pytest.raises(HTTPException) as exc_info:
+        await _default_caldav_validator("apple", {"username": "user@example.com"})
+
+    assert exc_info.value.status_code == 400
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_credentials"
+
+
+@pytest.mark.asyncio
+async def test_default_caldav_validator_unknown_provider_raises() -> None:
+    """Unknown Basic-auth providers raise ValueError instead of silently skipping."""
+    with pytest.raises(ValueError, match="No credential validator implemented"):
+        await _default_caldav_validator("some_future_provider", {"username": "u", "password": "p"})
+
+
+# ---------------------------------------------------------------------------
 # _default_caldav_validator — DNS-based SSRF mitigation
 # ---------------------------------------------------------------------------
 

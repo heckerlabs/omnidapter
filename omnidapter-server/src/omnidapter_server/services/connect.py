@@ -16,6 +16,7 @@ import httpx
 from fastapi import HTTPException
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.core.metadata import AuthKind, ConnectionConfigField, ProviderMetadata
+from omnidapter.providers.apple.calendar import ICLOUD_CALDAV_URL
 from omnidapter.stores.credentials import StoredCredential
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -202,26 +203,13 @@ CredentialValidator = Callable[[str, dict[str, str]], Awaitable[None]]
 ConnectionPostCreate = Callable[[Connection, AsyncSession], Awaitable[None]]
 
 
-async def _default_caldav_validator(provider_key: str, credentials: dict[str, str]) -> None:
-    """Validate CalDAV credentials with a lightweight PROPFIND request.
+async def _validate_caldav_url(server_url: str) -> None:
+    """SSRF-safe validation of a user-supplied CalDAV server URL.
 
-    Raises ``HTTPException(400)`` on invalid credentials or unreachable server.
-    Only validates ``caldav`` provider keys — other non-OAuth providers are
-    skipped until provider-specific validators are implemented.
+    Raises ``HTTPException(400)`` if the URL is invalid or resolves to a
+    private/reserved address.  Not called for providers with a hardcoded URL
+    (e.g. Apple), where SSRF is not a concern.
     """
-    if provider_key != "caldav":
-        return  # TODO: validate other CalDAV-backed providers (e.g. apple)
-
-    server_url = credentials.get("server_url", "").rstrip("/")
-    username = credentials.get("username", "")
-    password = credentials.get("password", "")
-    if not server_url or not username or not password:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
-        )
-
-    # Validate URL to prevent SSRF
     try:
         parsed = urllib.parse.urlparse(server_url)
         if parsed.scheme not in ("http", "https"):
@@ -300,6 +288,36 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
             status_code=400,
             detail={"code": "invalid_credentials", "message": "Invalid server URL"},
         ) from exc
+
+
+async def _default_caldav_validator(provider_key: str, credentials: dict[str, str]) -> None:
+    """Validate Basic-auth CalDAV credentials with a lightweight PROPFIND request.
+
+    Raises ``HTTPException(400)`` on invalid credentials or unreachable server.
+    Raises ``ValueError`` for provider keys that are not yet supported, so that
+    new Basic-auth providers cannot silently skip validation.
+    """
+    if provider_key == "caldav":
+        server_url = credentials.get("server_url", "").rstrip("/")
+        username = credentials.get("username", "")
+        password = credentials.get("password", "")
+        if not server_url or not username or not password:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
+            )
+        await _validate_caldav_url(server_url)
+    elif provider_key == "apple":
+        server_url = ICLOUD_CALDAV_URL
+        username = credentials.get("username", "")
+        password = credentials.get("password", "")
+        if not username or not password:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
+            )
+    else:
+        raise ValueError(f"No credential validator implemented for provider '{provider_key}'")
 
     basic = base64.b64encode(f"{username}:{password}".encode()).decode()
 
