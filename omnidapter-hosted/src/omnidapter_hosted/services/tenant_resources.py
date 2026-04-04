@@ -64,7 +64,7 @@ async def enforce_fallback_connection_limit(
     provider_key: str,
     limit: int,
 ) -> None:
-    """Raise 422 if the tenant has no provider config and has reached the fallback connection limit."""
+    """Raise 409 if the tenant has no provider config and has reached the fallback connection limit."""
     provider_config = await get_tenant_provider_config(
         session=session, tenant_id=tenant_id, provider_key=provider_key
     )
@@ -84,7 +84,7 @@ async def enforce_fallback_connection_limit(
     count = result.scalar_one()
     if count >= limit:
         raise HTTPException(
-            status_code=422,
+            status_code=409,
             detail={
                 "code": "fallback_connection_limit",
                 "message": (

@@ -193,7 +193,7 @@ async def test_oauth_callback_invalid_state(
         "/oauth/google/callback?code=some_code&state=INVALID_STATE_TOKEN",
         follow_redirects=False,
     )
-    assert response.status_code in (400, 422)
+    assert response.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -206,4 +206,4 @@ async def test_oauth_callback_error_from_provider(
         "/oauth/google/callback?error=access_denied&error_description=User+denied+access",
         follow_redirects=False,
     )
-    assert response.status_code in (400, 422)
+    assert response.status_code == 400

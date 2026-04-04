@@ -20,7 +20,7 @@ from omnidapter_server.services.connection_flows import (
     get_connection_or_404,
     list_connections_flow,
     reauthorize_connection_flow,
-    validate_redirect_url_or_422,
+    validate_redirect_url_or_400,
 )
 from starlette.requests import Request
 
@@ -118,7 +118,7 @@ async def test_create_connection_flow_oauth_begin_failure_rolls_back() -> None:
             build_omni=AsyncMock(return_value=omni),
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     session.delete.assert_awaited_once()
 
 
@@ -190,7 +190,7 @@ async def test_reauthorize_connection_flow_unions_scopes() -> None:
     session.execute.assert_awaited_once()
 
 
-def test_validate_redirect_url_or_422_maps_value_error() -> None:
+def test_validate_redirect_url_or_400_maps_value_error() -> None:
     with (
         patch(
             "omnidapter_server.services.connection_flows.parse_allowed_origin_domains",
@@ -202,9 +202,9 @@ def test_validate_redirect_url_or_422_maps_value_error() -> None:
         ),
         pytest.raises(HTTPException) as exc_info,
     ):
-        validate_redirect_url_or_422(
+        validate_redirect_url_or_400(
             redirect_url="https://bad",
             request=_request(),
             settings=Settings(),
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400

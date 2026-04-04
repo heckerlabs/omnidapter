@@ -159,7 +159,7 @@ async def test_create_connection_oauth_returns_authorization_url() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_connection_unknown_provider_raises_422() -> None:
+async def test_create_connection_unknown_provider_returns_400() -> None:
     session = AsyncMock()
     session.execute = AsyncMock(
         return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
@@ -185,12 +185,12 @@ async def test_create_connection_unknown_provider_raises_422() -> None:
             request_id="req_1",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     assert cast(dict[str, Any], exc_info.value.detail)["code"] == "provider_not_found"
 
 
 @pytest.mark.asyncio
-async def test_create_connection_provider_not_in_allowed_list_raises_422() -> None:
+async def test_create_connection_provider_not_in_allowed_list_returns_400() -> None:
     session = AsyncMock()
     session.execute = AsyncMock(
         return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
@@ -222,7 +222,7 @@ async def test_create_connection_provider_not_in_allowed_list_raises_422() -> No
             request_id="req_1",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     assert cast(dict[str, Any], exc_info.value.detail)["code"] == "provider_not_allowed"
 
 

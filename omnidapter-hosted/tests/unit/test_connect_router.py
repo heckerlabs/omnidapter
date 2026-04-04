@@ -309,7 +309,7 @@ async def test_create_connection_non_oauth_missing_credentials() -> None:
             request_id="req_3",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     assert exc_info.value.detail["code"] == "credentials_required"  # type: ignore[index]
 
 
@@ -352,7 +352,7 @@ async def test_create_connection_reconnect_wrong_provider() -> None:
             request_id="req_4",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     assert exc_info.value.detail["code"] == "provider_mismatch"  # type: ignore[index]
 
 
@@ -416,7 +416,7 @@ async def test_create_connection_reconnect_non_oauth_success() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_connection_unknown_provider_raises_422() -> None:
+async def test_create_connection_unknown_provider_returns_400() -> None:
     link_token = _link_token()
     session = AsyncMock()
     encryption = MagicMock()
@@ -440,7 +440,7 @@ async def test_create_connection_unknown_provider_raises_422() -> None:
             request_id="req_6",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
 
 
 @pytest.mark.asyncio

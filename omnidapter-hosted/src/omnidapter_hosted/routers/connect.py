@@ -295,7 +295,7 @@ async def create_connection(
 
     **Non-OAuth providers (``credentials`` provided):**
     Validates and stores credentials immediately. Returns ``status: "active"``
-    with no ``authorization_url`` on success. Returns 422 with inline errors on
+    with no ``authorization_url`` on success. Returns 400 with inline errors on
     validation failure — the user can retry without a new link token.
     """
     tenant_id = link_token.tenant_id
@@ -315,7 +315,7 @@ async def create_connection(
         meta = omni.describe_provider(body.provider_key)
     except KeyError as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={
                 "code": "provider_not_found",
                 "message": f"Unknown provider: {body.provider_key}",
@@ -331,7 +331,7 @@ async def create_connection(
         and body.provider_key not in link_token.allowed_providers
     ):
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={
                 "code": "provider_not_allowed",
                 "message": f"Provider '{body.provider_key}' is not allowed for this session",
@@ -349,7 +349,7 @@ async def create_connection(
         settings=settings,
     ):
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={
                 "code": "provider_not_available",
                 "message": f"Provider '{body.provider_key}' is not available",
@@ -373,7 +373,7 @@ async def create_connection(
         # Validate that the requested provider matches the locked provider
         if link_token.locked_provider_key and body.provider_key != link_token.locked_provider_key:
             raise HTTPException(
-                status_code=422,
+                status_code=400,
                 detail={
                     "code": "provider_mismatch",
                     "message": (
@@ -386,7 +386,7 @@ async def create_connection(
             # Non-OAuth reconnect: update credentials, validate, mark active
             if not body.credentials:
                 raise HTTPException(
-                    status_code=422,
+                    status_code=400,
                     detail={
                         "code": "credentials_required",
                         "message": "Credentials are required for non-OAuth reconnect",
@@ -413,7 +413,7 @@ async def create_connection(
         # OAuth reconnect: reauthorize the existing connection
         if not redirect_uri:
             raise HTTPException(
-                status_code=422,
+                status_code=400,
                 detail={"code": "redirect_uri_required", "message": "redirect_uri is required"},
             )
 
@@ -447,7 +447,7 @@ async def create_connection(
         # Non-OAuth: validate and store credentials inline
         if not body.credentials:
             raise HTTPException(
-                status_code=422,
+                status_code=400,
                 detail={
                     "code": "credentials_required",
                     "message": "Credentials are required for non-OAuth providers",
@@ -476,7 +476,7 @@ async def create_connection(
     # OAuth: initiate redirect flow
     if not redirect_uri:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "redirect_uri_required", "message": "redirect_uri is required"},
         )
 

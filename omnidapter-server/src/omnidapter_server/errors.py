@@ -103,7 +103,7 @@ def map_library_exception(
     if isinstance(exc, UnsupportedCapabilityError):
         return _error_response(
             request,
-            422,
+            400,
             "unsupported_capability",
             str(exc),
             {"provider_key": exc.provider_key, "capability": str(exc.capability)},

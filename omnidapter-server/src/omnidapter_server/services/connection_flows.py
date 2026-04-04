@@ -44,7 +44,7 @@ class ReauthorizeConnectionFlowResult:
     authorization_url: str
 
 
-def validate_redirect_url_or_422(
+def validate_redirect_url_or_400(
     *,
     redirect_url: str,
     request: Request,
@@ -60,7 +60,7 @@ def validate_redirect_url_or_422(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "invalid_redirect_url", "message": str(exc)},
         ) from exc
 
@@ -99,7 +99,7 @@ async def create_connection_flow(
     build_omni: OmniBuilder,
     persist_post_create: ConnectionPostCreate | None = None,
 ) -> CreateConnectionFlowResult:
-    validate_redirect_url_or_422(
+    validate_redirect_url_or_400(
         redirect_url=body.redirect_url,
         request=request,
         settings=settings,
@@ -135,7 +135,7 @@ async def create_connection_flow(
         await session.delete(conn)
         await session.commit()
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "oauth_begin_failed", "message": str(exc)},
         ) from exc
 
@@ -177,7 +177,7 @@ async def reauthorize_connection_flow(
     build_omni: OmniBuilder,
 ) -> ReauthorizeConnectionFlowResult:
     conn = await load_connection(connection_id, session)
-    validate_redirect_url_or_422(redirect_url=body.redirect_url, request=request, settings=settings)
+    validate_redirect_url_or_400(redirect_url=body.redirect_url, request=request, settings=settings)
 
     if conn.status == ConnectionStatus.REVOKED:
         raise HTTPException(

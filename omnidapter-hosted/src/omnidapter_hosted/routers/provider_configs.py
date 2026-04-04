@@ -165,7 +165,7 @@ async def patch_provider_config(
         omni.describe_provider(provider_key)
     except KeyError as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "provider_not_found", "message": f"Unknown provider: {provider_key}"},
         ) from exc
 

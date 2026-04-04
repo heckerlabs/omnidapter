@@ -170,7 +170,7 @@ async def test_delete_provider_config_success() -> None:
 
 
 @pytest.mark.asyncio
-async def test_patch_provider_config_unknown_provider_key_returns_422() -> None:
+async def test_patch_provider_config_unknown_provider_key_returns_400() -> None:
     session = AsyncMock()
 
     with pytest.raises(HTTPException) as exc_info:
@@ -182,7 +182,7 @@ async def test_patch_provider_config_unknown_provider_key_returns_422() -> None:
             request_id="req_patch",
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "provider_not_found"
     session.add.assert_not_called() if hasattr(session, "add") else None
