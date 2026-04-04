@@ -205,19 +205,19 @@ ConnectionPostCreate = Callable[[Connection, AsyncSession], Awaitable[None]]
 async def _default_caldav_validator(provider_key: str, credentials: dict[str, str]) -> None:
     """Validate CalDAV credentials with a lightweight PROPFIND request.
 
-    Raises ``HTTPException(422)`` on invalid credentials or unreachable server.
-    This is deliberately lenient for non-CalDAV providers — the connection is
-    created optimistically and marked active.
+    Raises ``HTTPException(400)`` on invalid credentials or unreachable server.
+    Only validates ``caldav`` provider keys — other non-OAuth providers are
+    skipped until provider-specific validators are implemented.
     """
     if provider_key != "caldav":
-        return  # other non-OAuth providers: trust credentials at creation time
+        return  # TODO: validate other CalDAV-backed providers (e.g. apple)
 
     server_url = credentials.get("server_url", "").rstrip("/")
     username = credentials.get("username", "")
     password = credentials.get("password", "")
     if not server_url or not username or not password:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "invalid_credentials", "message": "Missing required credential fields"},
         )
 
@@ -257,7 +257,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                 or "missing hostname" in str(exc)
             ):
                 raise HTTPException(
-                    status_code=422,
+                    status_code=400,
                     detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                 ) from exc
             # hostname is a public domain name — resolve DNS and verify IPs
@@ -268,7 +268,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                 )
             except OSError as dns_exc:
                 raise HTTPException(
-                    status_code=422,
+                    status_code=400,
                     detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                 ) from dns_exc
             for info in addr_infos:
@@ -284,20 +284,20 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                         or resolved.is_multicast
                     ):
                         raise HTTPException(
-                            status_code=422,
+                            status_code=400,
                             detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                         )
                 except ValueError:
                     # Reject invalid IP addresses (e.g., IPv6 with scope IDs)
                     raise HTTPException(
-                        status_code=422,
+                        status_code=400,
                         detail={"code": "invalid_credentials", "message": "Invalid server URL"},
                     ) from None
     except HTTPException:
         raise
     except Exception as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "invalid_credentials", "message": "Invalid server URL"},
         ) from exc
 
@@ -320,7 +320,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                 )
             if response.status_code == 401:
                 raise HTTPException(
-                    status_code=422,
+                    status_code=400,
                     detail={
                         "code": "invalid_credentials",
                         "message": "Invalid username or password",
@@ -336,7 +336,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                     await asyncio.sleep(_CALDAV_RETRY_DELAY_SECONDS)
                     continue
                 raise HTTPException(
-                    status_code=422,
+                    status_code=400,
                     detail={
                         "code": "invalid_credentials",
                         "message": "Could not connect to CalDAV server",
@@ -359,7 +359,7 @@ async def _default_caldav_validator(provider_key: str, credentials: dict[str, st
                 "CalDAV validation failed after %d attempts: %s", attempts + 1, exc
             )
             raise HTTPException(
-                status_code=422,
+                status_code=400,
                 detail={
                     "code": "server_unreachable",
                     "message": "Could not reach CalDAV server. Please check the server URL and try again.",

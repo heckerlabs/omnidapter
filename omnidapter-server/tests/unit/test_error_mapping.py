@@ -62,7 +62,7 @@ def test_scope_insufficient_maps_to_403():
     assert body["error"]["details"]["required_scopes"] == ["calendar.read"]
 
 
-def test_unsupported_capability_maps_to_422():
+def test_unsupported_capability_maps_to_400():
     exc = UnsupportedCapabilityError(
         "Not supported",
         provider_key="google",
@@ -70,7 +70,7 @@ def test_unsupported_capability_maps_to_422():
     )
     req = _make_request()
     response = map_library_exception(exc, req)
-    assert response.status_code == 422
+    assert response.status_code == 400
     import json
 
     body = json.loads(bytes(response.body))

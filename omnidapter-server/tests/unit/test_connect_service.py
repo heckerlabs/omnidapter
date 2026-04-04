@@ -432,7 +432,7 @@ async def test_create_credential_connection_validation_failure() -> None:
 
     async def failing_validate(provider_key: str, creds: dict[str, str]) -> None:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "invalid_credentials", "message": "Bad creds"},
         )
 
@@ -453,7 +453,7 @@ async def test_create_credential_connection_validation_failure() -> None:
             validate=failing_validate,
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     session.execute.assert_awaited()
 
 
@@ -481,7 +481,7 @@ async def test_default_caldav_validator_blocks_domain_resolving_to_private_ip(
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -507,7 +507,7 @@ async def test_default_caldav_validator_blocks_unresolvable_hostname(
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_credentials"
 
 
@@ -561,7 +561,7 @@ async def test_default_caldav_validator_blocks_localhost() -> None:
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -579,7 +579,7 @@ async def test_default_caldav_validator_blocks_internal_suffix() -> None:
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -597,7 +597,7 @@ async def test_default_caldav_validator_blocks_corp_suffix() -> None:
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -628,7 +628,7 @@ async def test_default_caldav_validator_blocks_ipv6_scope_id(
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -718,7 +718,7 @@ async def test_default_caldav_validator_fails_after_max_retries(
             },
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "server_unreachable"
 
@@ -785,7 +785,7 @@ async def test_default_caldav_validator_blocks_unspecified_address() -> None:
                 "password": "p",
             },
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -802,7 +802,7 @@ async def test_default_caldav_validator_blocks_multicast_address() -> None:
                 "password": "p",
             },
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -840,7 +840,7 @@ async def test_default_caldav_validator_blocks_dns_resolving_to_unspecified(
                 "password": "p",
             },
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
 
@@ -878,6 +878,6 @@ async def test_default_caldav_validator_blocks_dns_resolving_to_multicast(
                 "password": "p",
             },
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     detail = cast(dict[str, Any], exc_info.value.detail)
     assert detail["code"] == "invalid_credentials"
