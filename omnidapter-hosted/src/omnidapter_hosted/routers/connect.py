@@ -52,7 +52,10 @@ from omnidapter_hosted.services.connect import (
     update_credential_connection,
 )
 from omnidapter_hosted.services.provider_registry import build_hosted_provider_registry
-from omnidapter_hosted.services.tenant_resources import get_tenant_provider_config
+from omnidapter_hosted.services.tenant_resources import (
+    enforce_fallback_connection_limit,
+    get_tenant_provider_config,
+)
 
 router = APIRouter(prefix="/connect", tags=["connect"])
 
@@ -485,6 +488,12 @@ async def create_connection(
         metadata=None,
     )
 
+    await enforce_fallback_connection_limit(
+        session=session,
+        tenant_id=tenant_id,
+        provider_key=body.provider_key,
+        limit=settings.omnidapter_fallback_connection_limit,
+    )
     flow_result = await create_connection_flow(
         body=server_body,
         request=request,

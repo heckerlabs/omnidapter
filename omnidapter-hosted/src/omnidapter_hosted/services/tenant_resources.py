@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
-from omnidapter_server.models.connection import Connection
-from sqlalchemy import select
+from fastapi import HTTPException
+from omnidapter_server.models.connection import Connection, ConnectionStatus
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
@@ -54,6 +55,44 @@ async def list_tenant_connections(
         .where(HostedConnectionOwner.tenant_id == tenant_id)
     )
     return list(result.scalars().all())
+
+
+async def enforce_fallback_connection_limit(
+    *,
+    session: AsyncSession,
+    tenant_id: uuid.UUID,
+    provider_key: str,
+    limit: int,
+) -> None:
+    """Raise 422 if the tenant has no provider config and has reached the fallback connection limit."""
+    provider_config = await get_tenant_provider_config(
+        session=session, tenant_id=tenant_id, provider_key=provider_key
+    )
+    if provider_config is not None:
+        return
+
+    result = await session.execute(
+        select(func.count())
+        .select_from(Connection)
+        .join(HostedConnectionOwner, HostedConnectionOwner.connection_id == Connection.id)
+        .where(
+            HostedConnectionOwner.tenant_id == tenant_id,
+            Connection.provider_key == provider_key,
+            Connection.status != ConnectionStatus.REVOKED,
+        )
+    )
+    count = result.scalar_one()
+    if count >= limit:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "fallback_connection_limit",
+                "message": (
+                    f"Fallback connection limit ({limit}) reached. "
+                    "Configure your own OAuth app via /v1/provider-configs."
+                ),
+            },
+        )
 
 
 async def get_tenant_provider_config(

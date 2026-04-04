@@ -194,6 +194,10 @@ async def test_create_connection_oauth_returns_auth_url() -> None:
         ),
         patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
         patch(
+            "omnidapter_hosted.routers.connect.enforce_fallback_connection_limit",
+            new=AsyncMock(),
+        ),
+        patch(
             "omnidapter_hosted.routers.connect.create_connection_flow",
             new=AsyncMock(return_value=flow_result),
         ),
@@ -524,6 +528,10 @@ async def test_create_connection_oauth_deactivates_token() -> None:
             new=AsyncMock(return_value=None),
         ),
         patch("omnidapter_hosted.routers.connect.is_provider_available", return_value=True),
+        patch(
+            "omnidapter_hosted.routers.connect.enforce_fallback_connection_limit",
+            new=AsyncMock(),
+        ),
         patch(
             "omnidapter_hosted.routers.connect.create_connection_flow",
             new=AsyncMock(return_value=flow_result),

@@ -26,6 +26,9 @@ class HostedSettings(Settings):
     # Dashboard session TTL in seconds (default 24 hours)
     jwt_ttl_seconds: int = 86400
 
+    # Connection limit when using fallback (hosted-owned) OAuth app
+    omnidapter_fallback_connection_limit: int = 5
+
     # Rate limiting per plan (requests per 60s window)
     hosted_rate_limit_free: int = 60
     hosted_rate_limit_paid: int = 600

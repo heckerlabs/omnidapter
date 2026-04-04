@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # Import server's auth dependency so we can override it
 from omnidapter_server.config import get_settings as _server_get_settings

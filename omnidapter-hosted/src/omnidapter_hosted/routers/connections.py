@@ -37,7 +37,10 @@ from omnidapter_hosted.dependencies import (
 )
 from omnidapter_hosted.models.connection_owner import HostedConnectionOwner
 from omnidapter_hosted.services.provider_registry import build_hosted_provider_registry
-from omnidapter_hosted.services.tenant_resources import get_tenant_provider_config
+from omnidapter_hosted.services.tenant_resources import (
+    enforce_fallback_connection_limit,
+    get_tenant_provider_config,
+)
 
 router = APIRouter(prefix="/connections", tags=["connections"])
 
@@ -167,6 +170,12 @@ async def create_connection(
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
+    await enforce_fallback_connection_limit(
+        session=session,
+        tenant_id=auth.tenant_id,
+        provider_key=body.provider,
+        limit=settings.omnidapter_fallback_connection_limit,
+    )
     flow_result = await create_connection_flow(
         body=body,
         request=request,
