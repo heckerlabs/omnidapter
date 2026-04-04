@@ -106,22 +106,6 @@ async def create_connection_flow(
     )
 
     provider_config = await load_provider_config(body.provider, session)
-    is_fallback = bool(getattr(provider_config, "is_fallback", False))
-
-    if provider_config is None or is_fallback:
-        existing_count = await count_active_connections(body.provider, session)
-        if existing_count >= settings.omnidapter_fallback_connection_limit:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "code": "fallback_connection_limit",
-                    "message": (
-                        f"Fallback connection limit "
-                        f"({settings.omnidapter_fallback_connection_limit}) reached. "
-                        "Configure your own OAuth app via /v1/provider-configs."
-                    ),
-                },
-            )
 
     conn = Connection(
         id=uuid.uuid4(),

@@ -55,12 +55,6 @@ class Settings(BaseSettings):
     omnidapter_zoho_client_id: str = ""
     omnidapter_zoho_client_secret: str = ""
 
-    # Connection limits when using fallback (server-owned) OAuth app
-    omnidapter_fallback_connection_limit: int = 5
-
-    # Reauth threshold: mark connection needs_reauth after this many consecutive refresh failures
-    omnidapter_reauth_threshold: int = 3
-
     # App
     host: str = "0.0.0.0"
     port: int = 8000

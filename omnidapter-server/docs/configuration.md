@@ -36,8 +36,6 @@ Settings are environment-driven (`OMNIDAPTER_*`) plus runtime bind vars (`HOST`,
 
 - `HOST` (default `0.0.0.0`)
 - `PORT` (default `8000`)
-- `OMNIDAPTER_FALLBACK_CONNECTION_LIMIT` (default `5`)
-- `OMNIDAPTER_REAUTH_THRESHOLD` (default `3`)
 - `OMNIDAPTER_ENV` (default `DEV`; values: `DEV`, `LOCAL`, `PROD`)
 - `OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS` (default `*`)
 

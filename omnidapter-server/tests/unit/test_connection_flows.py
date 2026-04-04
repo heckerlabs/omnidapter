@@ -62,28 +62,6 @@ async def test_get_connection_or_404_not_found() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_connection_flow_honors_fallback_limit() -> None:
-    body = CreateConnectionRequest(provider="google", redirect_url="https://app/cb")
-    with (
-        patch(
-            "omnidapter_server.services.connection_flows.validate_redirect_url", return_value=None
-        ),
-        pytest.raises(HTTPException) as exc_info,
-    ):
-        await create_connection_flow(
-            body=body,
-            request=_request(),
-            session=AsyncMock(),
-            settings=Settings(omnidapter_fallback_connection_limit=1),
-            load_provider_config=AsyncMock(return_value=None),
-            count_active_connections=AsyncMock(return_value=1),
-            build_omni=AsyncMock(),
-        )
-
-    assert exc_info.value.status_code == 422
-
-
-@pytest.mark.asyncio
 async def test_create_connection_flow_success_calls_persist_hook() -> None:
     body = CreateConnectionRequest(provider="google", redirect_url="https://app/cb")
     session = AsyncMock()
