@@ -158,6 +158,7 @@ async def list_available_providers(
                 "key": locked_provider_key,
                 "name": meta.display_name,
                 "auth_kind": auth_kind,
+                "services": [s.value for s in meta.services],
                 "credential_schema": build_credential_schema(meta),
             }
         ]
@@ -187,6 +188,7 @@ async def list_available_providers(
                 "key": provider_key,
                 "name": meta.display_name,
                 "auth_kind": auth_kind,
+                "services": [s.value for s in meta.services],
                 "credential_schema": build_credential_schema(meta),
             }
         )

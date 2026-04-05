@@ -21,6 +21,7 @@ export interface Provider {
     key: string;
     name: string;
     auth_kind: "oauth2" | "basic" | "api_key";
+    services: string[];
     credential_schema: CredentialSchema | null;
 }
 
@@ -40,6 +41,7 @@ export interface AppState {
     providers: Provider[];
     selectedProvider: Provider | null;
     oauthProvider: string | null;
+    oauthProviderServices: string[];
     connectionId: string | null;
     errorCode: string | null;
     errorMessage: string | null;

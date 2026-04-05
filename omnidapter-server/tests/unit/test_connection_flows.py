@@ -129,6 +129,7 @@ async def test_list_connections_flow_passthrough() -> None:
         session=AsyncMock(),
         status=None,
         provider=None,
+        external_id=None,
         limit=50,
         offset=0,
         load_paginated_connections=loader,

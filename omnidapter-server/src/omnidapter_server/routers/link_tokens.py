@@ -88,6 +88,7 @@ async def create_link_token_endpoint(
         "data": {
             "token": raw_token,
             "expires_at": link_token.expires_at.isoformat(),
+            "connect_url": f"{settings.omnidapter_base_url}?token={raw_token}",
         },
         "meta": {"request_id": request_id},
     }

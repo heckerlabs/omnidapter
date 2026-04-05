@@ -4,6 +4,7 @@ import type { PostMessageSuccess } from "../types";
 interface Props {
     connectionId: string;
     provider: string;
+    services: string[];
     redirectUri: string | null;
     isPopup: boolean;
     openerOrigin: string | null;
@@ -11,8 +12,20 @@ interface Props {
 
 const REDIRECT_DELAY_S = 5;
 
-export function SuccessView({ connectionId, provider, redirectUri, isPopup, openerOrigin }: Props) {
+export function SuccessView({
+    connectionId,
+    provider,
+    services,
+    redirectUri,
+    isPopup,
+    openerOrigin,
+}: Props) {
     const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
+    const serviceLabel = services.includes("calendar")
+        ? "calendar"
+        : services.includes("crm")
+          ? "CRM"
+          : "integration";
 
     useEffect(() => {
         const msg: PostMessageSuccess = { type: "omnidapter:success", connectionId, provider };
@@ -49,8 +62,10 @@ export function SuccessView({ connectionId, provider, redirectUri, isPopup, open
         <div style={card}>
             <div style={check}>✓</div>
             <h2 style={heading}>Connected!</h2>
-            <p style={sub}>Your calendar has been connected successfully.</p>
-            {isPopup && <p style={{ ...sub, marginTop: 8 }}>Sending you back in {countdown}…</p>}
+            <p style={sub}>Your {serviceLabel} has been connected successfully.</p>
+            {isPopup && openerOrigin && (
+                <p style={{ ...sub, marginTop: 8 }}>Sending you back in {countdown}…</p>
+            )}
         </div>
     );
 }

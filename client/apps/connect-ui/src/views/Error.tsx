@@ -15,11 +15,11 @@ const REDIRECT_DELAY_S = 5;
 
 export function ErrorView({ code, message, isPopup, openerOrigin, redirectUri, onRetry }: Props) {
     const canRetry = RETRY_CODES.has(code) && onRetry != null;
+    const canClose = !!((isPopup && window.opener && openerOrigin) || redirectUri);
     const [countdown, setCountdown] = useState(REDIRECT_DELAY_S);
 
     useEffect(() => {
         if (canRetry) return;
-        const canClose = (isPopup && window.opener && openerOrigin) || redirectUri;
         if (!canClose) return;
 
         const interval = setInterval(() => {
@@ -43,7 +43,7 @@ export function ErrorView({ code, message, isPopup, openerOrigin, redirectUri, o
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [canRetry, isPopup, openerOrigin, redirectUri, code, message]);
+    }, [canRetry, canClose, isPopup, openerOrigin, redirectUri, code, message]);
 
     return (
         <div style={card}>
@@ -55,7 +55,12 @@ export function ErrorView({ code, message, isPopup, openerOrigin, redirectUri, o
                     Try again
                 </button>
             )}
-            {!canRetry && <p style={{ ...sub, marginTop: 16 }}>Sending you back in {countdown}…</p>}
+            {!canRetry && canClose && (
+                <p style={{ ...sub, marginTop: 16 }}>Sending you back in {countdown}…</p>
+            )}
+            {!canRetry && !canClose && (
+                <p style={{ ...sub, marginTop: 16 }}>You can close this window.</p>
+            )}
         </div>
     );
 }
