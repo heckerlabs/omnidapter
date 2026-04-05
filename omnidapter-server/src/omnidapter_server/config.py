@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     omnidapter_zoho_client_id: str = ""
     omnidapter_zoho_client_secret: str = ""
 
+    # Non-OAuth provider toggles
+    omnidapter_apple_enabled: bool = False
+    omnidapter_caldav_enabled: bool = False
+
     # App
     host: str = "0.0.0.0"
     port: int = 8000

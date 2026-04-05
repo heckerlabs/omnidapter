@@ -112,7 +112,11 @@ def is_provider_available(
     - OAuth provider with env-level fallback credentials → available.
     """
     if auth_kind != "oauth2":
-        return True  # non-OAuth providers are self-service; no OAuth app needed
+        if provider_key == "apple":
+            return settings.omnidapter_apple_enabled
+        if provider_key == "caldav":
+            return settings.omnidapter_caldav_enabled
+        return True
 
     has_own_creds = (
         config is not None
