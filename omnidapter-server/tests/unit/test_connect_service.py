@@ -35,6 +35,8 @@ def _settings(**kwargs: Any) -> MagicMock:
     s.omnidapter_microsoft_client_secret = kwargs.get("ms_secret", "")
     s.omnidapter_zoho_client_id = kwargs.get("zoho_id", "")
     s.omnidapter_zoho_client_secret = kwargs.get("zoho_secret", "")
+    s.omnidapter_apple_enabled = kwargs.get("apple_enabled", False)
+    s.omnidapter_caldav_enabled = kwargs.get("caldav_enabled", False)
     return s
 
 
@@ -165,10 +167,37 @@ def test_build_credential_schema_basic_returns_schema() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_is_provider_available_non_oauth_always_available() -> None:
-    settings = _settings()
+def test_is_provider_available_apple_disabled_by_default() -> None:
+    assert not is_provider_available(
+        provider_key="apple", auth_kind="basic", config=None, settings=_settings()
+    )
+
+
+def test_is_provider_available_apple_enabled() -> None:
     assert is_provider_available(
-        provider_key="caldav", auth_kind="basic", config=None, settings=settings
+        provider_key="apple", auth_kind="basic", config=None, settings=_settings(apple_enabled=True)
+    )
+
+
+def test_is_provider_available_caldav_disabled_by_default() -> None:
+    assert not is_provider_available(
+        provider_key="caldav", auth_kind="basic", config=None, settings=_settings()
+    )
+
+
+def test_is_provider_available_caldav_enabled() -> None:
+    assert is_provider_available(
+        provider_key="caldav",
+        auth_kind="basic",
+        config=None,
+        settings=_settings(caldav_enabled=True),
+    )
+
+
+def test_is_provider_available_unknown_non_oauth_always_available() -> None:
+    # Future non-OAuth providers that don't have an explicit flag are available by default
+    assert is_provider_available(
+        provider_key="other", auth_kind="basic", config=None, settings=_settings()
     )
 
 
