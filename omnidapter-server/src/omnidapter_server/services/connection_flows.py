@@ -26,7 +26,8 @@ ActiveConnectionCounter = Callable[[str, AsyncSession], Awaitable[int]]
 OmniBuilder = Callable[[AsyncSession, str, ProviderConfigLike | None], Awaitable[Any]]
 ConnectionPostCreate = Callable[[Connection, AsyncSession], Awaitable[None]]
 PaginatedConnectionLoader = Callable[
-    [AsyncSession, str | None, str | None, int, int], Awaitable[tuple[int, list[Connection]]]
+    [AsyncSession, str | None, str | None, int, int, str | None],
+    Awaitable[tuple[int, list[Connection]]],
 ]
 
 
@@ -158,11 +159,12 @@ async def list_connections_flow(
     session: AsyncSession,
     status: str | None,
     provider: str | None,
+    external_id: str | None,
     limit: int,
     offset: int,
     load_paginated_connections: PaginatedConnectionLoader,
 ) -> tuple[int, list[Connection]]:
-    return await load_paginated_connections(session, status, provider, limit, offset)
+    return await load_paginated_connections(session, status, provider, limit, offset, external_id)
 
 
 async def reauthorize_connection_flow(

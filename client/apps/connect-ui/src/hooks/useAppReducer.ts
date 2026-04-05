@@ -13,6 +13,7 @@ export type Action =
           type: "OAUTH_RETURN_SUCCESS";
           connectionId: string;
           provider: string;
+          services: string[];
           redirectUri: string | null;
           openerOrigin: string | null;
       }
@@ -30,6 +31,7 @@ const initialState: AppState = {
     providers: [],
     selectedProvider: null,
     oauthProvider: null,
+    oauthProviderServices: [],
     connectionId: null,
     errorCode: null,
     errorMessage: null,
@@ -88,6 +90,7 @@ function reducer(state: AppState, action: Action): AppState {
                 view: "success",
                 connectionId: action.connectionId,
                 oauthProvider: action.provider,
+                oauthProviderServices: action.services,
                 redirectUri: action.redirectUri ?? state.redirectUri,
                 openerOrigin: action.openerOrigin ?? state.openerOrigin,
             };

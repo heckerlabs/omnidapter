@@ -88,10 +88,12 @@ export function App() {
 
         case "success": {
             sessionStorage.removeItem(SESSION_STORAGE_KEY);
+            const services = state.selectedProvider?.services ?? state.oauthProviderServices ?? [];
             return (
                 <SuccessView
                     connectionId={state.connectionId ?? ""}
                     provider={state.selectedProvider?.key ?? state.oauthProvider ?? ""}
+                    services={services}
                     redirectUri={state.redirectUri}
                     isPopup={popup}
                     openerOrigin={state.openerOrigin}

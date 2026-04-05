@@ -12,6 +12,7 @@ import {
 import {
     SESSION_STORAGE_KEY,
     PROVIDER_KEY_STORAGE,
+    PROVIDER_SERVICES_STORAGE,
     REDIRECT_URI_STORAGE,
     OPENER_ORIGIN_STORAGE,
     EMBED_OAUTH_STORAGE,
@@ -50,9 +51,13 @@ export function useAuthFlow(state: AppState, dispatch: Dispatch<Action>) {
 
         if (connectionId && !errorCode) {
             const savedProviderKey = sessionStorage.getItem(PROVIDER_KEY_STORAGE) ?? "";
+            const savedProviderServices: string[] = JSON.parse(
+                sessionStorage.getItem(PROVIDER_SERVICES_STORAGE) ?? "[]"
+            );
             const savedRedirectUri = sessionStorage.getItem(REDIRECT_URI_STORAGE);
             const savedOpenerOrigin = sessionStorage.getItem(OPENER_ORIGIN_STORAGE);
             sessionStorage.removeItem(PROVIDER_KEY_STORAGE);
+            sessionStorage.removeItem(PROVIDER_SERVICES_STORAGE);
             sessionStorage.removeItem(REDIRECT_URI_STORAGE);
             sessionStorage.removeItem(OPENER_ORIGIN_STORAGE);
             const savedSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
@@ -67,6 +72,7 @@ export function useAuthFlow(state: AppState, dispatch: Dispatch<Action>) {
                 type: "OAUTH_RETURN_SUCCESS",
                 connectionId,
                 provider: savedProviderKey,
+                services: savedProviderServices,
                 redirectUri: savedRedirectUri,
                 openerOrigin: savedOpenerOrigin,
             });
@@ -135,6 +141,10 @@ export function useAuthFlow(state: AppState, dispatch: Dispatch<Action>) {
         if (state.view !== "oauth_init" || !state.selectedProvider || !state.token) return;
 
         sessionStorage.setItem(PROVIDER_KEY_STORAGE, state.selectedProvider.key);
+        sessionStorage.setItem(
+            PROVIDER_SERVICES_STORAGE,
+            JSON.stringify(state.selectedProvider.services ?? [])
+        );
         if (state.openerOrigin) {
             sessionStorage.setItem(OPENER_ORIGIN_STORAGE, state.openerOrigin);
         }
@@ -189,7 +199,11 @@ export function useAuthFlow(state: AppState, dispatch: Dispatch<Action>) {
 
             const savedSession = sessionStorage.getItem(SESSION_STORAGE_KEY);
             const savedRedirectUri = sessionStorage.getItem(REDIRECT_URI_STORAGE);
+            const savedProviderServices: string[] = JSON.parse(
+                sessionStorage.getItem(PROVIDER_SERVICES_STORAGE) ?? "[]"
+            );
             sessionStorage.removeItem(PROVIDER_KEY_STORAGE);
+            sessionStorage.removeItem(PROVIDER_SERVICES_STORAGE);
             sessionStorage.removeItem(REDIRECT_URI_STORAGE);
             sessionStorage.removeItem(OPENER_ORIGIN_STORAGE);
 
@@ -204,6 +218,7 @@ export function useAuthFlow(state: AppState, dispatch: Dispatch<Action>) {
                 type: "OAUTH_RETURN_SUCCESS",
                 connectionId: data.connectionId ?? "",
                 provider: data.provider ?? "",
+                services: savedProviderServices,
                 redirectUri: data.redirectUri ?? savedRedirectUri,
                 openerOrigin: null,
             });
