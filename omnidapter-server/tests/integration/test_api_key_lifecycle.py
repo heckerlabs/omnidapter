@@ -9,8 +9,6 @@ from omnidapter_server.models.api_key import APIKey
 from omnidapter_server.services.auth import authenticate_api_key, generate_api_key, verify_api_key
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_api_key_created_with_hash(session: AsyncSession):

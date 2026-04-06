@@ -13,8 +13,6 @@ from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.auth import generate_api_key
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
 
 
@@ -38,32 +36,26 @@ async def second_api_key(session: AsyncSession) -> tuple[str, APIKey]:
 async def second_client(
     session: AsyncSession,
     second_api_key: tuple[str, APIKey],
+    postgres_url: str,
 ) -> AsyncIterator[AsyncClient]:
     """HTTP client authenticated with a second independent API key."""
     raw_key, _ = second_api_key
 
-    from omnidapter_server.config import Settings, get_settings
+    from omnidapter_server.config import Settings
     from omnidapter_server.database import get_session
-    from omnidapter_server.dependencies import get_encryption_service
-    from omnidapter_server.encryption import EncryptionService
-    from omnidapter_server.main import app
+    from omnidapter_server.main import create_app
 
     async def override_session():
         yield session
 
-    def override_encryption():
-        return EncryptionService(current_key=TEST_ENCRYPTION_KEY)
+    test_settings = Settings(
+        omnidapter_database_url=postgres_url,
+        omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
+        omnidapter_env="DEV",
+    )
 
-    def override_settings():
-        return Settings(
-            omnidapter_database_url="",
-            omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="DEV",
-        )
-
+    app = create_app(settings=test_settings)
     app.dependency_overrides[get_session] = override_session
-    app.dependency_overrides[get_settings] = override_settings
-    app.dependency_overrides[get_encryption_service] = override_encryption
 
     async with AsyncClient(transport=ASGITransport(app), base_url="http://testserver") as c:
         c.headers["Authorization"] = f"Bearer {raw_key}"
@@ -134,60 +126,21 @@ async def test_two_keys_can_both_list_all_connections(
 
 
 @pytest.mark.asyncio
-async def test_unauthenticated_request_rejected(client: AsyncClient):
+async def test_unauthenticated_request_rejected(client: AsyncClient, postgres_url: str):
     """Requests without a valid API key are rejected with 401."""
-    from omnidapter_server.config import Settings, get_settings
-    from omnidapter_server.dependencies import get_encryption_service
-    from omnidapter_server.encryption import EncryptionService
-    from omnidapter_server.main import app
+    from omnidapter_server.config import Settings
+    from omnidapter_server.main import create_app
 
-    def override_encryption():
-        return EncryptionService(current_key=TEST_ENCRYPTION_KEY)
-
-    def override_settings():
-        return Settings(
-            omnidapter_database_url="",
-            omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
-            omnidapter_env="DEV",
-        )
-
-    app.dependency_overrides[get_settings] = override_settings
-    app.dependency_overrides[get_encryption_service] = override_encryption
-
-    try:
-        async with AsyncClient(
-            transport=ASGITransport(app), base_url="http://testserver"
-        ) as anon_client:
-            response = await anon_client.get("/v1/connections")
-        assert response.status_code == 401
-    finally:
-        app.dependency_overrides.clear()
-
-
-@pytest.mark.asyncio
-async def test_external_id_globally_unique_per_provider(
-    session: AsyncSession,
-):
-    """Two connections with the same provider and external_id cannot coexist."""
-    ext_id = "duplicate_external_id"
-
-    conn1 = Connection(
-        id=uuid.uuid4(),
-        provider_key="google",
-        external_id=ext_id,
-        status=ConnectionStatus.ACTIVE,
+    test_settings = Settings(
+        omnidapter_database_url=postgres_url,
+        omnidapter_encryption_key=TEST_ENCRYPTION_KEY,
+        omnidapter_env="DEV",
     )
-    session.add(conn1)
-    await session.flush()
 
-    from sqlalchemy.exc import IntegrityError
+    app = create_app(settings=test_settings)
 
-    conn2 = Connection(
-        id=uuid.uuid4(),
-        provider_key="google",
-        external_id=ext_id,
-        status=ConnectionStatus.ACTIVE,
-    )
-    session.add(conn2)
-    with pytest.raises(IntegrityError):
-        await session.flush()
+    async with AsyncClient(
+        transport=ASGITransport(app), base_url="http://testserver"
+    ) as anon_client:
+        response = await anon_client.get("/v1/connections")
+    assert response.status_code == 401

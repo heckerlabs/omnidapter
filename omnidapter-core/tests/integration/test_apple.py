@@ -2,7 +2,6 @@
 Integration tests for Apple Calendar (iCloud CalDAV).
 
 Required env vars:
-    OMNIDAPTER_INTEGRATION=1
     OMNIDAPTER_TEST_APPLE_USERNAME   (Apple ID email address)
     OMNIDAPTER_TEST_APPLE_PASSWORD   (App-specific password — NOT your Apple ID password)
 
@@ -54,9 +53,6 @@ async def _create_with_retry(apple_service, req: CreateEventRequest) -> Calendar
 
     assert last_exc is not None
     raise last_exc
-
-
-pytestmark = pytest.mark.integration
 
 
 # --------------------------------------------------------------------------- #

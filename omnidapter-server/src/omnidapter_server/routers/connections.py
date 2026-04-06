@@ -96,12 +96,15 @@ async def _load_paginated_connections(
     provider: str | None,
     limit: int,
     offset: int,
+    external_id: str | None = None,
 ) -> tuple[int, list[Connection]]:
     query = select(Connection)
     if status:
         query = query.where(Connection.status == status)
     if provider:
         query = query.where(Connection.provider_key == provider)
+    if external_id:
+        query = query.where(Connection.external_id == external_id)
 
     total_result = await session.execute(select(func.count()).select_from(query.subquery()))
     total = int(total_result.scalar_one())
@@ -165,6 +168,7 @@ async def list_connections(
     request_id: str = Depends(get_request_id),
     status: str | None = Query(None),
     provider: str | None = Query(None),
+    external_id: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -172,6 +176,7 @@ async def list_connections(
         session=session,
         status=status,
         provider=provider,
+        external_id=external_id,
         limit=limit,
         offset=offset,
         load_paginated_connections=_load_paginated_connections,

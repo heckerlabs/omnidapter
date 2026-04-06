@@ -4,7 +4,7 @@ Apple Calendar (iCloud CalDAV) provider metadata.
 
 from __future__ import annotations
 
-from omnidapter.core.metadata import AuthKind, ProviderMetadata, ServiceKind
+from omnidapter.core.metadata import AuthKind, ConnectionConfigField, ProviderMetadata, ServiceKind
 from omnidapter.services.calendar.capabilities import CalendarCapability
 
 APPLE_PROVIDER_KEY = "apple"
@@ -33,4 +33,20 @@ APPLE_METADATA = ProviderMetadata(
             ]
         ],
     },
+    connection_config_fields=[
+        ConnectionConfigField(
+            name="username",
+            label="Apple ID Email",
+            description="Your Apple ID email address",
+            type="email",
+            required=True,
+        ),
+        ConnectionConfigField(
+            name="password",
+            label="App-Specific Password",
+            description="Generate an app-specific password from your Apple ID security settings",
+            type="password",
+            required=True,
+        ),
+    ],
 )

@@ -4,29 +4,41 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from omnidapter_server.config import get_settings
+from omnidapter_server.config import Settings, get_settings
+from omnidapter_server.errors import make_unhandled_exception_handler
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
-from omnidapter_server.routers import calendar, connections, oauth, provider_configs, providers
+from omnidapter_server.routers import (
+    calendar,
+    connect,
+    connections,
+    link_tokens,
+    oauth,
+    provider_configs,
+    providers,
+)
 
 logger = logging.getLogger(__name__)
 
 
-async def _sync_managed_api_key() -> None:
+async def health_endpoint() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+async def _sync_managed_api_key(settings: Settings) -> None:
     """Ensure managed API key exists (and rotates if changed)."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    from omnidapter_server.config import get_settings
     from omnidapter_server.models.api_key import APIKey
     from omnidapter_server.services.auth import hash_api_key, verify_api_key
 
-    settings = get_settings()
     raw_key = settings.omnidapter_api_key.strip()
 
     if settings.omnidapter_auth_mode == "required" and not raw_key:
@@ -78,60 +90,69 @@ async def _sync_managed_api_key() -> None:
         await engine.dispose()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await _sync_managed_api_key()
-    yield
+def create_app(settings: Settings | None = None) -> FastAPI:
+    """Create and configure the Omnidapter Server FastAPI application."""
+    if settings is None:
+        settings = get_settings()
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        await _sync_managed_api_key(settings)
+        yield
 
-app = FastAPI(
-    lifespan=lifespan,
-    title="Omnidapter Server",
-    description="Self-hosted REST API wrapping the Omnidapter calendar integration library",
-    version="0.3.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-# Middleware
-app.add_middleware(RequestIdMiddleware)
-
-settings = get_settings()
-allowed_domain_patterns = parse_allowed_origin_domains(settings.omnidapter_allowed_origin_domains)
-cors_origins, allow_origin_regex, allow_credentials = build_cors_settings(allowed_domain_patterns)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_origin_regex=allow_origin_regex,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Routers
-app.include_router(providers.router, prefix="/v1")
-app.include_router(provider_configs.router, prefix="/v1")
-app.include_router(connections.router, prefix="/v1")
-app.include_router(calendar.router, prefix="/v1")
-app.include_router(oauth.router)  # /oauth is not under /v1
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    request_id = getattr(request.state, "request_id", "req_unknown")
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": {"code": "internal_error", "message": "An unexpected error occurred"},
-            "meta": {"request_id": request_id},
-        },
+    app = FastAPI(
+        lifespan=lifespan,
+        title="Omnidapter Server",
+        description="Self-hosted REST API wrapping the Omnidapter calendar integration library",
+        version="0.3.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
+
+    # Store environment for error handlers
+    app.state.omnidapter_env = settings.omnidapter_env
+
+    # Middleware
+    app.add_middleware(RequestIdMiddleware)
+
+    allowed_domain_patterns = parse_allowed_origin_domains(
+        settings.omnidapter_allowed_origin_domains
+    )
+    cors_origins, allow_origin_regex, allow_credentials = build_cors_settings(
+        allowed_domain_patterns
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_origin_regex=allow_origin_regex,
+        allow_credentials=allow_credentials,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Routers
+    app.include_router(providers.router, prefix="/v1")
+    app.include_router(provider_configs.router, prefix="/v1")
+    app.include_router(connections.router, prefix="/v1")
+    app.include_router(calendar.router, prefix="/v1")
+    app.include_router(link_tokens.router, prefix="/v1")
+    app.include_router(connect.router)  # /connect is not under /v1
+    app.include_router(oauth.router)  # /oauth is not under /v1
+
+    app.get("/health")(health_endpoint)
+    app.exception_handler(Exception)(make_unhandled_exception_handler(settings.omnidapter_env))
+
+    # Serve connect-ui at root — registered last so all API routes take priority
+    connect_ui_dist = Path("/app/connect-ui-dist")
+    if connect_ui_dist.exists():
+        app.mount("/", StaticFiles(directory=connect_ui_dist, html=True), name="connect-ui")
+
+    return app
+
+
+# Default app instance for backward compatibility
+app = create_app()
 
 
 def run() -> None:

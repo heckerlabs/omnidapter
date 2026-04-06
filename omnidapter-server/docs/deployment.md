@@ -17,4 +17,4 @@
 - Use explicit `OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS` values
 - Restrict network access to database and Redis
 - Rotate encryption keys using current/previous key settings
-- Monitor 401/422 callback errors and request IDs
+- Monitor 400/401 callback errors and request IDs

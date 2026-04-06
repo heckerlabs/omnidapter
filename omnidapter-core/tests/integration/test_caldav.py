@@ -2,7 +2,6 @@
 Integration tests for CalDAV.
 
 Required env vars:
-    OMNIDAPTER_INTEGRATION=1
     OMNIDAPTER_TEST_CALDAV_URL        (e.g. http://localhost:5232 for Radicale,
                                        or a real server like iCloud / Fastmail)
     OMNIDAPTER_TEST_CALDAV_USERNAME
@@ -38,9 +37,6 @@ from omnidapter.services.calendar.requests import (
 )
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE
-
-pytestmark = pytest.mark.integration
-
 
 # --------------------------------------------------------------------------- #
 # Server discovery                                                             #

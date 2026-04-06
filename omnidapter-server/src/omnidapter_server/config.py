@@ -55,22 +55,23 @@ class Settings(BaseSettings):
     omnidapter_zoho_client_id: str = ""
     omnidapter_zoho_client_secret: str = ""
 
-    # Connection limits when using fallback (server-owned) OAuth app
-    omnidapter_fallback_connection_limit: int = 5
-
-    # Reauth threshold: mark connection needs_reauth after this many consecutive refresh failures
-    omnidapter_reauth_threshold: int = 3
+    # Non-OAuth provider toggles
+    omnidapter_apple_enabled: bool = False
+    omnidapter_caldav_enabled: bool = False
 
     # App
     host: str = "0.0.0.0"
     port: int = 8000
     omnidapter_base_url: str = "http://localhost:8000"
-    omnidapter_env: str = "DEV"
+    omnidapter_env: str = "PROD"
     omnidapter_auth_mode: Literal["required", "disabled"] = "required"
     omnidapter_allowed_origin_domains: str = "*"
 
     # Managed API key for server authentication.
     omnidapter_api_key: str = ""
+
+    # Link token TTL in seconds (default 60 seconds)
+    omnidapter_link_token_ttl_seconds: int = 60
 
     @field_validator("omnidapter_env", mode="before")
     @classmethod

@@ -85,7 +85,7 @@ async def test_get_credentials_decrypts_and_parses() -> None:
 
 
 @pytest.mark.asyncio
-async def test_save_credentials_persists_and_commits() -> None:
+async def test_save_credentials_persists() -> None:
     session = AsyncMock()
     result = MagicMock()
     result.scalar_one_or_none.return_value = uuid.uuid4()
@@ -98,7 +98,8 @@ async def test_save_credentials_persists_and_commits() -> None:
     await store.save_credentials(str(uuid.uuid4()), _credential())
 
     session.execute.assert_awaited_once()
-    session.commit.assert_awaited_once()
+    # save_credentials does NOT commit — caller responsible for transaction
+    session.commit.assert_not_awaited()
     statement_str = str(session.execute.await_args.args[0])
     assert "granted_scopes" in statement_str
     assert "provider_account_id" in statement_str

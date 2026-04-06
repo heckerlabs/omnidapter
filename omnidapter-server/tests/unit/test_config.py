@@ -10,10 +10,10 @@ from omnidapter_server.config import Settings
 from pydantic import ValidationError
 
 
-def test_settings_defaults_to_dev(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_settings_defaults_to_prod(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OMNIDAPTER_ENV", raising=False)
     settings = Settings(omnidapter_encryption_key="dummy")
-    assert settings.omnidapter_env == "DEV"
+    assert settings.omnidapter_env == "PROD"
     assert settings.host == "0.0.0.0"
     assert settings.port == 8000
 

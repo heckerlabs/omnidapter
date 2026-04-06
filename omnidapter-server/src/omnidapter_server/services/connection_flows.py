@@ -26,7 +26,8 @@ ActiveConnectionCounter = Callable[[str, AsyncSession], Awaitable[int]]
 OmniBuilder = Callable[[AsyncSession, str, ProviderConfigLike | None], Awaitable[Any]]
 ConnectionPostCreate = Callable[[Connection, AsyncSession], Awaitable[None]]
 PaginatedConnectionLoader = Callable[
-    [AsyncSession, str | None, str | None, int, int], Awaitable[tuple[int, list[Connection]]]
+    [AsyncSession, str | None, str | None, int, int, str | None],
+    Awaitable[tuple[int, list[Connection]]],
 ]
 
 
@@ -44,7 +45,7 @@ class ReauthorizeConnectionFlowResult:
     authorization_url: str
 
 
-def validate_redirect_url_or_422(
+def validate_redirect_url_or_400(
     *,
     redirect_url: str,
     request: Request,
@@ -60,7 +61,7 @@ def validate_redirect_url_or_422(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "invalid_redirect_url", "message": str(exc)},
         ) from exc
 
@@ -99,29 +100,13 @@ async def create_connection_flow(
     build_omni: OmniBuilder,
     persist_post_create: ConnectionPostCreate | None = None,
 ) -> CreateConnectionFlowResult:
-    validate_redirect_url_or_422(
+    validate_redirect_url_or_400(
         redirect_url=body.redirect_url,
         request=request,
         settings=settings,
     )
 
     provider_config = await load_provider_config(body.provider, session)
-    is_fallback = bool(getattr(provider_config, "is_fallback", False))
-
-    if provider_config is None or is_fallback:
-        existing_count = await count_active_connections(body.provider, session)
-        if existing_count >= settings.omnidapter_fallback_connection_limit:
-            raise HTTPException(
-                status_code=422,
-                detail={
-                    "code": "fallback_connection_limit",
-                    "message": (
-                        f"Fallback connection limit "
-                        f"({settings.omnidapter_fallback_connection_limit}) reached. "
-                        "Configure your own OAuth app via /v1/provider-configs."
-                    ),
-                },
-            )
 
     conn = Connection(
         id=uuid.uuid4(),
@@ -151,7 +136,7 @@ async def create_connection_flow(
         await session.delete(conn)
         await session.commit()
         raise HTTPException(
-            status_code=422,
+            status_code=400,
             detail={"code": "oauth_begin_failed", "message": str(exc)},
         ) from exc
 
@@ -174,11 +159,12 @@ async def list_connections_flow(
     session: AsyncSession,
     status: str | None,
     provider: str | None,
+    external_id: str | None,
     limit: int,
     offset: int,
     load_paginated_connections: PaginatedConnectionLoader,
 ) -> tuple[int, list[Connection]]:
-    return await load_paginated_connections(session, status, provider, limit, offset)
+    return await load_paginated_connections(session, status, provider, limit, offset, external_id)
 
 
 async def reauthorize_connection_flow(
@@ -193,7 +179,7 @@ async def reauthorize_connection_flow(
     build_omni: OmniBuilder,
 ) -> ReauthorizeConnectionFlowResult:
     conn = await load_connection(connection_id, session)
-    validate_redirect_url_or_422(redirect_url=body.redirect_url, request=request, settings=settings)
+    validate_redirect_url_or_400(redirect_url=body.redirect_url, request=request, settings=settings)
 
     if conn.status == ConnectionStatus.REVOKED:
         raise HTTPException(

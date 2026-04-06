@@ -2,7 +2,6 @@
 Integration tests for Microsoft Calendar (Graph API).
 
 Required env vars:
-    OMNIDAPTER_INTEGRATION=1
     OMNIDAPTER_TEST_MICROSOFT_CLIENT_ID
     OMNIDAPTER_TEST_MICROSOFT_CLIENT_SECRET
     OMNIDAPTER_TEST_MICROSOFT_REFRESH_TOKEN
@@ -42,9 +41,6 @@ from omnidapter.services.calendar.requests import (
 )
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
-
-pytestmark = pytest.mark.integration
-
 
 # --------------------------------------------------------------------------- #
 # Token refresh                                                                #
