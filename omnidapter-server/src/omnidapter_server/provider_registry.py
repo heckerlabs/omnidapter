@@ -56,7 +56,6 @@ def build_provider_registry(
     if settings.omnidapter_caldav_enabled:
         registry.register(CalDAVProvider())
 
-
     fallback_pairs = (
         ("google", settings.omnidapter_google_client_id, settings.omnidapter_google_client_secret),
         (

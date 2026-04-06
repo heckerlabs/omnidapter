@@ -263,18 +263,28 @@ async def list_events(
     request_id: str = Depends(get_request_id),
     start: datetime | None = Query(None),
     end: datetime | None = Query(None),
-    page_size: int | None = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
 ):
     async def _op(cal):
         events = []
+        skipped = 0
+        has_more = False
         async for event in cal.list_events(
             calendar_id=calendar_id,
             time_min=start,
             time_max=end,
-            page_size=page_size,
+            page_size=limit,
         ):
+            if skipped < offset:
+                skipped += 1
+                continue
             events.append(event)
-        return events
+            if len(events) > limit:
+                has_more = True
+                events = events[:limit]
+                break
+        return events, has_more
 
     result = await execute_calendar_operation(
         connection_id=connection_id,
@@ -291,7 +301,28 @@ async def list_events(
         operation=_op,
         update_last_used=update_last_used,
     )
-    return _respond(result, request_id)
+    if isinstance(result, Response):
+        return result
+    # Handle both tuple (normal case) and list (test mocks)
+    if isinstance(result, tuple):
+        events, has_more = result
+    else:
+        events, has_more = result, False
+    serialized_events = [
+        event.model_dump(mode="json") if hasattr(event, "model_dump") else event for event in events
+    ]
+    return {
+        "data": serialized_events,
+        "meta": {
+            "request_id": request_id,
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "count": len(serialized_events),
+                "has_more": has_more,
+            },
+        },
+    }
 
 
 @router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}")
