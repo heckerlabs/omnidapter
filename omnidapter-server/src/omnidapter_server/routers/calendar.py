@@ -276,14 +276,15 @@ async def create_event(
     settings: Settings = Depends(get_settings),
     request_id: str = Depends(get_request_id),
 ):
-    body.calendar_id = calendar_id
     result = await execute_calendar_operation(
         connection_id=connection_id,
         request=request,
         session=session,
         load_connection=_get_conn,
         build_omni=lambda s, provider_key: _build_omni(s, encryption, settings, provider_key),
-        operation=lambda cal: cal.create_event(body),
+        operation=lambda cal: cal.create_event(
+            body.model_copy(update={"calendar_id": calendar_id})
+        ),
         update_last_used=update_last_used,
     )
     return _respond(result, request_id)

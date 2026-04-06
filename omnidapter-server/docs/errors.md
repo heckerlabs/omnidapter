@@ -30,7 +30,7 @@ Some FastAPI-raised detail responses can appear as:
 - `400`: invalid request — bad input, unknown provider, missing fields, credential validation failure
 - `401`: missing or invalid API key
 - `404`: resource not found (connection/provider config)
-- `409`: state conflict — e.g. fallback connection limit reached
+- `409`: state conflict
 - `410`: revoked connection operation attempted
 - `422`: Pydantic model validation failure only (malformed request body)
 - `500`: unexpected internal error
@@ -43,7 +43,6 @@ Some FastAPI-raised detail responses can appear as:
 - `connection_not_found`
 - `connection_revoked`
 - `invalid_redirect_url`
-- `fallback_connection_limit`
 - `oauth_begin_failed`
 - `encryption_not_configured`
 - `internal_error`

@@ -162,7 +162,7 @@ async def patch_provider_config(
     registry.register_builtins(auto_register_by_env=False)
     omni = Omnidapter(registry=registry)
     try:
-        omni.describe_provider(provider_key)
+        provider_metadata = omni.describe_provider(provider_key)
     except KeyError as exc:
         raise HTTPException(
             status_code=400,
@@ -177,7 +177,7 @@ async def patch_provider_config(
             id=uuid.uuid4(),
             tenant_id=auth.tenant_id,
             provider_key=provider_key,
-            auth_kind="oauth2",
+            auth_kind=provider_metadata.auth_kinds[0].value,
             is_enabled=body.is_enabled,
         )
         session.add(new_cfg)

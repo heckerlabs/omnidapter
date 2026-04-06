@@ -26,7 +26,7 @@ api_key_scheme = HTTPBearer(
 link_token_scheme = HTTPBearer(
     auto_error=False,
     scheme_name="LinkTokenAuth",
-    description="Connect UI Link Token (lt_*)",
+    description="Connect UI session token (cs_*). The one-time lt_* bootstrap token is only accepted by POST /connect/init.",
 )
 
 
