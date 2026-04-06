@@ -106,9 +106,9 @@ def is_provider_available(
 ) -> bool:
     """Return True if the provider is available for end-user connections.
 
-    Server version — only uses env vars (server no longer has its own ProviderConfig logic).
-    - Non-OAuth provider → always available.
-    - OAuth provider with env-level fallback credentials → available.
+    - Non-OAuth provider (Apple, CalDAV) → available if enabled in settings.
+    - OAuth provider → available if it has own credentials (via config) OR
+      fallback credentials from server settings (`OMNIDAPTER_*`).
     """
     if auth_kind != "oauth2":
         if provider_key == "apple":
