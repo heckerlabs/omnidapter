@@ -1,8 +1,8 @@
-"""initial
+"""hosted_initial
 
 Revision ID: 0001_hosted
 Revises: 0001
-Create Date: 2026-04-05 21:39:10.635858
+Create Date: 2026-04-06 12:01:14.725408
 
 """
 
