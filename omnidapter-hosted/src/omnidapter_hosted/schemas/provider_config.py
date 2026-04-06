@@ -1,4 +1,4 @@
-"""Provider config schemas."""
+"""Provider config schemas for Hosted."""
 
 from __future__ import annotations
 
@@ -31,7 +31,8 @@ class ProviderConfigResponse(BaseModel):
             provider_key=cfg.provider_key,
             auth_kind=cfg.auth_kind,
             scopes=cfg.scopes,
-            is_fallback=cfg.is_fallback,
+            is_fallback=getattr(cfg, "is_fallback", False),
+            is_enabled=getattr(cfg, "is_enabled", None),
             created_at=cfg.created_at,
             updated_at=cfg.updated_at,
         )

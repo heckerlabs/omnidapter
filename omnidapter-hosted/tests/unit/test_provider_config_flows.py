@@ -1,4 +1,4 @@
-"""Unit tests for provider config shared flows."""
+"""Unit tests for provider config shared flows - Hosted version."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
-from omnidapter_server.schemas.provider_config import UpsertProviderConfigRequest
-from omnidapter_server.services.provider_config_flows import (
+from omnidapter_hosted.schemas.provider_config import UpsertProviderConfigRequest
+from omnidapter_hosted.services.provider_config_flows import (
     delete_provider_config_flow,
     get_provider_config_flow,
     list_provider_configs_flow,

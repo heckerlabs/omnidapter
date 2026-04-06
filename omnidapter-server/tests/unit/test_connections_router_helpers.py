@@ -9,8 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.provider_config import ProviderConfig
-from omnidapter_server.routers.connections import _get_provider_config, get_connection
+from omnidapter_server.routers.connections import get_connection
 
 
 class _ScalarResult:
@@ -55,21 +54,3 @@ async def test_get_connection_success() -> None:
     resolved = await get_connection(str(conn.id), session)
 
     assert resolved is conn
-
-
-@pytest.mark.asyncio
-async def test_get_provider_config_returns_model() -> None:
-    cfg = ProviderConfig(
-        id=uuid.uuid4(),
-        provider_key="google",
-        auth_kind="oauth2",
-        client_id_encrypted="enc-id",
-        client_secret_encrypted="enc-secret",
-        is_fallback=False,
-    )
-    session = AsyncMock()
-    session.execute = AsyncMock(return_value=_ScalarResult(cfg))
-
-    resolved = await _get_provider_config("google", session)
-
-    assert resolved is cfg

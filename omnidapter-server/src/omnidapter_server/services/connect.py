@@ -106,9 +106,8 @@ def is_provider_available(
 ) -> bool:
     """Return True if the provider is available for end-user connections.
 
-    Server version — no ``is_enabled`` check (server's ProviderConfig has no such flag).
+    Server version — only uses env vars (server no longer has its own ProviderConfig logic).
     - Non-OAuth provider → always available.
-    - OAuth provider with own credentials in config → available.
     - OAuth provider with env-level fallback credentials → available.
     """
     if auth_kind != "oauth2":
@@ -120,8 +119,8 @@ def is_provider_available(
 
     has_own_creds = (
         config is not None
-        and bool(config.client_id_encrypted)
-        and bool(config.client_secret_encrypted)
+        and bool(getattr(config, "client_id_encrypted", None))
+        and bool(getattr(config, "client_secret_encrypted", None))
     )
     return has_own_creds or _has_fallback(provider_key, settings)
 

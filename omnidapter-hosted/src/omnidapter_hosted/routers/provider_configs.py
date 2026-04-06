@@ -11,13 +11,6 @@ from omnidapter.core.registry import ProviderRegistry
 from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
-from omnidapter_server.schemas.provider_config import UpsertProviderConfigRequest
-from omnidapter_server.services.provider_config_flows import (
-    delete_provider_config_flow,
-    get_provider_config_flow,
-    list_provider_configs_flow,
-    upsert_provider_config_flow,
-)
 from pydantic import BaseModel
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +21,13 @@ from omnidapter_hosted.dependencies import (
     get_request_id,
 )
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
+from omnidapter_hosted.schemas.provider_config import UpsertProviderConfigRequest
+from omnidapter_hosted.services.provider_config_flows import (
+    delete_provider_config_flow,
+    get_provider_config_flow,
+    list_provider_configs_flow,
+    upsert_provider_config_flow,
+)
 
 router = APIRouter(prefix="/provider-configs", tags=["provider-configs"])
 

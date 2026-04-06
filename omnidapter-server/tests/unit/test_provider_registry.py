@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import uuid
 from unittest.mock import MagicMock
 
 import pytest
 from omnidapter_server.config import Settings
-from omnidapter_server.models.provider_config import ProviderConfig
 from omnidapter_server.provider_registry import build_provider_registry
 
 
@@ -44,14 +42,12 @@ def test_build_provider_registry_provider_config_overrides_fallback() -> None:
         omnidapter_google_client_id="fallback-google-id",
         omnidapter_google_client_secret="fallback-google-secret",
     )
-    provider_config = ProviderConfig(
-        id=uuid.uuid4(),
-        provider_key="google",
-        auth_kind="oauth2",
-        client_id_encrypted="enc-id",
-        client_secret_encrypted="enc-secret",
-        is_fallback=False,
-    )
+    provider_config = MagicMock()
+    provider_config.provider_key = "google"
+    provider_config.client_id_encrypted = "enc-id"
+    provider_config.client_secret_encrypted = "enc-secret"
+    provider_config.is_fallback = False
+
     encryption = MagicMock()
     encryption.decrypt.side_effect = ["db-google-id", "db-google-secret"]
 
@@ -70,14 +66,11 @@ def test_build_provider_registry_provider_config_overrides_fallback() -> None:
 
 def test_build_provider_registry_requires_encryption_for_provider_override() -> None:
     settings = Settings()
-    provider_config = ProviderConfig(
-        id=uuid.uuid4(),
-        provider_key="google",
-        auth_kind="oauth2",
-        client_id_encrypted="enc-id",
-        client_secret_encrypted="enc-secret",
-        is_fallback=False,
-    )
+    provider_config = MagicMock()
+    provider_config.provider_key = "google"
+    provider_config.client_id_encrypted = "enc-id"
+    provider_config.client_secret_encrypted = "enc-secret"
+    provider_config.is_fallback = False
 
     with pytest.raises(ValueError, match="Encryption service is required"):
         build_provider_registry(settings, provider_config=provider_config)
@@ -85,16 +78,13 @@ def test_build_provider_registry_requires_encryption_for_provider_override() -> 
 
 def test_build_provider_registry_validates_encrypted_credential_presence() -> None:
     settings = Settings()
-    provider_config = ProviderConfig(
-        id=uuid.uuid4(),
-        provider_key="google",
-        auth_kind="oauth2",
-        client_id_encrypted=None,
-        client_secret_encrypted=None,
-        is_fallback=False,
-    )
+    provider_config = MagicMock()
+    provider_config.provider_key = "google"
+    provider_config.client_id_encrypted = None
+    provider_config.client_secret_encrypted = None
+    provider_config.is_fallback = False
 
-    with pytest.raises(ValueError, match="missing encrypted OAuth credentials"):
+    with pytest.raises(ValueError, match="missing required OAuth credentials"):
         build_provider_registry(
             settings,
             provider_config=provider_config,
@@ -104,14 +94,12 @@ def test_build_provider_registry_validates_encrypted_credential_presence() -> No
 
 def test_build_provider_registry_ignores_unknown_provider_key() -> None:
     settings = Settings()
-    provider_config = ProviderConfig(
-        id=uuid.uuid4(),
-        provider_key="custom-provider",
-        auth_kind="oauth2",
-        client_id_encrypted="enc-id",
-        client_secret_encrypted="enc-secret",
-        is_fallback=False,
-    )
+    provider_config = MagicMock()
+    provider_config.provider_key = "custom-provider"
+    provider_config.client_id_encrypted = "enc-id"
+    provider_config.client_secret_encrypted = "enc-secret"
+    provider_config.is_fallback = False
+
     encryption = MagicMock()
     encryption.decrypt.side_effect = ["id", "secret"]
 
