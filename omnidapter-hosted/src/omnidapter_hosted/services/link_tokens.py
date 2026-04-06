@@ -1,33 +1,22 @@
-"""Link token generation and verification."""
+"""Link token generation and verification — hosted wrapper around server service."""
 
 from __future__ import annotations
 
-import secrets
-import string
 import uuid
-from datetime import datetime, timezone
 
-import bcrypt
-from sqlalchemy import select
+from omnidapter_server.models.link_token import LinkToken
+from omnidapter_server.services.link_tokens import (
+    create_link_token as _server_create_link_token,
+)
+from omnidapter_server.services.link_tokens import (
+    generate_link_token as generate_link_token,  # re-export
+)
+from omnidapter_server.services.link_tokens import (
+    verify_link_token as verify_link_token,  # re-export
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from omnidapter_hosted.models.link_token import HostedLinkToken
-
-_RAW_TOKEN_LENGTH = 32
-
-
-def generate_link_token() -> tuple[str, str, str]:
-    """Generate a new link token.
-
-    Returns:
-        (raw_token, token_hash, token_prefix)
-    """
-    alphabet = string.ascii_letters + string.digits
-    random_part = "".join(secrets.choice(alphabet) for _ in range(_RAW_TOKEN_LENGTH))
-    raw_token = f"lt_{random_part}"
-    token_prefix = raw_token[:16]
-    token_hash = bcrypt.hashpw(raw_token.encode(), bcrypt.gensalt()).decode()
-    return raw_token, token_hash, token_prefix
+from omnidapter_hosted.models.link_token_owner import HostedLinkTokenOwner
 
 
 async def create_link_token(
@@ -37,54 +26,32 @@ async def create_link_token(
     redirect_uri: str | None,
     ttl_seconds: int,
     session: AsyncSession,
-) -> tuple[str, HostedLinkToken]:
-    """Create and persist a link token. Returns (raw_token, model)."""
-    raw_token, token_hash, token_prefix = generate_link_token()
+    *,
+    connection_id: uuid.UUID | None = None,
+    locked_provider_key: str | None = None,
+) -> tuple[str, LinkToken]:
+    """Create and persist a hosted link token. Returns (raw_token, model).
 
-    now = datetime.now(timezone.utc)
-    expires_at = datetime.fromtimestamp(now.timestamp() + ttl_seconds, tz=timezone.utc)
+    Wraps the server's ``create_link_token`` and adds a companion
+    ``HostedLinkTokenOwner`` row to associate the token with a tenant.
+    """
 
-    link_token = HostedLinkToken(
-        id=uuid.uuid4(),
-        tenant_id=tenant_id,
-        token_hash=token_hash,
-        token_prefix=token_prefix,
+    async def _persist_owner(lt: LinkToken, s: AsyncSession) -> None:
+        s.add(
+            HostedLinkTokenOwner(
+                id=uuid.uuid4(),
+                tenant_id=tenant_id,
+                link_token_id=lt.id,
+            )
+        )
+
+    return await _server_create_link_token(
         end_user_id=end_user_id,
         allowed_providers=allowed_providers,
         redirect_uri=redirect_uri,
-        expires_at=expires_at,
-        is_active=True,
+        ttl_seconds=ttl_seconds,
+        session=session,
+        connection_id=connection_id,
+        locked_provider_key=locked_provider_key,
+        persist_post_create=_persist_owner,
     )
-    session.add(link_token)
-    await session.commit()
-    await session.refresh(link_token)
-    return raw_token, link_token
-
-
-async def verify_link_token(
-    raw_token: str,
-    session: AsyncSession,
-) -> HostedLinkToken | None:
-    """Verify a raw link token and return the model if valid, None otherwise."""
-    if not raw_token.startswith("lt_"):
-        return None
-
-    prefix = raw_token[:16]
-    result = await session.execute(
-        select(HostedLinkToken)
-        .where(HostedLinkToken.token_prefix == prefix)
-        .where(HostedLinkToken.is_active.is_(True))
-    )
-    candidates = result.scalars().all()
-
-    now = datetime.now(timezone.utc)
-    for link_token in candidates:
-        if link_token.expires_at < now:
-            continue
-        try:
-            if bcrypt.checkpw(raw_token.encode(), link_token.token_hash.encode()):
-                return link_token
-        except Exception:
-            continue
-
-    return None

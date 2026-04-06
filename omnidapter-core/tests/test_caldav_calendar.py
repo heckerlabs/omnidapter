@@ -8,6 +8,12 @@ from unittest.mock import AsyncMock, MagicMock
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.core.metadata import AuthKind
 from omnidapter.providers.caldav.calendar import CalDAVCalendarService
+from omnidapter.providers.caldav.provider import CalDAVProvider
+from omnidapter.providers.caldav.server_hints import (
+    CalDAVServerHint,
+    detect_server_hint,
+    get_principal_url_template,
+)
 from omnidapter.services.calendar.requests import CreateCalendarRequest, UpdateCalendarRequest
 from omnidapter.stores.credentials import StoredCredential
 
@@ -100,3 +106,104 @@ class TestCalendarCrud:
 
         call = mock_request.await_args_list[0]
         assert call.args[0] == "DELETE"
+
+
+# ---------------------------------------------------------------------------
+# CalDAVProvider
+# ---------------------------------------------------------------------------
+
+
+class TestCalDAVProvider:
+    def test_metadata(self) -> None:
+        assert CalDAVProvider().metadata.provider_key == "caldav"
+
+    def test_get_oauth_config_returns_none(self) -> None:
+        assert CalDAVProvider().get_oauth_config() is None
+
+    def test_get_calendar_service_returns_service(self) -> None:
+        from omnidapter.auth.models import BasicCredentials
+        from omnidapter.core.metadata import AuthKind
+        from omnidapter.providers.caldav.calendar import CalDAVCalendarService
+        from omnidapter.stores.credentials import StoredCredential
+
+        stored = StoredCredential(
+            provider_key="caldav",
+            auth_kind=AuthKind.BASIC,
+            credentials=BasicCredentials(username="u", password="p"),
+            provider_config={"server_url": "https://dav.example.com/"},
+        )
+        svc = CalDAVProvider().get_calendar_service("conn-1", stored)
+        assert isinstance(svc, CalDAVCalendarService)
+
+
+# ---------------------------------------------------------------------------
+# detect_server_hint
+# ---------------------------------------------------------------------------
+
+
+class TestDetectServerHint:
+    def test_icloud(self) -> None:
+        assert detect_server_hint("https://caldav.icloud.com") == CalDAVServerHint.ICLOUD
+
+    def test_fastmail(self) -> None:
+        assert detect_server_hint("https://caldav.fastmail.com/dav/") == CalDAVServerHint.FASTMAIL
+
+    def test_fastmail_fm(self) -> None:
+        assert detect_server_hint("https://caldav.fastmail.fm/") == CalDAVServerHint.FASTMAIL
+
+    def test_nextcloud_keyword(self) -> None:
+        assert (
+            detect_server_hint("https://cloud.example.com/nextcloud/remote.php/dav")
+            == CalDAVServerHint.NEXTCLOUD
+        )
+
+    def test_nextcloud_path(self) -> None:
+        assert (
+            detect_server_hint("https://cloud.example.com/remote.php/dav")
+            == CalDAVServerHint.NEXTCLOUD
+        )
+
+    def test_google(self) -> None:
+        assert (
+            detect_server_hint("https://apidata.google.com/caldav/v2/") == CalDAVServerHint.GOOGLE
+        )
+
+    def test_radicale(self) -> None:
+        assert detect_server_hint("https://radicale.example.com/") == CalDAVServerHint.RADICALE
+
+    def test_davical(self) -> None:
+        assert detect_server_hint("https://davical.example.com/") == CalDAVServerHint.DAVICAL
+
+    def test_generic_fallback(self) -> None:
+        assert detect_server_hint("https://dav.example.com/caldav/") == CalDAVServerHint.GENERIC
+
+
+# ---------------------------------------------------------------------------
+# get_principal_url_template
+# ---------------------------------------------------------------------------
+
+
+class TestGetPrincipalUrlTemplate:
+    def test_icloud(self) -> None:
+        url = get_principal_url_template(
+            CalDAVServerHint.ICLOUD, "https://caldav.icloud.com", "user@example.com"
+        )
+        assert url == "https://caldav.icloud.com"
+
+    def test_nextcloud(self) -> None:
+        url = get_principal_url_template(
+            CalDAVServerHint.NEXTCLOUD, "https://cloud.example.com", "alice"
+        )
+        assert url == "https://cloud.example.com/remote.php/dav/principals/users/alice/"
+
+    def test_fastmail(self) -> None:
+        url = get_principal_url_template(
+            CalDAVServerHint.FASTMAIL, "https://caldav.fastmail.com/dav", "user@example.com"
+        )
+        assert url == "https://caldav.fastmail.com/dav/"
+
+    def test_generic(self) -> None:
+        url = get_principal_url_template(
+            CalDAVServerHint.GENERIC, "https://dav.example.com/caldav", "user"
+        )
+        assert url == "https://dav.example.com/caldav/"

@@ -66,7 +66,7 @@ async def callback(
     auth_response = await client.user_management.authenticate_with_code(code=code)
     wu = auth_response.user
 
-    user, tenant, membership, initial_key = await provision_user_flow(
+    user, tenant, membership = await provision_user_flow(
         workos_user_id=wu.id,
         email=wu.email,
         first_name=wu.first_name,
@@ -82,8 +82,6 @@ async def callback(
         "user": {"id": str(user.id), "email": user.email, "name": user.name},
         "tenant": {"id": str(tenant.id), "name": tenant.name, "plan": tenant.plan},
     }
-    if initial_key is not None:
-        data["api_key"] = getattr(initial_key, "raw_key", None)
 
     return {"data": data, "meta": {"request_id": request_id}}
 
@@ -106,9 +104,3 @@ async def me(
         },
         "meta": {"request_id": request_id},
     }
-
-
-@router.post("/logout")
-async def logout(request_id: str = Depends(get_request_id)):
-    """Stateless logout — client discards the Bearer token."""
-    return {"data": {"logged_out": True}, "meta": {"request_id": request_id}}

@@ -2,7 +2,6 @@
 Integration tests for Google Calendar.
 
 Required env vars:
-    OMNIDAPTER_INTEGRATION=1
     OMNIDAPTER_TEST_GOOGLE_CLIENT_ID
     OMNIDAPTER_TEST_GOOGLE_CLIENT_SECRET
     OMNIDAPTER_TEST_GOOGLE_REFRESH_TOKEN
@@ -54,9 +53,6 @@ async def _assert_deleted_event_state(google_service, calendar_id: str, event_id
         return
 
     assert deleted.status == EventStatus.CANCELLED
-
-
-pytestmark = pytest.mark.integration
 
 
 # --------------------------------------------------------------------------- #

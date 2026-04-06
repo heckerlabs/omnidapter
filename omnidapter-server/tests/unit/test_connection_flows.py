@@ -20,7 +20,7 @@ from omnidapter_server.services.connection_flows import (
     get_connection_or_404,
     list_connections_flow,
     reauthorize_connection_flow,
-    validate_redirect_url_or_422,
+    validate_redirect_url_or_400,
 )
 from starlette.requests import Request
 
@@ -59,28 +59,6 @@ async def test_get_connection_or_404_not_found() -> None:
             load_connection_by_uuid=AsyncMock(return_value=None),
         )
     assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_create_connection_flow_honors_fallback_limit() -> None:
-    body = CreateConnectionRequest(provider="google", redirect_url="https://app/cb")
-    with (
-        patch(
-            "omnidapter_server.services.connection_flows.validate_redirect_url", return_value=None
-        ),
-        pytest.raises(HTTPException) as exc_info,
-    ):
-        await create_connection_flow(
-            body=body,
-            request=_request(),
-            session=AsyncMock(),
-            settings=Settings(omnidapter_fallback_connection_limit=1),
-            load_provider_config=AsyncMock(return_value=None),
-            count_active_connections=AsyncMock(return_value=1),
-            build_omni=AsyncMock(),
-        )
-
-    assert exc_info.value.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -140,7 +118,7 @@ async def test_create_connection_flow_oauth_begin_failure_rolls_back() -> None:
             build_omni=AsyncMock(return_value=omni),
         )
 
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400
     session.delete.assert_awaited_once()
 
 
@@ -151,6 +129,7 @@ async def test_list_connections_flow_passthrough() -> None:
         session=AsyncMock(),
         status=None,
         provider=None,
+        external_id=None,
         limit=50,
         offset=0,
         load_paginated_connections=loader,
@@ -212,7 +191,7 @@ async def test_reauthorize_connection_flow_unions_scopes() -> None:
     session.execute.assert_awaited_once()
 
 
-def test_validate_redirect_url_or_422_maps_value_error() -> None:
+def test_validate_redirect_url_or_400_maps_value_error() -> None:
     with (
         patch(
             "omnidapter_server.services.connection_flows.parse_allowed_origin_domains",
@@ -224,9 +203,9 @@ def test_validate_redirect_url_or_422_maps_value_error() -> None:
         ),
         pytest.raises(HTTPException) as exc_info,
     ):
-        validate_redirect_url_or_422(
+        validate_redirect_url_or_400(
             redirect_url="https://bad",
             request=_request(),
             settings=Settings(),
         )
-    assert exc_info.value.status_code == 422
+    assert exc_info.value.status_code == 400

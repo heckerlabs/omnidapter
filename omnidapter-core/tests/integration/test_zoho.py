@@ -2,7 +2,6 @@
 Integration tests for Zoho Calendar.
 
 Required env vars:
-    OMNIDAPTER_INTEGRATION=1
     OMNIDAPTER_TEST_ZOHO_CLIENT_ID
     OMNIDAPTER_TEST_ZOHO_CLIENT_SECRET
     OMNIDAPTER_TEST_ZOHO_REFRESH_TOKEN
@@ -39,8 +38,6 @@ from omnidapter.services.calendar.requests import (
 )
 
 from .conftest import EVENT_PREFIX, PAGINATION_PAGE_SIZE, _require_env, _stale_oauth2_stored
-
-pytestmark = pytest.mark.integration
 
 
 async def _assert_deleted_event_state(zoho_service, calendar_id: str, event_id: str) -> None:

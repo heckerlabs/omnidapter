@@ -5,7 +5,9 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from omnidapter import Omnidapter
+from omnidapter.core.registry import ProviderRegistry
 from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
@@ -16,7 +18,8 @@ from omnidapter_server.services.provider_config_flows import (
     list_provider_configs_flow,
     upsert_provider_config_flow,
 )
-from sqlalchemy import delete, select
+from pydantic import BaseModel
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.dependencies import (
@@ -27,6 +30,10 @@ from omnidapter_hosted.dependencies import (
 from omnidapter_hosted.models.provider_config import HostedProviderConfig
 
 router = APIRouter(prefix="/provider-configs", tags=["provider-configs"])
+
+
+class PatchProviderConfigRequest(BaseModel):
+    is_enabled: bool
 
 
 async def _list_configs(session: AsyncSession, tenant_id: uuid.UUID) -> list[HostedProviderConfig]:
@@ -133,6 +140,65 @@ async def upsert_provider_config(
                 auth.tenant_id,
             ),
         ),
+        "meta": {"request_id": request_id},
+    }
+
+
+@router.patch("/{provider_key}")
+async def patch_provider_config(
+    provider_key: str,
+    body: PatchProviderConfigRequest,
+    auth: Annotated[HostedAuthContext, Depends(get_hosted_auth_context)],
+    session: AsyncSession = Depends(get_session),
+    request_id: str = Depends(get_request_id),
+):
+    """Enable or disable a provider for the Connect UI.
+
+    If no config exists yet, one is created with ``is_enabled`` set and null
+    OAuth credentials — this lets an org explicitly disable a fallback provider
+    or pre-stage an enabled record for a non-OAuth provider.
+    """
+    registry = ProviderRegistry()
+    registry.register_builtins(auto_register_by_env=False)
+    omni = Omnidapter(registry=registry)
+    try:
+        provider_metadata = omni.describe_provider(provider_key)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "provider_not_found", "message": f"Unknown provider: {provider_key}"},
+        ) from exc
+
+    existing = await _load_config(provider_key, session, auth.tenant_id)
+
+    if existing is None:
+        # Create a stub config record so we can record the is_enabled preference
+        new_cfg = HostedProviderConfig(
+            id=uuid.uuid4(),
+            tenant_id=auth.tenant_id,
+            provider_key=provider_key,
+            auth_kind=provider_metadata.auth_kinds[0].value,
+            is_enabled=body.is_enabled,
+        )
+        session.add(new_cfg)
+        await session.commit()
+        await session.refresh(new_cfg)
+        return {
+            "data": {"provider_key": provider_key, "is_enabled": new_cfg.is_enabled},
+            "meta": {"request_id": request_id},
+        }
+
+    await session.execute(
+        update(HostedProviderConfig)
+        .where(
+            HostedProviderConfig.tenant_id == auth.tenant_id,
+            HostedProviderConfig.provider_key == provider_key,
+        )
+        .values(is_enabled=body.is_enabled)
+    )
+    await session.commit()
+    return {
+        "data": {"provider_key": provider_key, "is_enabled": body.is_enabled},
         "meta": {"request_id": request_id},
     }
 

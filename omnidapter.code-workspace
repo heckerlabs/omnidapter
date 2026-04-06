@@ -1,0 +1,92 @@
+{
+	"folders": [
+		{
+			"name": "root",
+			"path": "."
+		},
+		{
+			"name": "client",
+			"path": "client"
+		},
+		{
+			"name": "omnidapter-core",
+			"path": "omnidapter-core"
+		},
+		{
+			"name": "omnidapter-server",
+			"path": "omnidapter-server"
+		},
+		{
+			"name": "omnidapter-hosted",
+			"path": "omnidapter-hosted"
+		},
+	],
+	"settings": {
+		"files.exclude": {
+			"**/.mypy": true,
+			"**/.mypy_cache": true,
+			"**/.pytest_cache": true,
+			"**/.ruff_cache": true,
+			"**/__pycache__": true,
+			"omnidapter-core": true,
+			"omnidapter-server": true,
+			"omnidapter-hosted": true,
+			"client": true
+		}
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Server: FastAPI",
+				"type": "debugpy",
+				"request": "launch",
+				"module": "uvicorn",
+				"args": [
+					"omnidapter_server.main:app",
+					"--reload"
+				],
+				"jinja": true,
+				"envFile": "${workspaceFolder:omnidapter-server}/.env",
+				"cwd": "${workspaceFolder:omnidapter-server}",
+				"env": {
+					"PYTHONPATH": "${workspaceFolder:omnidapter-server}/src"
+				},
+				"linux": {
+					"python": "${workspaceFolder:root}/.venv/bin/python"
+				},
+				"osx": {
+					"python": "${workspaceFolder:root}/.venv/bin/python"
+				},
+				"windows": {
+					"python": "${workspaceFolder:root}/.venv/Scripts/python.exe"
+				}
+			},
+			{
+				"name": "Hosted: FastAPI",
+				"type": "debugpy",
+				"request": "launch",
+				"module": "uvicorn",
+				"args": [
+					"omnidapter_hosted.main:app",
+					"--reload"
+				],
+				"jinja": true,
+				"envFile": "${workspaceFolder:omnidapter-hosted}/.env",
+				"cwd": "${workspaceFolder:omnidapter-hosted}",
+				"env": {
+					"PYTHONPATH": "${workspaceFolder:omnidapter-hosted}/src"
+				},
+				"linux": {
+					"python": "${workspaceFolder:root}/.venv/bin/python"
+				},
+				"osx": {
+					"python": "${workspaceFolder:root}/.venv/bin/python"
+				},
+				"windows": {
+					"python": "${workspaceFolder:root}/.venv/Scripts/python.exe"
+				}
+			}
+		]
+	}
+}

@@ -17,7 +17,7 @@ dependencies = [
     "cryptography>=42.0",
     "bcrypt>=4.0",
     "httpx>=0.27",
-    "redis[asyncio]>=5.0",
+    "redis>=5.0",
     "workos>=5.0",
     "pyjwt>=2.0",
 ]
@@ -41,15 +41,3 @@ venvPath = ".."
 venv = ".venv"
 include = ["src", "tests"]
 pythonVersion = "3.10"
-
-[tool.poe.tasks.dev]
-help = "Start Omnidapter Hosted (local)"
-cmd = "uv run --env-file .env omnidapter-hosted"
-
-[tool.poe.tasks.test]
-help = "Run tests"
-cmd = "uv run --env-file .env pytest"
-
-[tool.poe.tasks.infra]
-help = "Start infra: db, redis, migrate"
-cmd = "docker compose up --build"

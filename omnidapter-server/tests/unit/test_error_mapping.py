@@ -62,7 +62,7 @@ def test_scope_insufficient_maps_to_403():
     assert body["error"]["details"]["required_scopes"] == ["calendar.read"]
 
 
-def test_unsupported_capability_maps_to_422():
+def test_unsupported_capability_maps_to_400():
     exc = UnsupportedCapabilityError(
         "Not supported",
         provider_key="google",
@@ -70,7 +70,7 @@ def test_unsupported_capability_maps_to_422():
     )
     req = _make_request()
     response = map_library_exception(exc, req)
-    assert response.status_code == 422
+    assert response.status_code == 400
     import json
 
     body = json.loads(bytes(response.body))
@@ -148,3 +148,100 @@ def test_all_errors_include_request_id():
 
         body = json.loads(bytes(response.body))
         assert body["meta"]["request_id"] == "req_custom_123"
+
+
+def test_map_library_exception_exposes_details_in_dev_env():
+    """Exception details should be exposed in DEV environment."""
+    import json
+
+    class CustomException(Exception):
+        pass
+
+    exc = CustomException("test error message")
+    req = _make_request()
+    req.app.state.omnidapter_env = "DEV"
+
+    response = map_library_exception(exc, req)
+    body = json.loads(bytes(response.body))
+
+    assert response.status_code == 500
+    assert body["error"]["code"] == "internal_error"
+    assert "details" in body["error"]
+    details = body["error"]["details"]
+    assert details["exception_type"] == "CustomException"
+    assert details["exception"] == "test error message"
+    assert "traceback" in details
+    assert "CustomException" in details["traceback"]
+
+
+def test_map_library_exception_hides_details_in_prod_env():
+    """Exception details should NOT be exposed in PROD environment."""
+    import json
+
+    class CustomException(Exception):
+        pass
+
+    exc = CustomException("test error message")
+    req = _make_request()
+    req.app.state.omnidapter_env = "PROD"
+
+    response = map_library_exception(exc, req)
+    body = json.loads(bytes(response.body))
+
+    assert response.status_code == 500
+    assert body["error"]["code"] == "internal_error"
+    # In PROD, details should not be present (or should not contain exception info)
+    if "details" in body["error"]:
+        details = body["error"]["details"]
+        assert "exception_type" not in details
+        assert "traceback" not in details
+
+
+def test_unhandled_exception_handler_exposes_details_in_dev_env():
+    """Unhandled exception handler should expose details in DEV."""
+    import asyncio
+    import json
+
+    from omnidapter_server.errors import make_unhandled_exception_handler
+
+    handler = make_unhandled_exception_handler("DEV")
+
+    exc = ValueError("test error")
+    req = _make_request()
+    req.state.request_id = "req_test"
+
+    response = asyncio.run(handler(req, exc))
+    body = json.loads(bytes(response.body))
+
+    assert response.status_code == 500
+    assert body["error"]["code"] == "internal_error"
+    assert "details" in body["error"]
+    details = body["error"]["details"]
+    assert details["exception_type"] == "ValueError"
+    assert details["exception"] == "test error"
+    assert "traceback" in details
+
+
+def test_unhandled_exception_handler_hides_details_in_prod_env():
+    """Unhandled exception handler should hide details in PROD."""
+    import asyncio
+    import json
+
+    from omnidapter_server.errors import make_unhandled_exception_handler
+
+    handler = make_unhandled_exception_handler("PROD")
+
+    exc = ValueError("test error")
+    req = _make_request()
+    req.state.request_id = "req_test"
+
+    response = asyncio.run(handler(req, exc))
+    body = json.loads(bytes(response.body))
+
+    assert response.status_code == 500
+    assert body["error"]["code"] == "internal_error"
+    # In PROD, details should not be present
+    if "details" in body["error"]:
+        details = body["error"]["details"]
+        assert "exception_type" not in details
+        assert "traceback" not in details

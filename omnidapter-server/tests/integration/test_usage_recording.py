@@ -12,8 +12,6 @@ from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.connection_health import update_last_used
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_update_last_used_sets_timestamp(session: AsyncSession):
@@ -94,7 +92,7 @@ async def test_last_used_updated_after_calendar_call(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        response = await client.get(f"/v1/connections/{conn.id}/calendar/calendars")
+        response = await client.get(f"/v1/connections/{conn.id}/calendars")
 
     assert response.status_code == 200
 
@@ -131,9 +129,7 @@ async def test_last_used_updated_after_list_events_call(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        response = await client.get(
-            f"/v1/connections/{conn.id}/calendar/events?calendar_id=primary"
-        )
+        response = await client.get(f"/v1/connections/{conn.id}/calendars/primary/events")
 
     assert response.status_code == 200
 

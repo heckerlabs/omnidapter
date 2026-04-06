@@ -83,6 +83,7 @@ class TestProviderRegistry:
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
         monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()
@@ -101,12 +102,29 @@ class TestProviderRegistry:
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
         monkeypatch.setenv("OMNIDAPTER_APPLE_ENABLED", "1")
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()
         keys = reg.list_keys()
 
         assert keys == ["apple"]
+
+    def test_register_builtins_registers_caldav_when_enabled(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
+        monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_ID", raising=False)
+        monkeypatch.delenv("MICROSOFT_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
+        monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.setenv("OMNIDAPTER_CALDAV_ENABLED", "1")
+
+        reg = ProviderRegistry()
+        reg.register_builtins()
+        keys = reg.list_keys()
+
+        assert keys == ["caldav"]
 
     def test_register_builtins_skips_unconfigured_oauth_providers(self, monkeypatch):
         monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
@@ -116,12 +134,14 @@ class TestProviderRegistry:
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()
         keys = reg.list_keys()
 
         assert "apple" not in keys
+        assert "caldav" not in keys
         assert "google" not in keys
         assert "microsoft" not in keys
         assert "zoho" not in keys
@@ -135,6 +155,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         with caplog.at_level(logging.WARNING, logger="omnidapter.registry"):
@@ -150,6 +171,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
         monkeypatch.setenv("OMNIDAPTER_APPLE_ENABLED", "true")
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         with caplog.at_level(logging.WARNING, logger="omnidapter.registry"):
@@ -165,6 +187,7 @@ class TestProviderRegistry:
         monkeypatch.delenv("ZOHO_CLIENT_ID", raising=False)
         monkeypatch.delenv("ZOHO_CLIENT_SECRET", raising=False)
         monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins(auto_register_by_env=False)
@@ -174,6 +197,7 @@ class TestProviderRegistry:
         assert "microsoft" in keys
         assert "zoho" in keys
         assert "apple" in keys
+        assert "caldav" in keys
 
     def test_register_builtins_providers_have_metadata(self, monkeypatch):
         monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
@@ -183,6 +207,7 @@ class TestProviderRegistry:
         monkeypatch.setenv("ZOHO_CLIENT_ID", "zid")
         monkeypatch.setenv("ZOHO_CLIENT_SECRET", "zsecret")
         monkeypatch.delenv("OMNIDAPTER_APPLE_ENABLED", raising=False)
+        monkeypatch.delenv("OMNIDAPTER_CALDAV_ENABLED", raising=False)
 
         reg = ProviderRegistry()
         reg.register_builtins()

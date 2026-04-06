@@ -12,8 +12,6 @@ from httpx import AsyncClient
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 def _make_calendar_event(calendar_id: str = "primary", event_id: str = "evt_1") -> MagicMock:
     from omnidapter import CalendarEvent, EventStatus
@@ -74,7 +72,7 @@ async def test_list_calendars(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """GET /calendar/calendars calls library and returns normalized response."""
+    """GET /calendars calls library and returns normalized response."""
     mock_calendar = _make_calendar()
 
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
@@ -86,7 +84,7 @@ async def test_list_calendars(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        response = await client.get(f"/v1/connections/{active_connection.id}/calendar/calendars")
+        response = await client.get(f"/v1/connections/{active_connection.id}/calendars")
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -100,7 +98,7 @@ async def test_get_calendar(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """GET /calendar/calendars/{calendar_id} returns a calendar."""
+    """GET /calendars/{calendar_id} returns a calendar."""
     mock_calendar = _make_calendar()
 
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
@@ -112,9 +110,7 @@ async def test_get_calendar(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        response = await client.get(
-            f"/v1/connections/{active_connection.id}/calendar/calendars/primary"
-        )
+        response = await client.get(f"/v1/connections/{active_connection.id}/calendars/primary")
 
     assert response.status_code == 200
     data = response.json()["data"]
@@ -127,7 +123,7 @@ async def test_create_calendar(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """POST /calendar/calendars creates a calendar."""
+    """POST /calendars creates a calendar."""
     mock_calendar = _make_calendar()
 
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
@@ -140,7 +136,7 @@ async def test_create_calendar(
         MockOmni.return_value = mock_omni_inst
 
         response = await client.post(
-            f"/v1/connections/{active_connection.id}/calendar/calendars",
+            f"/v1/connections/{active_connection.id}/calendars",
             json={"summary": "New Calendar"},
         )
 
@@ -155,7 +151,7 @@ async def test_update_calendar(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """PATCH /calendar/calendars/{calendar_id} updates a calendar."""
+    """PATCH /calendars/{calendar_id} updates a calendar."""
     mock_calendar = _make_calendar()
 
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
@@ -168,7 +164,7 @@ async def test_update_calendar(
         MockOmni.return_value = mock_omni_inst
 
         response = await client.patch(
-            f"/v1/connections/{active_connection.id}/calendar/calendars/primary",
+            f"/v1/connections/{active_connection.id}/calendars/primary",
             json={"calendar_id": "primary", "summary": "Updated Calendar"},
         )
 
@@ -181,7 +177,7 @@ async def test_delete_calendar(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """DELETE /calendar/calendars/{calendar_id} deletes a calendar."""
+    """DELETE /calendars/{calendar_id} deletes a calendar."""
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
         mock_omni_inst = MagicMock()
         mock_conn = MagicMock()
@@ -191,9 +187,7 @@ async def test_delete_calendar(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        response = await client.delete(
-            f"/v1/connections/{active_connection.id}/calendar/calendars/primary"
-        )
+        response = await client.delete(f"/v1/connections/{active_connection.id}/calendars/primary")
 
     assert response.status_code == 204
 
@@ -203,7 +197,7 @@ async def test_list_events(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """GET /calendar/events returns events from library."""
+    """GET /calendars/{calendar_id}/events returns events from library."""
     mock_event = _make_calendar_event()
 
     async def _fake_list_events(**kw):
@@ -219,7 +213,7 @@ async def test_list_events(
         MockOmni.return_value = mock_omni_inst
 
         response = await client.get(
-            f"/v1/connections/{active_connection.id}/calendar/events?calendar_id=primary"
+            f"/v1/connections/{active_connection.id}/calendars/primary/events"
         )
 
     assert response.status_code == 200
@@ -233,7 +227,7 @@ async def test_create_event(
     session: AsyncSession,
     active_connection: Connection,
 ):
-    """POST /calendar/events creates an event via library."""
+    """POST /calendars/{calendar_id}/events creates an event via library."""
     mock_event = _make_calendar_event()
 
     with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
@@ -246,9 +240,8 @@ async def test_create_event(
         MockOmni.return_value = mock_omni_inst
 
         response = await client.post(
-            f"/v1/connections/{active_connection.id}/calendar/events",
+            f"/v1/connections/{active_connection.id}/calendars/primary/events",
             json={
-                "calendar_id": "primary",
                 "summary": "New Meeting",
                 "start": "2026-03-15T14:00:00Z",
                 "end": "2026-03-15T15:00:00Z",
@@ -273,7 +266,7 @@ async def test_calendar_returns_error_for_needs_reauth(
     session.add(conn)
     await session.flush()
 
-    response = await client.get(f"/v1/connections/{conn.id}/calendar/calendars")
+    response = await client.get(f"/v1/connections/{conn.id}/calendars")
     assert response.status_code == 403
 
 
@@ -292,7 +285,7 @@ async def test_calendar_returns_error_for_revoked(
     session.add(conn)
     await session.flush()
 
-    response = await client.get(f"/v1/connections/{conn.id}/calendar/calendars")
+    response = await client.get(f"/v1/connections/{conn.id}/calendars")
     assert response.status_code == 410
 
 
@@ -312,7 +305,7 @@ async def test_last_used_updated_after_calendar_call(
         mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
         MockOmni.return_value = mock_omni_inst
 
-        await client.get(f"/v1/connections/{active_connection.id}/calendar/calendars")
+        await client.get(f"/v1/connections/{active_connection.id}/calendars")
 
     await session.refresh(active_connection)
     assert active_connection.last_used_at is not None

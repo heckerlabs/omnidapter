@@ -9,8 +9,6 @@ from httpx import AsyncClient
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 
-pytestmark = pytest.mark.integration
-
 
 @pytest.mark.asyncio
 async def test_list_connections_empty(client: AsyncClient):

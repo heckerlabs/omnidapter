@@ -57,7 +57,6 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
         name="main",
         key_hash="hash",
         key_prefix="omni_key_abcd",
-        is_active=True,
         created_at=_now(),
         last_used_at=None,
     )
@@ -157,7 +156,8 @@ async def test_revoke_api_key_flow_success() -> None:
 
     await revoke_api_key_flow(key.id, tenant_id, MemberRole.OWNER, session)
 
-    assert session.execute.await_count == 2
+    assert session.execute.await_count == 1
+    session.delete.assert_called_once_with(key)
     session.commit.assert_awaited_once()
 
 

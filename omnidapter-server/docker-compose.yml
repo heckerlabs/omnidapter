@@ -22,11 +22,9 @@ services:
       context: ..
       dockerfile: omnidapter-server/Dockerfile
     restart: "no"
+    env_file: .env
     environment:
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-LOCAL}
-      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
-      OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
+      OMNIDAPTER_DATABASE_URL: ${OMNIDAPTER_DATABASE_URL:-postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter}
     depends_on:
       db:
         condition: service_healthy
@@ -51,27 +49,10 @@ services:
     restart: no
     ports:
       - "${PORT:-8000}:${PORT:-8000}"
+    env_file: .env
     environment:
-      HOST: ${HOST:-0.0.0.0}
-      PORT: ${PORT:-8000}
-      OMNIDAPTER_DATABASE_URL: postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter
-      OMNIDAPTER_OAUTH_STATE_REDIS_URL: redis://redis:6379/0
-      OMNIDAPTER_ENCRYPTION_KEY: ${OMNIDAPTER_ENCRYPTION_KEY:-}
-      OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS: ${OMNIDAPTER_ENCRYPTION_KEY_PREVIOUS:-}
-      OMNIDAPTER_BASE_URL: ${OMNIDAPTER_BASE_URL:-http://localhost:${PORT:-8000}}
-      OMNIDAPTER_ENV: ${OMNIDAPTER_ENV:-DEV}
-      OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS: ${OMNIDAPTER_ALLOWED_ORIGIN_DOMAINS:-*}
-      # OAuth provider credentials (at least one required)
-      OMNIDAPTER_GOOGLE_CLIENT_ID: ${OMNIDAPTER_GOOGLE_CLIENT_ID:-}
-      OMNIDAPTER_GOOGLE_CLIENT_SECRET: ${OMNIDAPTER_GOOGLE_CLIENT_SECRET:-}
-      OMNIDAPTER_MICROSOFT_CLIENT_ID: ${OMNIDAPTER_MICROSOFT_CLIENT_ID:-}
-      OMNIDAPTER_MICROSOFT_CLIENT_SECRET: ${OMNIDAPTER_MICROSOFT_CLIENT_SECRET:-}
-      OMNIDAPTER_ZOHO_CLIENT_ID: ${OMNIDAPTER_ZOHO_CLIENT_ID:-}
-      OMNIDAPTER_ZOHO_CLIENT_SECRET: ${OMNIDAPTER_ZOHO_CLIENT_SECRET:-}
-      OMNIDAPTER_APPLE_ENABLED: ${OMNIDAPTER_APPLE_ENABLED:-}
-      # Optional server behavior
-      OMNIDAPTER_FALLBACK_CONNECTION_LIMIT: ${OMNIDAPTER_FALLBACK_CONNECTION_LIMIT:-5}
-      OMNIDAPTER_REAUTH_THRESHOLD: ${OMNIDAPTER_REAUTH_THRESHOLD:-3}
+      OMNIDAPTER_DATABASE_URL: ${OMNIDAPTER_DATABASE_URL:-postgresql+asyncpg://omnidapter:omnidapter@db:5432/omnidapter}
+      OMNIDAPTER_OAUTH_STATE_REDIS_URL: ${OMNIDAPTER_OAUTH_STATE_REDIS_URL:-redis://redis:6379/0}
     depends_on:
       db:
         condition: service_healthy

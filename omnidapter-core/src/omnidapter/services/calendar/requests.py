@@ -19,9 +19,14 @@ from omnidapter.services.calendar.models import (
 
 
 class CreateEventRequest(BaseModel):
-    """Request model for creating a calendar event."""
+    """Request model for creating a calendar event.
 
-    calendar_id: str
+    When used via the REST API, ``calendar_id`` is injected from the URL path
+    parameter and must not be set in the request body.  When using the Python
+    library directly, callers must supply a non-empty ``calendar_id``.
+    """
+
+    calendar_id: str = ""
     summary: str
     start: datetime | date
     end: datetime | date
@@ -39,10 +44,15 @@ class CreateEventRequest(BaseModel):
 
 
 class UpdateEventRequest(BaseModel):
-    """Request model for updating a calendar event."""
+    """Request model for updating a calendar event.
 
-    calendar_id: str
-    event_id: str
+    When used via the REST API, ``calendar_id`` and ``event_id`` are injected
+    from URL path parameters.  When using the Python library directly, callers
+    must supply non-empty values for both fields.
+    """
+
+    calendar_id: str = ""
+    event_id: str = ""
     summary: str | None = None
     start: datetime | date | None = None
     end: datetime | date | None = None
@@ -80,9 +90,14 @@ class CreateCalendarRequest(BaseModel):
 
 
 class UpdateCalendarRequest(BaseModel):
-    """Request model for updating a calendar."""
+    """Request model for updating a calendar.
 
-    calendar_id: str
+    When used via the REST API, ``calendar_id`` is injected from the URL path
+    parameter.  When using the Python library directly, callers must supply a
+    non-empty ``calendar_id``.
+    """
+
+    calendar_id: str = ""
     summary: str | None = None
     description: str | None = None
     timezone: str | None = None

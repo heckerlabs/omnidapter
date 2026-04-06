@@ -3,39 +3,41 @@
 from __future__ import annotations
 
 import logging
-import secrets
 import uuid
 
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from omnidapter_hosted.models.api_key import HostedAPIKey
 from omnidapter_hosted.models.membership import HostedMembership, MemberRole
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.models.user import HostedUser
-from omnidapter_hosted.services.auth import generate_hosted_api_key
 
 logger = logging.getLogger(__name__)
 
-# Module-level fallback — replaced by JWT_SECRET env var in production.
-# Rotates on restart when env var is not set.
-_fallback_jwt_secret: str | None = None
+# Hardcoded fallback secret for development — keeps sessions valid across restarts.
+# MUST be overridden in production via HOSTED_JWT_SECRET environment variable.
+_DEV_FALLBACK_JWT_SECRET = "dev-key-do-not-use-in-production-keep-sessions-alive-12345"
 
 
 def get_jwt_secret(settings: object) -> str:
-    """Return the JWT signing secret, generating a fallback if not configured."""
-    global _fallback_jwt_secret
-    jwt_secret = getattr(settings, "jwt_secret", "")
+    """Return the JWT signing secret.
+
+    In production, HOSTED_JWT_SECRET must be explicitly set (enforced by HostedSettings validator).
+    In development, falls back to a hardcoded secret so sessions persist across server restarts.
+    """
+    jwt_secret = getattr(settings, "hosted_jwt_secret", "").strip()
     if jwt_secret:
         return jwt_secret
-    if _fallback_jwt_secret is None:
-        _fallback_jwt_secret = secrets.token_hex(32)
-        logger.warning(
-            "JWT_SECRET is not configured — using a randomly generated secret. "
-            "Dashboard sessions will be invalidated on restart. Set JWT_SECRET in production."
-        )
-    return _fallback_jwt_secret
+
+    # Check environment — DEV/LOCAL use hardcoded fallback, PROD should not reach here
+    env = getattr(settings, "omnidapter_env", "PROD")
+    if env in ("DEV", "LOCAL"):
+        logger.debug("Using hardcoded JWT secret for development — sessions survive restarts")
+        return _DEV_FALLBACK_JWT_SECRET
+
+    # This should not happen in PROD due to config validation, but fail explicitly
+    raise RuntimeError("HOSTED_JWT_SECRET is required in production")
 
 
 def issue_jwt(user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, settings: object) -> str:
@@ -45,7 +47,7 @@ def issue_jwt(user_id: uuid.UUID, tenant_id: uuid.UUID, role: str, settings: obj
     import jwt
 
     secret = get_jwt_secret(settings)
-    ttl = getattr(settings, "jwt_ttl_seconds", 86400)
+    ttl = getattr(settings, "hosted_jwt_ttl_seconds", 86400)
     payload = {
         "sub": str(user_id),
         "tenant_id": str(tenant_id),
@@ -62,12 +64,10 @@ async def provision_user_flow(
     first_name: str | None,
     last_name: str | None,
     session: AsyncSession,
-) -> tuple[HostedUser, Tenant, HostedMembership, HostedAPIKey | None]:
+) -> tuple[HostedUser, Tenant, HostedMembership]:
     """Look up or provision a user from a WorkOS login.
 
-    Returns ``(user, tenant, membership, initial_api_key)``.
-    ``initial_api_key`` is only non-None on the very first signup — callers
-    must return the raw key to the client once and never again.
+    Returns ``(user, tenant, membership)``.
     """
     # Try lookup by WorkOS user ID first, then fall back to email.
     result = await session.execute(
@@ -106,9 +106,9 @@ async def provision_user_flow(
             select(Tenant).where(Tenant.id == membership.tenant_id)
         )
         tenant = tenant_result.scalar_one()
-        return user, tenant, membership, None
+        return user, tenant, membership
 
-    # --- First sign-in: provision user + tenant + membership + initial API key ---
+    # --- First sign-in: provision user + tenant + membership ---
     name = " ".join(filter(None, [first_name, last_name])) or email.split("@")[0]
 
     user = HostedUser(id=uuid.uuid4(), email=email, name=name, workos_user_id=workos_user_id)
@@ -128,20 +128,9 @@ async def provision_user_flow(
     session.add(membership)
     await session.flush()
 
-    raw_key, key_hash, key_prefix = generate_hosted_api_key()
-    api_key = HostedAPIKey(
-        id=uuid.uuid4(),
-        tenant_id=tenant.id,
-        name="default",
-        key_hash=key_hash,
-        key_prefix=key_prefix,
-        is_active=True,
-    )
-    session.add(api_key)
     await session.commit()
     await session.refresh(user)
     await session.refresh(tenant)
-    api_key.raw_key = raw_key  # type: ignore[attr-defined]  # transient, shown once
 
     logger.info("Provisioned new user %s with tenant %s", user.id, tenant.id)
-    return user, tenant, membership, api_key
+    return user, tenant, membership

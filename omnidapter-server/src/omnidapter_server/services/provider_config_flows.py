@@ -31,6 +31,7 @@ def to_provider_config_response(cfg: ProviderConfigLike) -> ProviderConfigRespon
         auth_kind=cfg.auth_kind,
         scopes=cfg.scopes,
         is_fallback=bool(getattr(cfg, "is_fallback", False)),
+        is_enabled=getattr(cfg, "is_enabled", None),
         created_at=cfg.created_at,
         updated_at=cfg.updated_at,
     )

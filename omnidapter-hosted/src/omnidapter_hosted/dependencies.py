@@ -12,11 +12,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from omnidapter_server.config import Settings as ServerSettings
 from omnidapter_server.database import get_session
 from omnidapter_server.encryption import EncryptionService
+from omnidapter_server.services.link_tokens import verify_session_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from omnidapter_hosted.config import HostedSettings, get_hosted_settings
 from omnidapter_hosted.models.api_key import HostedAPIKey
+from omnidapter_hosted.models.link_token_owner import HostedLinkTokenOwner
 from omnidapter_hosted.models.membership import HostedMembership
 from omnidapter_hosted.models.tenant import Tenant
 from omnidapter_hosted.models.user import HostedUser
@@ -25,10 +27,22 @@ from omnidapter_hosted.services.billing import check_rate_limit
 
 logger = logging.getLogger(__name__)
 
-_bearer_scheme = HTTPBearer(
+hosted_api_key_scheme = HTTPBearer(
     auto_error=False,
-    scheme_name="BearerAuth",
-    description="Use `Authorization: Bearer <API_KEY>`",
+    scheme_name="HostedAPIKeyAuth",
+    description="Main Integration API Key (omni_*)",
+)
+
+dashboard_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="DashboardJWTAuth",
+    description="Dashboard Session JWT (Bearer <token>)",
+)
+
+link_token_scheme = HTTPBearer(
+    auto_error=False,
+    scheme_name="LinkTokenAuth",
+    description="Connect UI Link Token (lt_*)",
 )
 
 
@@ -57,7 +71,7 @@ async def get_hosted_auth_context(
     request: Request,
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(hosted_api_key_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
     hosted_settings: HostedSettings = Depends(get_hosted_settings),
@@ -142,7 +156,7 @@ class DashboardAuthContext:
 async def get_dashboard_auth_context(
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(dashboard_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
@@ -235,21 +249,43 @@ class LinkTokenContext:
         end_user_id: str | None,
         allowed_providers: list[str] | None,
         redirect_uri: str | None,
+        *,
+        link_token_id: uuid.UUID,
+        connection_id: uuid.UUID | None = None,
+        locked_provider_key: str | None = None,
     ) -> None:
         self.tenant_id = tenant_id
         self.end_user_id = end_user_id
         self.allowed_providers = allowed_providers
         self.redirect_uri = redirect_uri
+        self.link_token_id = link_token_id
+        # Reconnect fields — set when the token is scoped to an existing connection
+        self.connection_id = connection_id
+        self.locked_provider_key = locked_provider_key
+
+    @property
+    def is_reconnect(self) -> bool:
+        """True when this token is locked to a specific existing connection."""
+        return self.connection_id is not None
 
 
 async def get_link_token_context(
     bearer_credentials: Annotated[
         HTTPAuthorizationCredentials | None,
-        Security(_bearer_scheme),
+        Security(link_token_scheme),
     ] = None,
     session: AsyncSession = Depends(get_session),
 ) -> LinkTokenContext:
-    """Validate a link token and return the connect context."""
+    """Validate a cs_* session token and return the hosted connect context.
+
+    Two-step verification:
+    1. Verify the session token against the server's ``link_tokens`` table via
+       ``verify_session_token`` (rejects bootstrap ``lt_*`` tokens).
+    2. Look up the companion ``HostedLinkTokenOwner`` row to resolve ``tenant_id``.
+
+    Bootstrap tokens are intentionally rejected here — they may only be used at
+    ``POST /connect/session`` to be exchanged for a session token.
+    """
     if bearer_credentials is None:
         raise HTTPException(
             status_code=401,
@@ -257,26 +293,37 @@ async def get_link_token_context(
         )
 
     raw_token = bearer_credentials.credentials
-    if not raw_token.startswith("lt_"):
+    if not raw_token.startswith("cs_"):
         raise HTTPException(
             status_code=401,
-            detail={"code": "invalid_token", "message": "Invalid link token"},
+            detail={"code": "unauthenticated", "message": "Invalid session token"},
         )
 
-    from omnidapter_hosted.services.link_tokens import verify_link_token
-
-    link_token = await verify_link_token(raw_token, session)
+    link_token = await verify_session_token(raw_token, session)
     if link_token is None:
         raise HTTPException(
             status_code=401,
-            detail={"code": "invalid_token", "message": "Invalid or expired link token"},
+            detail={"code": "session_expired", "message": "Session expired or invalid"},
+        )
+
+    owner_result = await session.execute(
+        select(HostedLinkTokenOwner).where(HostedLinkTokenOwner.link_token_id == link_token.id)
+    )
+    owner = owner_result.scalar_one_or_none()
+    if owner is None:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "session_expired", "message": "Session expired or invalid"},
         )
 
     return LinkTokenContext(
-        tenant_id=link_token.tenant_id,
+        tenant_id=owner.tenant_id,
         end_user_id=link_token.end_user_id,
         allowed_providers=link_token.allowed_providers,
         redirect_uri=link_token.redirect_uri,
+        link_token_id=link_token.id,
+        connection_id=link_token.connection_id,
+        locked_provider_key=link_token.locked_provider_key,
     )
 
 

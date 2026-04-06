@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from typing import Any, cast
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -46,7 +46,6 @@ def _api_key(tenant_id: uuid.UUID) -> HostedAPIKey:
         name="primary",
         key_hash="hash",
         key_prefix="omni_key_abcd",
-        is_active=True,
         created_at=_now(),
         last_used_at=None,
     )
@@ -209,3 +208,212 @@ async def test_get_hosted_auth_context_success() -> None:
     assert ctx.tenant_id == tenant.id
     assert req.state.rate_limit["limit"] == 60
     update_last_used.assert_awaited_once_with(api_key.id, ANY)
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_expired_token() -> None:
+    import jwt
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    token = jwt.encode({"exp": 0, "sub": str(uuid.uuid4())}, "a" * 32, algorithm="HS256")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+            session=AsyncMock(),
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "token_expired"
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_invalid_token() -> None:
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="not-a-jwt"
+            ),
+            session=AsyncMock(),
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "invalid_token"
+
+
+@pytest.mark.asyncio
+async def test_get_dashboard_auth_context_user_not_found() -> None:
+    import jwt
+    from omnidapter_hosted.dependencies import get_dashboard_auth_context
+
+    token = jwt.encode(
+        {"sub": str(uuid.uuid4()), "tenant_id": str(uuid.uuid4())}, "a" * 32, algorithm="HS256"
+    )
+
+    mock_session = AsyncMock()
+    mock_result = MagicMock()  # Sync result object
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute.return_value = mock_result
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_dashboard_auth_context(
+            bearer_credentials=HTTPAuthorizationCredentials(scheme="Bearer", credentials=token),
+            session=mock_session,
+            settings=HostedSettings(hosted_jwt_secret="a" * 32),
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "user_not_found"
+
+
+# ---------------------------------------------------------------------------
+# get_link_token_context — now validates cs_* session tokens, not lt_* tokens
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_link_token_context_rejects_missing_credentials() -> None:
+    from omnidapter_hosted.dependencies import get_link_token_context
+
+    mock_session = AsyncMock()
+    with pytest.raises(HTTPException) as exc_info:
+        await get_link_token_context(bearer_credentials=None, session=mock_session)
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "unauthenticated"
+
+
+@pytest.mark.asyncio
+async def test_get_link_token_context_rejects_lt_prefix() -> None:
+    """Bootstrap lt_ tokens must be rejected — only cs_ session tokens are accepted."""
+    from omnidapter_hosted.dependencies import get_link_token_context
+
+    mock_session = AsyncMock()
+    with pytest.raises(HTTPException) as exc_info:
+        await get_link_token_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="lt_bootstraptoken12345678901234"
+            ),
+            session=mock_session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "unauthenticated"
+
+
+@pytest.mark.asyncio
+async def test_get_link_token_context_rejects_invalid_session_token() -> None:
+    """cs_ token that doesn't match any record returns session_expired."""
+    from omnidapter_hosted.dependencies import get_link_token_context
+
+    mock_session = AsyncMock()
+    with (
+        patch(
+            "omnidapter_hosted.dependencies.verify_session_token",
+            new=AsyncMock(return_value=None),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_link_token_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="cs_invalidsession1234567890123456"
+            ),
+            session=mock_session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "session_expired"
+
+
+@pytest.mark.asyncio
+async def test_get_link_token_context_rejects_orphan_session_no_tenant() -> None:
+    """Valid cs_ token with no HostedLinkTokenOwner row is rejected."""
+    import uuid as _uuid
+
+    from omnidapter_hosted.dependencies import get_link_token_context
+    from omnidapter_server.models.link_token import LinkToken
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = _uuid.uuid4()
+    fake_lt.end_user_id = "u1"
+    fake_lt.allowed_providers = None
+    fake_lt.redirect_uri = None
+    fake_lt.connection_id = None
+    fake_lt.locked_provider_key = None
+
+    mock_session = AsyncMock()
+
+    class _EmptyOwner:
+        def scalar_one_or_none(self):
+            return None
+
+    mock_session.execute = AsyncMock(return_value=_EmptyOwner())
+
+    with (
+        patch(
+            "omnidapter_hosted.dependencies.verify_session_token",
+            new=AsyncMock(return_value=fake_lt),
+        ),
+        pytest.raises(HTTPException) as exc_info,
+    ):
+        await get_link_token_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="cs_orphansession1234567890123456"
+            ),
+            session=mock_session,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert cast(dict[str, Any], exc_info.value.detail)["code"] == "session_expired"
+
+
+@pytest.mark.asyncio
+async def test_get_link_token_context_valid_session_token() -> None:
+    """Valid cs_ token with tenant ownership returns LinkTokenContext."""
+    import uuid as _uuid
+
+    from omnidapter_hosted.dependencies import LinkTokenContext, get_link_token_context
+    from omnidapter_server.models.link_token import LinkToken
+
+    tenant_id = _uuid.uuid4()
+    link_token_id = _uuid.uuid4()
+
+    fake_lt = MagicMock(spec=LinkToken)
+    fake_lt.id = link_token_id
+    fake_lt.end_user_id = "user_42"
+    fake_lt.allowed_providers = ["google"]
+    fake_lt.redirect_uri = "https://app.example.com/done"
+    fake_lt.connection_id = None
+    fake_lt.locked_provider_key = None
+
+    fake_owner = MagicMock()
+    fake_owner.tenant_id = tenant_id
+
+    mock_session = AsyncMock()
+
+    class _OwnerResult:
+        def scalar_one_or_none(self):
+            return fake_owner
+
+    mock_session.execute = AsyncMock(return_value=_OwnerResult())
+
+    with patch(
+        "omnidapter_hosted.dependencies.verify_session_token",
+        new=AsyncMock(return_value=fake_lt),
+    ):
+        ctx = await get_link_token_context(
+            bearer_credentials=HTTPAuthorizationCredentials(
+                scheme="Bearer", credentials="cs_validsession1234567890123456"
+            ),
+            session=mock_session,
+        )
+
+    assert isinstance(ctx, LinkTokenContext)
+    assert ctx.tenant_id == tenant_id
+    assert ctx.end_user_id == "user_42"
+    assert ctx.allowed_providers == ["google"]
+    assert not ctx.is_reconnect
