@@ -30,6 +30,7 @@ from omnidapter_server.dependencies import (
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.errors import check_connection_status
 from omnidapter_server.models.connection import Connection
+from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.calendar_flows import (
     execute_calendar_operation,
     get_connection_ready_or_404,
@@ -50,9 +51,11 @@ async def _build_omni(
 ) -> Omnidapter:
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
+    registry = build_provider_registry(settings)
     return Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
+        registry=registry,
         auto_refresh=True,
     )
 

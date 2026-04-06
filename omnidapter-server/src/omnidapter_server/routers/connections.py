@@ -20,7 +20,6 @@ from omnidapter_server.dependencies import (
 )
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.provider_config import ProviderConfig
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     ConnectionResponse,
@@ -41,36 +40,25 @@ from omnidapter_server.stores.factory import build_oauth_state_store
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
+async def _load_null_config(provider_key: str, session: AsyncSession) -> None:
+    return None
+
+
 async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
     settings: Settings,
     provider_key: str,
-    provider_config: ProviderConfig | None = None,
 ) -> Omnidapter:
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
-    registry = build_provider_registry(
-        settings,
-        provider_config=provider_config,
-        encryption=encryption,
-    )
+    registry = build_provider_registry(settings)
 
     return Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
         registry=registry,
     )
-
-
-async def _get_provider_config(
-    provider_key: str,
-    session: AsyncSession,
-) -> ProviderConfig | None:
-    result = await session.execute(
-        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
-    )
-    return result.scalar_one_or_none()
 
 
 async def _load_connection_by_uuid(
@@ -141,14 +129,13 @@ async def create_connection(
         request=request,
         session=session,
         settings=settings,
-        load_provider_config=_get_provider_config,
+        load_provider_config=_load_null_config,
         count_active_connections=_count_active_connections,
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
             encryption,
             settings,
             provider_key,
-            provider_config,
         ),
     )
     return {
@@ -237,13 +224,12 @@ async def reauthorize_connection(
         session=session,
         settings=settings,
         load_connection=get_connection,
-        load_provider_config=_get_provider_config,
+        load_provider_config=_load_null_config,
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
             encryption,
             settings,
             provider_key,
-            provider_config,
         ),
     )
     return {

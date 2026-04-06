@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from omnidapter.core.registry import ProviderRegistry
 from omnidapter.providers.google.provider import GoogleProvider
@@ -12,7 +12,6 @@ from omnidapter.providers.zoho.provider import ZohoProvider
 if TYPE_CHECKING:
     from omnidapter_server.config import Settings
     from omnidapter_server.encryption import EncryptionService
-    from omnidapter_server.models.provider_config import ProviderConfig
 
 
 _OAUTH_PROVIDER_FACTORIES = {
@@ -37,7 +36,7 @@ def _register_oauth_provider(
 def build_provider_registry(
     settings: Settings,
     *,
-    provider_config: ProviderConfig | None = None,
+    provider_config: Any | None = None,
     encryption: EncryptionService | None = None,
 ) -> ProviderRegistry:
     """Build a provider registry for a request-scoped Omnidapter instance.
@@ -45,7 +44,6 @@ def build_provider_registry(
     Priority:
     1) Built-ins from core environment variables (`GOOGLE_CLIENT_ID`, etc.).
     2) Server fallback credentials from settings (`OMNIDAPTER_*`).
-    3) ProviderConfig credentials from DB for the specific provider.
     """
 
     registry = ProviderRegistry()
@@ -64,16 +62,24 @@ def build_provider_registry(
         if client_id and client_secret:
             _register_oauth_provider(registry, provider_key, client_id, client_secret)
 
-    if provider_config and not provider_config.is_fallback:
+    if provider_config and not getattr(provider_config, "is_fallback", False):
         if encryption is None:
             raise ValueError("Encryption service is required for provider_config overrides")
-        if not provider_config.client_id_encrypted or not provider_config.client_secret_encrypted:
-            raise ValueError("Provider config is missing encrypted OAuth credentials")
+
+        c_id_enc = getattr(provider_config, "client_id_encrypted", None)
+        c_secret_enc = getattr(provider_config, "client_secret_encrypted", None)
+        p_key = getattr(provider_config, "provider_key", None)
+
+        if not c_id_enc or not c_secret_enc or not p_key:
+            raise ValueError(
+                "Provider config is missing required OAuth credentials or provider_key"
+            )
+
         _register_oauth_provider(
             registry,
-            provider_config.provider_key,
-            encryption.decrypt(provider_config.client_id_encrypted),
-            encryption.decrypt(provider_config.client_secret_encrypted),
+            p_key,
+            encryption.decrypt(c_id_enc),
+            encryption.decrypt(c_secret_enc),
         )
 
     return registry

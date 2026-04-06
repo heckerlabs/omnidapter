@@ -14,7 +14,6 @@ from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import get_encryption_service
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection
-from omnidapter_server.models.provider_config import ProviderConfig
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.services.oauth_flows import (
     OAuthCallbackParams,
@@ -25,13 +24,6 @@ from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
 
 router = APIRouter(prefix="/oauth", tags=["oauth"])
-
-
-async def _get_provider_config(provider_key: str, session: AsyncSession) -> ProviderConfig | None:
-    result = await session.execute(
-        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
-    )
-    return result.scalar_one_or_none()
 
 
 async def _load_connection_by_id(connection_id: str, session: AsyncSession) -> Connection | None:
@@ -52,13 +44,8 @@ async def _build_omni(
     settings: Settings,
     oauth_state_store,
 ) -> Omnidapter:
-    provider_config = await _get_provider_config(provider_key, session)
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
-    registry = build_provider_registry(
-        settings,
-        provider_config=provider_config,
-        encryption=encryption,
-    )
+    registry = build_provider_registry(settings)
 
     return Omnidapter(
         credential_store=cred_store,
