@@ -43,10 +43,9 @@ def build_provider_registry(
 ) -> ProviderRegistry:
     """Build a provider registry for a request-scoped Omnidapter instance.
 
-    Registration order (later entries override earlier ones):
+    Registers:
     1) Non-OAuth built-ins (Apple, CalDAV) if enabled in settings.
     2) OAuth providers from server fallback credentials (`OMNIDAPTER_*`).
-    3) Provider config overrides (if provided externally, e.g., from hosted tenant config).
     """
 
     registry = ProviderRegistry()
