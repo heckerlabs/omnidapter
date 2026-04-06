@@ -26,9 +26,9 @@ The host application redirects the user's browser to the Connect UI.
 ## 🔐 Security & Initialization
 
 ### 🎟️ Link Token Handshake
-On initialization, the UI extracts a **Link Token** from the `token` URL parameter.
-*   **Persistence**: The token is held in React state—it is **never** persisted to `localStorage` or `sessionStorage` to prevent session stealing.
-*   **Validation**: The token is used in the `Authorization: Bearer <token>` header for all subsequent API calls.
+On initialization, the UI extracts a **Link Token** (`lt_*`) from the `token` URL parameter.
+*   **Persistence**: The `lt_*` bootstrap token is held in React state and is **never** persisted to `localStorage` or `sessionStorage`. After exchanging it for a session token, the short-lived `cs_*` session token is stored in `sessionStorage` solely to survive the OAuth provider redirect round-trip, and is cleared once the flow completes.
+*   **Validation**: The session token is used in the `Authorization: Bearer <token>` header for all subsequent API calls.
 
 ### 🌐 Cross-Origin Security
 When operating as a popup, the UI performs strict origin validation:

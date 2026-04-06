@@ -31,16 +31,14 @@ async def health_endpoint() -> dict[str, str]:
     return {"status": "ok"}
 
 
-async def _sync_managed_api_key() -> None:
+async def _sync_managed_api_key(settings: Settings) -> None:
     """Ensure managed API key exists (and rotates if changed)."""
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-    from omnidapter_server.config import get_settings
     from omnidapter_server.models.api_key import APIKey
     from omnidapter_server.services.auth import hash_api_key, verify_api_key
 
-    settings = get_settings()
     raw_key = settings.omnidapter_api_key.strip()
 
     if settings.omnidapter_auth_mode == "required" and not raw_key:
@@ -92,16 +90,15 @@ async def _sync_managed_api_key() -> None:
         await engine.dispose()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await _sync_managed_api_key()
-    yield
-
-
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Create and configure the Omnidapter Server FastAPI application."""
     if settings is None:
         settings = get_settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        await _sync_managed_api_key(settings)
+        yield
 
     app = FastAPI(
         lifespan=lifespan,

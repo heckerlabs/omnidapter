@@ -35,7 +35,7 @@ A `Connection` in the server represents a stored authorization between an end-us
 To securely initiate a connection flow from a frontend (like the Connect UI) without exposing sensitive configuration:
 1.  The backend requests a `Link Token` with specific constraints (allowed providers, metadata, redirect URIs).
 2.  The frontend uses this token to initialize the Omnidapter flow.
-3.  The server verifies the token's signature, expiration, and constraints before allowing the OAuth flow to complete.
+3.  The server verifies the token via bcrypt hash lookup, checks expiration, and validates constraints before allowing the OAuth flow to complete.
 
 ---
 
