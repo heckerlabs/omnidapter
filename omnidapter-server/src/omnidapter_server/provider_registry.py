@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from omnidapter.core.registry import ProviderRegistry
+from omnidapter.providers.apple.provider import AppleProvider
+from omnidapter.providers.caldav.provider import CalDAVProvider
 from omnidapter.providers.google.provider import GoogleProvider
 from omnidapter.providers.microsoft.provider import MicrosoftProvider
 from omnidapter.providers.zoho.provider import ZohoProvider
@@ -47,7 +49,13 @@ def build_provider_registry(
     """
 
     registry = ProviderRegistry()
-    registry.register_builtins(auto_register_by_env=True)
+
+    # Register non-OAuth built-ins if enabled in settings
+    if settings.omnidapter_apple_enabled:
+        registry.register(AppleProvider())
+    if settings.omnidapter_caldav_enabled:
+        registry.register(CalDAVProvider())
+
 
     fallback_pairs = (
         ("google", settings.omnidapter_google_client_id, settings.omnidapter_google_client_secret),
