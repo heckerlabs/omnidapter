@@ -9,103 +9,91 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  parse:
     if: github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-      id-token: write  # Required for OIDC trusted publisher
+    outputs:
+      package: ${{ steps.parse.outputs.package }}
+      version: ${{ steps.parse.outputs.version }}
+      type: ${{ steps.parse.outputs.type }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
-
       - name: Parse PR title
         id: parse
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          # Expect: "Release omnidapter-core v1.0.0"
-          if [[ $TITLE =~ Release\ (omnidapter-[a-z]+)\ v([0-9.]+) ]]; then
+          if [[ $TITLE =~ Release\ (omnidapter-[a-z-]+)\ v([0-9.]+) ]]; then
             PACKAGE="${BASH_REMATCH[1]}"
             VERSION="${BASH_REMATCH[2]}"
+            if [[ "$PACKAGE" == "omnidapter-connect" ]]; then
+              TYPE="js"
+            else
+              TYPE="python"
+            fi
             echo "package=$PACKAGE" >> $GITHUB_OUTPUT
             echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "type=$TYPE" >> $GITHUB_OUTPUT
             echo "✓ Publishing $PACKAGE v$VERSION"
           else
             echo "❌ Could not parse PR title: $TITLE"
             exit 1
           fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+  test-python:
+    needs: parse
+    if: needs.parse.outputs.type == 'python'
+    uses: ./.github/workflows/_test-python.yml
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
+  test-js:
+    needs: parse
+    if: needs.parse.outputs.type == 'js'
+    uses: ./.github/workflows/_test-js.yml
+    with:
+      package: '@heckerlabs/omnidapter-connect'
 
-      - name: Run tests
-        run: |
-          uv run poe test
+  publish-python:
+    needs: [parse, test-python]
+    if: needs.parse.outputs.type == 'python'
+    uses: ./.github/workflows/_publish-python.yml
+    with:
+      package: ${{ needs.parse.outputs.package }}
 
-      - name: Build omnidapter-core
-        if: steps.parse.outputs.package == 'omnidapter-core'
-        run: |
-          uv build omnidapter-core
+  publish-docker:
+    needs: [parse, test-python]
+    if: needs.parse.outputs.package == 'omnidapter-server'
+    uses: ./.github/workflows/_publish-docker.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
 
-      - name: Publish omnidapter-core to PyPI
-        if: steps.parse.outputs.package == 'omnidapter-core'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: omnidapter-core/dist/
-          verbose: true
+  publish-js:
+    needs: [parse, test-js]
+    if: needs.parse.outputs.type == 'js'
+    uses: ./.github/workflows/_publish-js.yml
+    with:
+      package: '@heckerlabs/omnidapter-connect'
+      package-dir: client/packages/connect-sdk
 
-      - name: Set up Docker Buildx
-        if: steps.parse.outputs.package == 'omnidapter-server'
-        uses: docker/setup-buildx-action@v3
+  tag:
+    needs: [parse, publish-python, publish-js, publish-docker]
+    if: always() && !failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Login to GitHub Container Registry
-        if: steps.parse.outputs.package == 'omnidapter-server'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        if: steps.parse.outputs.package == 'omnidapter-server'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./omnidapter-server/Dockerfile
-          push: true
-          provenance: true
-          sbom: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ steps.parse.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/omnidapter-server:latest
-
-      - name: Create git tag
+      - name: Create git tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          PACKAGE="${{ steps.parse.outputs.package }}"
-          VERSION="${{ steps.parse.outputs.version }}"
+          PACKAGE="${{ needs.parse.outputs.package }}"
+          VERSION="${{ needs.parse.outputs.version }}"
           TAG="$PACKAGE/v$VERSION"
 
           git tag -a "$TAG" -m "Release $PACKAGE v$VERSION"
           git push origin "$TAG"
-          echo "✓ Created and pushed tag: $TAG"
-
-      - name: Create GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PACKAGE="${{ steps.parse.outputs.package }}"
-          VERSION="${{ steps.parse.outputs.version }}"
-          TAG="$PACKAGE/v$VERSION"
 
           gh release create "$TAG" \
             --title "$PACKAGE v$VERSION" \

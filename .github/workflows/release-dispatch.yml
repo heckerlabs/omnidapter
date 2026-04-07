@@ -10,6 +10,7 @@ on:
         options:
           - omnidapter-core
           - omnidapter-server
+          - omnidapter-connect
       version:
         description: Version (e.g., 1.0.0)
         required: true
@@ -20,15 +21,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  dispatch:
+  validate:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    outputs:
+      type: ${{ steps.detect.outputs.type }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Validate version format
         run: |
@@ -43,47 +41,68 @@ jobs:
         run: |
           PACKAGE="${{ github.event.inputs.package }}"
           VERSION="${{ github.event.inputs.version }}"
-
-          # Check if tag already exists
           if git rev-parse "$PACKAGE/v$VERSION" >/dev/null 2>&1; then
             echo "❌ Release $PACKAGE/v$VERSION already exists"
             exit 1
           fi
           echo "✓ Version not yet released"
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-
-      - name: Run tests
+      - name: Detect package type
+        id: detect
         run: |
-          uv run poe test
+          PACKAGE="${{ github.event.inputs.package }}"
+          if [[ "$PACKAGE" == "omnidapter-connect" ]]; then
+            echo "type=js" >> $GITHUB_OUTPUT
+          else
+            echo "type=python" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Update pyproject.toml
+  test-python:
+    needs: validate
+    if: needs.validate.outputs.type == 'python'
+    uses: ./.github/workflows/_test-python.yml
+
+  test-js:
+    needs: validate
+    if: needs.validate.outputs.type == 'js'
+    uses: ./.github/workflows/_test-js.yml
+    with:
+      package: '@heckerlabs/omnidapter-connect'
+
+  bump:
+    needs: [validate, test-python, test-js]
+    if: always() && !failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update version (Python)
+        if: needs.validate.outputs.type == 'python'
         run: |
           PACKAGE="${{ github.event.inputs.package }}"
           VERSION="${{ github.event.inputs.version }}"
+          FILE="$PACKAGE/pyproject.toml"
 
-          # macOS and Linux compatible sed
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" "$PACKAGE/pyproject.toml"
-          else
-            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$PACKAGE/pyproject.toml"
-          fi
+          sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE" 2>/dev/null || \
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE"
 
-          # Verify the change
-          if grep -q "version = \"$VERSION\"" "$PACKAGE/pyproject.toml"; then
-            echo "✓ Updated $PACKAGE to v$VERSION"
-          else
-            echo "❌ Failed to update version"
-            exit 1
-          fi
+          grep -q "version = \"$VERSION\"" "$FILE" && echo "✓ Updated $PACKAGE"
 
-      - name: Create release branch
+      - name: Update version (JS)
+        if: needs.validate.outputs.type == 'js'
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          npm version "$VERSION" --prefix client/packages/connect-sdk --no-git-tag-version
+          echo "✓ Updated omnidapter-connect"
+
+      - name: Create release branch and PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           PACKAGE="${{ github.event.inputs.package }}"
           VERSION="${{ github.event.inputs.version }}"
@@ -92,25 +111,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add "$PACKAGE/pyproject.toml"
+
+          if [[ "${{ needs.validate.outputs.type }}" == "python" ]]; then
+            git add "$PACKAGE/pyproject.toml"
+          else
+            git add client/packages/connect-sdk/package.json
+          fi
+
           git commit -m "Release $PACKAGE v$VERSION"
           git push origin "$BRANCH"
-
-          echo "branch=$BRANCH" >> $GITHUB_ENV
-
-      - name: Create pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          PACKAGE="${{ github.event.inputs.package }}"
-          VERSION="${{ github.event.inputs.version }}"
-          BRANCH="${{ env.branch }}"
 
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "Release $PACKAGE v$VERSION" \
-            --body "Automated release PR for $PACKAGE v$VERSION
-
-Please review and merge to publish." \
+            --body "Automated release PR for $PACKAGE v$VERSION. Review and merge to publish." \
             --label release
