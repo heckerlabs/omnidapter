@@ -17,9 +17,24 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check image not already in GHCR
+        if: ${{ !inputs.dry-run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          if gh api "/orgs/${{ github.repository_owner }}/packages/container/omnidapter-server/versions" \
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | grep -qx "$VERSION"; then
+            echo "❌ omnidapter-server:$VERSION already exists in GHCR"
+            exit 1
+          fi
+          echo "✓ omnidapter-server:$VERSION not yet in GHCR"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

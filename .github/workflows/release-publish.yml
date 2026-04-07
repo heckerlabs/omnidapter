@@ -21,7 +21,7 @@ jobs:
         id: parse
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          if [[ $TITLE =~ Release\ (omnidapter-[a-z-]+)\ v([0-9.]+) ]]; then
+          if [[ $TITLE =~ Release\ (omnidapter-[a-z-]+)\ v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
             PACKAGE="${BASH_REMATCH[1]}"
             VERSION="${BASH_REMATCH[2]}"
             if [[ "$PACKAGE" == "omnidapter-connect" ]]; then
@@ -38,6 +38,51 @@ jobs:
             exit 1
           fi
 
+  preflight:
+    needs: parse
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check PyPI
+        if: needs.parse.outputs.type == 'python'
+        run: |
+          PACKAGE="${{ needs.parse.outputs.package }}"
+          VERSION="${{ needs.parse.outputs.version }}"
+          PYPI_NAME=$(grep '^name' "$PACKAGE/pyproject.toml" | sed 's/name = "\(.*\)"/\1/')
+          if curl -sf "https://pypi.org/pypi/$PYPI_NAME/$VERSION/json" > /dev/null 2>&1; then
+            echo "❌ $PYPI_NAME v$VERSION already exists on PyPI"
+            exit 1
+          fi
+          echo "✓ $PYPI_NAME v$VERSION not yet on PyPI"
+
+      - name: Check GHCR
+        if: needs.parse.outputs.package == 'omnidapter-server'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ needs.parse.outputs.version }}"
+          if gh api "/orgs/${{ github.repository_owner }}/packages/container/omnidapter-server/versions" \
+              --jq '.[].metadata.container.tags[]' 2>/dev/null | grep -qx "$VERSION"; then
+            echo "❌ omnidapter-server:$VERSION already exists in GHCR"
+            exit 1
+          fi
+          echo "✓ omnidapter-server:$VERSION not yet in GHCR"
+
+      - name: Check npm
+        if: needs.parse.outputs.type == 'js'
+        run: |
+          VERSION="${{ needs.parse.outputs.version }}"
+          NPM_NAME=$(node -p "require('./client/packages/connect-sdk/package.json').name")
+          if npm view "$NPM_NAME@$VERSION" version 2>/dev/null | grep -qx "$VERSION"; then
+            echo "❌ $NPM_NAME@$VERSION already exists on npm"
+            exit 1
+          fi
+          echo "✓ $NPM_NAME@$VERSION not yet on npm"
+
   test-python:
     needs: parse
     if: needs.parse.outputs.type == 'python'
@@ -51,26 +96,28 @@ jobs:
       package: '@heckerlabs/omnidapter-connect'
 
   publish-python:
-    needs: [parse, test-python]
+    needs: [parse, preflight, test-python]
     if: needs.parse.outputs.type == 'python'
     uses: ./.github/workflows/_publish-python.yml
     with:
       package: ${{ needs.parse.outputs.package }}
+      version: ${{ needs.parse.outputs.version }}
 
   publish-docker:
-    needs: [parse, test-python]
+    needs: [parse, preflight, test-python]
     if: needs.parse.outputs.package == 'omnidapter-server'
     uses: ./.github/workflows/_publish-docker.yml
     with:
       version: ${{ needs.parse.outputs.version }}
 
   publish-js:
-    needs: [parse, test-js]
+    needs: [parse, preflight, test-js]
     if: needs.parse.outputs.type == 'js'
     uses: ./.github/workflows/_publish-js.yml
     with:
       package: '@heckerlabs/omnidapter-connect'
       package-dir: client/packages/connect-sdk
+      version: ${{ needs.parse.outputs.version }}
 
   tag:
     needs: [parse, publish-python, publish-js, publish-docker]
@@ -92,12 +139,14 @@ jobs:
           VERSION="${{ needs.parse.outputs.version }}"
           TAG="$PACKAGE/v$VERSION"
 
-          git tag -a "$TAG" -m "Release $PACKAGE v$VERSION"
+          TARGET_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+
+          git tag -a "$TAG" "$TARGET_SHA" -m "Release $PACKAGE v$VERSION"
           git push origin "$TAG"
 
           gh release create "$TAG" \
             --title "$PACKAGE v$VERSION" \
             --notes "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." \
-            --target ${{ github.event.pull_request.merge_commit_sha }}
+            --target "$TARGET_SHA"
 
           echo "✓ Created GitHub release: $TAG"
