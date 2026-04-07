@@ -1,0 +1,116 @@
+name: Release Dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package to release
+        required: true
+        type: choice
+        options:
+          - omnidapter-core
+          - omnidapter-server
+      version:
+        description: Version (e.g., 1.0.0)
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.event.inputs.package }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format. Use semver: 1.0.0"
+            exit 1
+          fi
+          echo "✓ Version format valid: $VERSION"
+
+      - name: Check version doesn't already exist
+        run: |
+          PACKAGE="${{ github.event.inputs.package }}"
+          VERSION="${{ github.event.inputs.version }}"
+
+          # Check if tag already exists
+          if git rev-parse "$PACKAGE/v$VERSION" >/dev/null 2>&1; then
+            echo "❌ Release $PACKAGE/v$VERSION already exists"
+            exit 1
+          fi
+          echo "✓ Version not yet released"
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+
+      - name: Run tests
+        run: |
+          uv run poe test
+
+      - name: Update pyproject.toml
+        run: |
+          PACKAGE="${{ github.event.inputs.package }}"
+          VERSION="${{ github.event.inputs.version }}"
+
+          # macOS and Linux compatible sed
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^version = \".*\"/version = \"$VERSION\"/" "$PACKAGE/pyproject.toml"
+          else
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$PACKAGE/pyproject.toml"
+          fi
+
+          # Verify the change
+          if grep -q "version = \"$VERSION\"" "$PACKAGE/pyproject.toml"; then
+            echo "✓ Updated $PACKAGE to v$VERSION"
+          else
+            echo "❌ Failed to update version"
+            exit 1
+          fi
+
+      - name: Create release branch
+        run: |
+          PACKAGE="${{ github.event.inputs.package }}"
+          VERSION="${{ github.event.inputs.version }}"
+          BRANCH="release/$PACKAGE-v$VERSION"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "$PACKAGE/pyproject.toml"
+          git commit -m "Release $PACKAGE v$VERSION"
+          git push origin "$BRANCH"
+
+          echo "branch=$BRANCH" >> $GITHUB_ENV
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PACKAGE="${{ github.event.inputs.package }}"
+          VERSION="${{ github.event.inputs.version }}"
+          BRANCH="${{ env.branch }}"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "Release $PACKAGE v$VERSION" \
+            --body "Automated release PR for $PACKAGE v$VERSION
+
+Please review and merge to publish." \
+            --label release
