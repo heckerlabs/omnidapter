@@ -11,6 +11,11 @@ on:
         required: true
         type: string
         description: Path to package directory (e.g., client/packages/connect-sdk)
+      dry-run:
+        required: false
+        type: boolean
+        default: false
+        description: Dry run (build only, don't publish)
 
 jobs:
   publish:
@@ -34,8 +39,18 @@ jobs:
         run: npm run build -w ${{ inputs.package }}
 
       - name: Publish to npm
+        if: ${{ !inputs.dry-run }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd ${{ inputs.package-dir }}
           npm publish --provenance --access public
+
+      - name: Dry run publish
+        if: ${{ inputs.dry-run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd ${{ inputs.package-dir }}
+          npm publish --dry-run --provenance --access public
+          echo "✓ Dry run: npm publish simulation completed"
