@@ -15,6 +15,11 @@ on:
         description: Version (e.g., 1.0.0)
         required: true
         type: string
+      dry-run:
+        description: Dry run (test without publishing)
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.event.inputs.package }}
@@ -101,6 +106,7 @@ jobs:
           echo "✓ Updated omnidapter-connect"
 
       - name: Create release branch and PR
+        if: ${{ !github.event.inputs.dry-run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -127,3 +133,14 @@ jobs:
             --title "Release $PACKAGE v$VERSION" \
             --body "Automated release PR for $PACKAGE v$VERSION. Review and merge to publish." \
             --label release
+
+      - name: Dry run (not creating PR)
+        if: ${{ github.event.inputs.dry-run }}
+        run: |
+          PACKAGE="${{ github.event.inputs.package }}"
+          VERSION="${{ github.event.inputs.version }}"
+          echo "✓ DRY RUN: Would release $PACKAGE v$VERSION"
+          echo "✓ Tests passed"
+          echo "✓ Version ready for bump"
+          echo ""
+          echo "To actually release, run Release Dispatch again with dry-run=false"

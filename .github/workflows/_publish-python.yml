@@ -7,6 +7,11 @@ on:
         required: true
         type: string
         description: Python package name (e.g., omnidapter-core)
+      dry-run:
+        required: false
+        type: boolean
+        default: false
+        description: Dry run (build only, don't publish)
 
 jobs:
   publish:
@@ -29,7 +34,12 @@ jobs:
         run: uv build ${{ inputs.package }}
 
       - name: Publish to PyPI
+        if: ${{ !inputs.dry-run }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: ${{ inputs.package }}/dist/
           verbose: true
+
+      - name: Dry run (build only)
+        if: ${{ inputs.dry-run }}
+        run: echo "✓ Dry run: built ${{ inputs.package }} successfully (not publishing)"
