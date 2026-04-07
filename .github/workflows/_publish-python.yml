@@ -7,6 +7,10 @@ on:
         required: true
         type: string
         description: Python package name (e.g., omnidapter-core)
+      version:
+        required: true
+        type: string
+        description: Version to publish (e.g., 1.0.0)
       dry-run:
         required: false
         type: boolean
@@ -22,6 +26,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check version not already on PyPI
+        if: ${{ !inputs.dry-run }}
+        run: |
+          PYPI_NAME=$(grep '^name' "${{ inputs.package }}/pyproject.toml" | sed 's/name = "\(.*\)"/\1/')
+          VERSION="${{ inputs.version }}"
+          if curl -sf "https://pypi.org/pypi/$PYPI_NAME/$VERSION/json" > /dev/null 2>&1; then
+            echo "❌ $PYPI_NAME v$VERSION already exists on PyPI"
+            exit 1
+          fi
+          echo "✓ $PYPI_NAME v$VERSION not yet on PyPI"
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -31,7 +46,9 @@ jobs:
         uses: astral-sh/setup-uv@v2
 
       - name: Build package
-        run: uv build ${{ inputs.package }}
+        run: |
+          cd ${{ inputs.package }}
+          uv build
 
       - name: Publish to PyPI
         if: ${{ !inputs.dry-run }}
