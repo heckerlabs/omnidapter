@@ -19,8 +19,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ inputs.version }}"
-          if gh api "/orgs/${{ github.repository_owner }}/packages/container/omnidapter-server/versions" \
-              --jq '.[].metadata.container.tags[]' 2>/dev/null | grep -qx "$VERSION"; then
+          TAGS=$(gh api --paginate "/orgs/${{ github.repository_owner }}/packages/container/omnidapter-server/versions" \
+              --jq '.[].metadata.container.tags[]' 2>&1) || {
+            if echo "$TAGS" | grep -q "404"; then
+              echo "✓ Package not yet in GHCR (first release)"
+              exit 0
+            fi
+            echo "❌ Failed to query GHCR: $TAGS"
+            exit 1
+          }
+          if printf '%s\n' "$TAGS" | grep -qx "$VERSION"; then
             echo "❌ omnidapter-server:$VERSION already exists in GHCR"
             exit 1
           fi

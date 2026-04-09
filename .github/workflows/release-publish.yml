@@ -15,7 +15,11 @@ permissions:
 
 jobs:
   parse:
-    if: github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'release')
+    if: |
+      github.event.pull_request.merged &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.parse.outputs.version }}
@@ -38,8 +42,6 @@ jobs:
     uses: ./.github/workflows/_publish-docker.yml
     with:
       version: ${{ needs.parse.outputs.version }}
-    permissions:
-      packages: write
 
   tag:
     needs: [parse, publish]
@@ -48,6 +50,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: Create git tag and GitHub release
         env:

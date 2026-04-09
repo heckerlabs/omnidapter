@@ -57,7 +57,8 @@ jobs:
           VERSION="${{ github.event.inputs.version }}"
           FILE="omnidapter-server/pyproject.toml"
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE"
-          grep -q "version = \"$VERSION\"" "$FILE" && echo "✓ Bumped omnidapter-server to $VERSION"
+          grep -q "version = \"$VERSION\"" "$FILE" || { echo "❌ Version bump failed — check pyproject.toml format"; exit 1; }
+          echo "✓ Bumped omnidapter-server to $VERSION"
 
       - name: Push branch and open PR
         env:
