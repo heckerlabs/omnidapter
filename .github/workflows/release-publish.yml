@@ -8,6 +8,11 @@ concurrency:
   group: release-publish
   cancel-in-progress: false
 
+permissions:
+  packages: write
+  id-token: write
+  contents: write
+
 jobs:
   parse:
     if: github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'release')

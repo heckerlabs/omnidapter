@@ -30,6 +30,7 @@ jobs:
       - name: Check version not already tagged
         run: |
           VERSION="${{ github.event.inputs.version }}"
+          git fetch --tags
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "❌ Tag v$VERSION already exists"
             exit 1
