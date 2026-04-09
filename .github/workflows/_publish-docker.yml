@@ -7,11 +7,6 @@ on:
         required: true
         type: string
         description: Image version tag
-      dry-run:
-        required: false
-        type: boolean
-        default: false
-        description: Dry run (build only, don't push)
 
 jobs:
   publish:
@@ -24,7 +19,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check image not already in GHCR
-        if: ${{ !inputs.dry-run }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -46,19 +40,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image (dry run)
-        if: ${{ inputs.dry-run }}
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./omnidapter-server/Dockerfile
-          load: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ inputs.version }}
-            ghcr.io/${{ github.repository_owner }}/omnidapter-server:latest
-
       - name: Build and push Docker image
-        if: ${{ !inputs.dry-run }}
         uses: docker/build-push-action@v5
         with:
           context: .
