@@ -56,9 +56,14 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version }}"
           FILE="omnidapter-server/pyproject.toml"
+          CURRENT=$(grep '^version = ' "$FILE" | sed 's/version = "\(.*\)"/\1/')
+          if [[ "$CURRENT" == "$VERSION" ]]; then
+            echo "❌ $FILE is already at v$VERSION — bump the version first"
+            exit 1
+          fi
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE"
           grep -q "version = \"$VERSION\"" "$FILE" || { echo "❌ Version bump failed — check pyproject.toml format"; exit 1; }
-          echo "✓ Bumped omnidapter-server to $VERSION"
+          echo "✓ Bumped omnidapter-server from $CURRENT to $VERSION"
 
       - name: Push branch and open PR
         env:
