@@ -3,6 +3,7 @@ name: Release Publish
 on:
   pull_request:
     types: [closed]
+    branches: [main]
 
 concurrency:
   group: release-publish
@@ -17,7 +18,6 @@ jobs:
   parse:
     if: |
       github.event.pull_request.merged &&
-      github.event.pull_request.base.ref == 'main' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       startsWith(github.event.pull_request.head.ref, 'release/') &&
       contains(github.event.pull_request.labels.*.name, 'release')
