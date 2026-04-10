@@ -261,9 +261,17 @@ async def list_events(
     session: AsyncSession = Depends(get_session),
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
-    start: datetime | None = Query(None, description="Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)"),
-    end: datetime | None = Query(None, description="Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return per page"),
+    start: datetime | None = Query(
+        None,
+        description="Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)",
+    ),
+    end: datetime | None = Query(
+        None,
+        description="Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)",
+    ),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of events to return per page"
+    ),
     offset: int = Query(0, ge=0, description="Number of events to skip before returning results"),
 ):
     async def _op(cal):
@@ -367,7 +375,6 @@ async def create_event(
     settings: HostedSettings = Depends(get_hosted_settings),
     request_id: str = Depends(get_request_id),
 ):
-    body.calendar_id = calendar_id
     result = await execute_calendar_operation(
         connection_id=connection_id,
         request=request,
@@ -380,7 +387,9 @@ async def create_event(
             auth.tenant_id,
             provider_key,
         ),
-        operation=lambda cal: cal.create_event(body),
+        operation=lambda cal: cal.create_event(
+            body.model_copy(update={"calendar_id": calendar_id})
+        ),
         update_last_used=update_last_used,
     )
     return _respond(result, request_id)

@@ -40,10 +40,6 @@ from omnidapter_server.stores.factory import build_oauth_state_store
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 
-async def _load_null_config(provider_key: str, session: AsyncSession) -> None:
-    return None
-
-
 async def _build_omni(
     session: AsyncSession,
     encryption: EncryptionService,
@@ -129,7 +125,6 @@ async def create_connection(
         request=request,
         session=session,
         settings=settings,
-        load_provider_config=_load_null_config,
         count_active_connections=_count_active_connections,
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
@@ -224,7 +219,6 @@ async def reauthorize_connection(
         session=session,
         settings=settings,
         load_connection=get_connection,
-        load_provider_config=_load_null_config,
         build_omni=lambda s, provider_key, provider_config: _build_omni(
             s,
             encryption,

@@ -59,7 +59,7 @@ async def test_build_hosted_provider_registry_without_tenant_config_falls_back()
 
 
 @pytest.mark.asyncio
-async def test_build_hosted_provider_registry_with_tenant_config_passes_override() -> None:
+async def test_build_hosted_provider_registry_with_tenant_config_applies_override() -> None:
     cfg = HostedProviderConfig(
         id=uuid.uuid4(),
         tenant_id=uuid.uuid4(),
@@ -69,28 +69,25 @@ async def test_build_hosted_provider_registry_with_tenant_config_passes_override
         client_secret_encrypted="enc-secret",
         scopes=None,
     )
+    encryption = EncryptionService(current_key="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
     with (
         patch(
             "omnidapter_hosted.services.provider_registry.get_tenant_provider_config",
             new=AsyncMock(return_value=cfg),
         ),
-        patch(
-            "omnidapter_hosted.services.provider_registry.build_provider_registry",
-            return_value="tenant-registry",
-        ) as build_registry,
+        patch.object(
+            encryption, "decrypt", side_effect=["tenant-client-id", "tenant-client-secret"]
+        ),
     ):
-        result = await build_hosted_provider_registry(
+        registry = await build_hosted_provider_registry(
             tenant_id=cfg.tenant_id,
             provider_key="google",
             session=AsyncMock(),
             settings=Settings(),
-            encryption=EncryptionService(
-                current_key="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
-            ),
+            encryption=encryption,
         )
 
-    assert result == "tenant-registry"
-    assert build_registry.call_count == 1
-    kwargs = build_registry.call_args.kwargs
-    assert kwargs["provider_config"].provider_key == "google"
-    assert kwargs["provider_config"].is_fallback is False
+    oauth = registry.get("google").get_oauth_config()
+    assert oauth is not None
+    assert oauth.client_id == "tenant-client-id"
+    assert oauth.client_secret == "tenant-client-secret"
