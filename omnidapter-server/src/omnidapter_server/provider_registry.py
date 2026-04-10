@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from omnidapter.core.registry import ProviderRegistry
 from omnidapter.providers.apple.provider import AppleProvider
@@ -13,7 +13,6 @@ from omnidapter.providers.zoho.provider import ZohoProvider
 
 if TYPE_CHECKING:
     from omnidapter_server.config import Settings
-    from omnidapter_server.encryption import EncryptionService
 
 
 _OAUTH_PROVIDER_FACTORIES = {
@@ -35,12 +34,7 @@ def _register_oauth_provider(
     registry.register(provider_factory(client_id=client_id, client_secret=client_secret))
 
 
-def build_provider_registry(
-    settings: Settings,
-    *,
-    provider_config: Any | None = None,
-    encryption: EncryptionService | None = None,
-) -> ProviderRegistry:
+def build_provider_registry(settings: Settings) -> ProviderRegistry:
     """Build a provider registry for a request-scoped Omnidapter instance.
 
     Registers:
@@ -68,25 +62,5 @@ def build_provider_registry(
     for provider_key, client_id, client_secret in fallback_pairs:
         if client_id and client_secret:
             _register_oauth_provider(registry, provider_key, client_id, client_secret)
-
-    if provider_config and not getattr(provider_config, "is_fallback", False):
-        if encryption is None:
-            raise ValueError("Encryption service is required for provider_config overrides")
-
-        c_id_enc = getattr(provider_config, "client_id_encrypted", None)
-        c_secret_enc = getattr(provider_config, "client_secret_encrypted", None)
-        p_key = getattr(provider_config, "provider_key", None)
-
-        if not c_id_enc or not c_secret_enc or not p_key:
-            raise ValueError(
-                "Provider config is missing required OAuth credentials or provider_key"
-            )
-
-        _register_oauth_provider(
-            registry,
-            p_key,
-            encryption.decrypt(c_id_enc),
-            encryption.decrypt(c_secret_enc),
-        )
 
     return registry
