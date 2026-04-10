@@ -50,7 +50,7 @@ async def build_hosted_provider_registry(
     if provider_factory is None:
         return registry
 
-    registry.register(
+    registry.replace(
         provider_factory(
             client_id=encryption.decrypt(tenant_cfg.client_id_encrypted),
             client_secret=encryption.decrypt(tenant_cfg.client_secret_encrypted),
