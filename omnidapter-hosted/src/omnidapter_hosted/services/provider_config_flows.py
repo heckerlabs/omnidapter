@@ -1,4 +1,4 @@
-"""Shared provider config endpoint orchestration flows."""
+"""Shared provider config endpoint orchestration flows - Hosted version."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastapi import HTTPException
+from omnidapter_server.encryption import EncryptionService
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from omnidapter_server.encryption import EncryptionService
-from omnidapter_server.schemas.provider_config import (
+from omnidapter_hosted.schemas.provider_config import (
     ProviderConfigResponse,
     UpsertProviderConfigRequest,
 )

@@ -10,8 +10,6 @@ from omnidapter.stores.oauth_state import OAuthStateStore
 
 from omnidapter_server.encryption import EncryptionService
 
-_KEY_PREFIX = "omnidapter:oauth_state:"
-
 
 def _as_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
@@ -25,11 +23,12 @@ class RedisOAuthStateStore(OAuthStateStore):
     Requires redis-py with asyncio support (redis[asyncio]).
     """
 
-    def __init__(self, redis_url: str, encryption: EncryptionService) -> None:
+    def __init__(self, redis_url: str, encryption: EncryptionService, prefix: str) -> None:
         import redis.asyncio as aioredis
 
         self._redis = aioredis.from_url(redis_url, decode_responses=True)
         self._encryption = encryption
+        self._key_prefix = f"{prefix}:oauth_state:"
 
     async def save_state(
         self,
@@ -45,11 +44,11 @@ class RedisOAuthStateStore(OAuthStateStore):
         now = datetime.now(timezone.utc)
         ttl_seconds = max(1, int((_as_utc(expires_at) - now).total_seconds()))
 
-        key = f"{_KEY_PREFIX}{state_id}"
+        key = f"{self._key_prefix}{state_id}"
         await self._redis.setex(key, ttl_seconds, json.dumps(stored))
 
     async def load_state(self, state_id: str) -> dict[str, Any] | None:
-        key = f"{_KEY_PREFIX}{state_id}"
+        key = f"{self._key_prefix}{state_id}"
         raw = await self._redis.get(key)
         if raw is None:
             return None
@@ -61,5 +60,5 @@ class RedisOAuthStateStore(OAuthStateStore):
         return stored
 
     async def delete_state(self, state_id: str) -> None:
-        key = f"{_KEY_PREFIX}{state_id}"
+        key = f"{self._key_prefix}{state_id}"
         await self._redis.delete(key)

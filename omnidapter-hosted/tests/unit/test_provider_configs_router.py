@@ -21,7 +21,7 @@ from omnidapter_hosted.routers.provider_configs import (
     patch_provider_config,
     upsert_provider_config,
 )
-from omnidapter_server.schemas.provider_config import UpsertProviderConfigRequest
+from omnidapter_hosted.schemas.provider_config import UpsertProviderConfigRequest
 
 
 class _ScalarResult:

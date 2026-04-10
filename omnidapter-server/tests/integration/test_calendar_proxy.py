@@ -222,6 +222,78 @@ async def test_list_events(
 
 
 @pytest.mark.asyncio
+async def test_list_events_respects_limit(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """GET /events with limit only returns requested number of events."""
+    mock_event = _make_calendar_event()
+
+    async def _fake_list_events(**kw):
+        for _ in range(10):
+            yield mock_event
+
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.list_events = _fake_list_events
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.get(
+            f"/v1/connections/{active_connection.id}/calendars/primary/events?limit=3"
+        )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    meta = response.json()["meta"]
+    assert len(data) == 3
+    assert meta["pagination"]["limit"] == 3
+    assert meta["pagination"]["offset"] == 0
+    assert meta["pagination"]["count"] == 3
+    assert meta["pagination"]["has_more"] is True
+
+
+@pytest.mark.asyncio
+async def test_list_events_with_offset(
+    client: AsyncClient,
+    session: AsyncSession,
+    active_connection: Connection,
+):
+    """GET /events with offset skips events and respects pagination."""
+    mock_event = _make_calendar_event()
+
+    async def _fake_list_events(**kw):
+        for _ in range(10):
+            yield mock_event
+
+    with patch("omnidapter_server.routers.calendar.Omnidapter") as MockOmni:
+        mock_omni_inst = MagicMock()
+        mock_conn = MagicMock()
+        mock_cal_svc = MagicMock()
+        mock_cal_svc.list_events = _fake_list_events
+        mock_conn.calendar = MagicMock(return_value=mock_cal_svc)
+        mock_omni_inst.connection = AsyncMock(return_value=mock_conn)
+        MockOmni.return_value = mock_omni_inst
+
+        response = await client.get(
+            f"/v1/connections/{active_connection.id}/calendars/primary/events?limit=3&offset=5"
+        )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    meta = response.json()["meta"]
+    assert len(data) == 3
+    assert meta["pagination"]["limit"] == 3
+    assert meta["pagination"]["offset"] == 5
+    assert meta["pagination"]["count"] == 3
+    assert meta["pagination"]["has_more"] is True
+
+
+@pytest.mark.asyncio
 async def test_create_event(
     client: AsyncClient,
     session: AsyncSession,

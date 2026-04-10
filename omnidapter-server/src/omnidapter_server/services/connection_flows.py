@@ -95,7 +95,7 @@ async def create_connection_flow(
     request: Request,
     session: AsyncSession,
     settings: Settings,
-    load_provider_config: ProviderConfigLoader,
+    load_provider_config: ProviderConfigLoader | None = None,
     count_active_connections: ActiveConnectionCounter,
     build_omni: OmniBuilder,
     persist_post_create: ConnectionPostCreate | None = None,
@@ -106,7 +106,9 @@ async def create_connection_flow(
         settings=settings,
     )
 
-    provider_config = await load_provider_config(body.provider, session)
+    provider_config = (
+        await load_provider_config(body.provider, session) if load_provider_config else None
+    )
 
     conn = Connection(
         id=uuid.uuid4(),
@@ -175,7 +177,7 @@ async def reauthorize_connection_flow(
     session: AsyncSession,
     settings: Settings,
     load_connection: Callable[[str, AsyncSession], Awaitable[Connection]],
-    load_provider_config: ProviderConfigLoader,
+    load_provider_config: ProviderConfigLoader | None = None,
     build_omni: OmniBuilder,
 ) -> ReauthorizeConnectionFlowResult:
     conn = await load_connection(connection_id, session)
@@ -190,7 +192,9 @@ async def reauthorize_connection_flow(
             },
         )
 
-    provider_config = await load_provider_config(conn.provider_key, session)
+    provider_config = (
+        await load_provider_config(conn.provider_key, session) if load_provider_config else None
+    )
     omni = await build_omni(session, conn.provider_key, provider_config)
     callback_url = f"{settings.omnidapter_base_url}/oauth/{conn.provider_key}/callback"
 

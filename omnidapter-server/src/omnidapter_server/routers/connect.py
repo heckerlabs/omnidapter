@@ -8,7 +8,7 @@ initiate a connection (OAuth redirect or inline credentials).
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from omnidapter import Omnidapter
@@ -27,7 +27,6 @@ from omnidapter_server.dependencies import (
 )
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
-from omnidapter_server.models.provider_config import ProviderConfig
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.connection import (
     CreateConnectionRequest,
@@ -100,6 +99,10 @@ class ConnectSessionResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+async def _load_null_config(provider_key: str, session: AsyncSession) -> None:
+    return None
+
+
 @router.post("/session", status_code=200)
 async def create_session(
     body: ConnectSessionRequest,
@@ -156,35 +159,15 @@ async def _build_omni(
     encryption: EncryptionService,
     settings: Settings,
     provider_key: str,
-    provider_config: ProviderConfig | None,
 ) -> Omnidapter:
     cred_store = DatabaseCredentialStore(session=session, encryption=encryption)
     state_store = build_oauth_state_store(settings, session, encryption)
-    registry = build_provider_registry(
-        settings,
-        provider_config=provider_config,
-        encryption=encryption,
-    )
+    registry = build_provider_registry(settings)
     return Omnidapter(
         credential_store=cred_store,
         oauth_state_store=state_store,
         registry=registry,
     )
-
-
-async def _get_provider_config(
-    provider_key: str,
-    session: AsyncSession,
-) -> ProviderConfig | None:
-    result = await session.execute(
-        select(ProviderConfig).where(ProviderConfig.provider_key == provider_key)
-    )
-    return result.scalar_one_or_none()
-
-
-async def _load_all_provider_configs(session: AsyncSession) -> dict[str, ProviderConfig]:
-    result = await session.execute(select(ProviderConfig))
-    return {c.provider_key: c for c in result.scalars().all()}
 
 
 async def _count_active_connections(provider_key: str, session: AsyncSession) -> int:
@@ -241,10 +224,11 @@ async def list_providers(
     """
     omni = _metadata_omni()
 
-    async def _load_configs() -> dict[str, ProviderConfig]:
-        return await _load_all_provider_configs(session)
+    async def _load_configs() -> dict[str, Any]:
+        return {}
 
-    def _check(provider_key: str, auth_kind: str, config: ProviderConfig | None) -> bool:
+    def _check(provider_key: str, auth_kind: str, config: Any | None) -> bool:
+
         return is_provider_available(
             provider_key=provider_key,
             auth_kind=auth_kind,
@@ -332,11 +316,10 @@ async def create_connection(
         )
 
     # Enforce provider availability
-    provider_config = await _get_provider_config(body.provider_key, session)
     if not is_provider_available(
         provider_key=body.provider_key,
         auth_kind=auth_kind,
-        config=provider_config,
+        config=None,
         settings=settings,
     ):
         raise HTTPException(
@@ -412,9 +395,10 @@ async def create_connection(
             session=session,
             settings=settings,
             load_connection=lambda cid, s: _load_connection_by_id(cid, s),
-            load_provider_config=lambda pk, s: _get_provider_config(pk, s),
-            build_omni=lambda s, pk, pc: _build_omni(s, encryption, settings, pk, pc),
+            load_provider_config=_load_null_config,
+            build_omni=lambda s, pk, pc: _build_omni(s, encryption, settings, pk),
         )
+
         return {
             "data": ConnectCreateConnectionResponse(
                 connection_id=result.connection_id,
@@ -475,9 +459,9 @@ async def create_connection(
         request=request,
         session=session,
         settings=settings,
-        load_provider_config=lambda pk, s: _get_provider_config(pk, s),
+        load_provider_config=_load_null_config,
         count_active_connections=lambda pk, s: _count_active_connections(pk, s),
-        build_omni=lambda s, pk, pc: _build_omni(s, encryption, settings, pk, pc),
+        build_omni=lambda s, pk, pc: _build_omni(s, encryption, settings, pk),
     )
 
     return {
