@@ -44,6 +44,20 @@ class ProviderRegistry:
         self._providers[key] = provider
         registry_logger.info("Registered provider %r (%s)", key, provider.metadata.display_name)
 
+    def replace(self, provider: BaseProvider) -> None:
+        """Register a provider, silently replacing any existing entry.
+
+        Use this when intentionally overriding a previously registered provider
+        (e.g. substituting tenant-specific credentials for a server-level fallback).
+        Unlike :meth:`register`, no warning is emitted when overwriting.
+
+        Args:
+            provider: A provider instance implementing BaseProvider.
+        """
+        key = provider.metadata.provider_key
+        self._providers[key] = provider
+        registry_logger.info("Replaced provider %r (%s)", key, provider.metadata.display_name)
+
     def get(self, provider_key: str) -> BaseProvider:
         """Retrieve a registered provider by key.
 
