@@ -17,7 +17,7 @@ async def test_save_state_encrypts_pkce_and_sets_ttl() -> None:
     encryption.encrypt.return_value = "encrypted-pkce"
 
     with patch("redis.asyncio.from_url", return_value=redis_client):
-        store = RedisOAuthStateStore("redis://localhost:6379/0", encryption)
+        store = RedisOAuthStateStore("redis://localhost:6379/0", encryption, prefix="omnidapter")
 
     await store.save_state(
         state_id="state_1",
@@ -38,7 +38,7 @@ async def test_save_state_accepts_naive_expiry_datetime() -> None:
     redis_client = AsyncMock()
 
     with patch("redis.asyncio.from_url", return_value=redis_client):
-        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock())
+        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock(), prefix="omnidapter")
 
     await store.save_state(
         state_id="state_naive",
@@ -57,7 +57,7 @@ async def test_load_state_returns_none_when_missing() -> None:
     redis_client.get.return_value = None
 
     with patch("redis.asyncio.from_url", return_value=redis_client):
-        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock())
+        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock(), prefix="omnidapter")
 
     assert await store.load_state("missing") is None
 
@@ -76,7 +76,7 @@ async def test_load_state_decrypts_pkce_when_marked() -> None:
     encryption.decrypt.return_value = "plain-pkce"
 
     with patch("redis.asyncio.from_url", return_value=redis_client):
-        store = RedisOAuthStateStore("redis://localhost:6379/0", encryption)
+        store = RedisOAuthStateStore("redis://localhost:6379/0", encryption, prefix="omnidapter")
 
     payload = await store.load_state("state_2")
 
@@ -90,7 +90,7 @@ async def test_delete_state_calls_redis_delete() -> None:
     redis_client = AsyncMock()
 
     with patch("redis.asyncio.from_url", return_value=redis_client):
-        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock())
+        store = RedisOAuthStateStore("redis://localhost:6379/0", MagicMock(), prefix="omnidapter")
 
     await store.delete_state("state_3")
 

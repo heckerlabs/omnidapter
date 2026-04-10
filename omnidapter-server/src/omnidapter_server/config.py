@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # OAuth state store — Redis preferred, in-memory fallback with warning
     omnidapter_oauth_state_redis_url: str = ""
 
+    # Redis key prefix — allows multiple environments to share one Redis instance
+    omnidapter_redis_prefix: str = "omnidapter"
+
     # Fallback OAuth apps
     omnidapter_google_client_id: str = ""
     omnidapter_google_client_secret: str = ""
