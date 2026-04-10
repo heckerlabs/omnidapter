@@ -237,7 +237,7 @@ async def list_events(
             calendar_id=calendar_id,
             time_min=start,
             time_max=end,
-            page_size=limit,
+            page_size=limit + 1,
         ):
             if skipped < offset:
                 skipped += 1
