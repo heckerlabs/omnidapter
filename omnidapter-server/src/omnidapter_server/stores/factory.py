@@ -33,6 +33,7 @@ def build_oauth_state_store(
         return RedisOAuthStateStore(
             redis_url=settings.omnidapter_oauth_state_redis_url,
             encryption=encryption,
+            prefix=settings.omnidapter_redis_prefix,
         )
 
     if not _warned_inmemory:

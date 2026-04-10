@@ -8,12 +8,12 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any
 
+from omnidapter_hosted.config import HostedSettings
 from omnidapter_hosted.models.tenant import TenantPlan
 
 logger = logging.getLogger(__name__)
 
 _WINDOW_SECONDS = 60
-_REDIS_KEY_PREFIX = "omnidapter:rate_limit:fixed_window:"
 
 _redis_clients: dict[str, Any] = {}
 _warned_inmemory = False
@@ -62,9 +62,7 @@ def _check_rate_limit_inmemory(
 async def check_rate_limit(
     tenant_id: str,
     plan: str,
-    rate_limit_free: int,
-    rate_limit_paid: int,
-    redis_url: str = "",
+    settings: HostedSettings,
 ) -> tuple[bool, int, int, float]:
     """Check and record a rate limit hit.
 
@@ -73,16 +71,20 @@ async def check_rate_limit(
     """
     global _warned_inmemory
 
-    limit = rate_limit_paid if plan == TenantPlan.PAYG else rate_limit_free
+    limit = (
+        settings.hosted_rate_limit_paid
+        if plan == TenantPlan.PAYG
+        else settings.hosted_rate_limit_free
+    )
 
-    if redis_url:
+    if settings.hosted_rate_limit_redis_url:
         try:
             now = int(time.time())
             window_start = now - (now % _WINDOW_SECONDS)
             reset_at = float(window_start + _WINDOW_SECONDS)
-            key = f"{_REDIS_KEY_PREFIX}{tenant_id}:{window_start}"
+            key = f"{settings.omnidapter_redis_prefix}:rate_limit:fixed_window:{tenant_id}:{window_start}"
 
-            redis_client = _get_redis_client(redis_url)
+            redis_client = _get_redis_client(settings.hosted_rate_limit_redis_url)
             count = int(await redis_client.incr(key))
             if count == 1:
                 await redis_client.expire(key, _WINDOW_SECONDS + 1)
