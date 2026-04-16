@@ -8,7 +8,7 @@ from omnidapter_sdk.api.providers_api import ProvidersApi
 
 class OmnidapterClient:
     def __init__(self, base_url: str, api_key: str) -> None:
-        config = Configuration(host=base_url, api_key={"ApiKeyAuth": api_key})
+        config = Configuration(host=base_url, access_token=api_key)
         client = ApiClient(configuration=config)
         self.calendar = CalendarApi(client)
         self.connections = ConnectionsApi(client)

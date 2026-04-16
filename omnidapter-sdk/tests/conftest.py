@@ -13,12 +13,15 @@ from collections.abc import Generator
 # module-level app = create_app() that calls get_settings() at import time.
 os.environ.setdefault("OMNIDAPTER_ENV", "LOCAL")
 os.environ.setdefault("OMNIDAPTER_ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
+# Provide a placeholder DB URL so get_settings() doesn't fail on import.
+os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://placeholder/placeholder")
 
 import pytest
 import uvicorn
 from omnidapter_server.config import Settings
-from omnidapter_server.database import Base
+# Import create_app first so that all models register with Base.metadata.
 from omnidapter_server.main import create_app
+from omnidapter_server.database import Base
 from omnidapter_sdk.client import OmnidapterClient
 from sqlalchemy.ext.asyncio import create_async_engine
 from testcontainers.postgres import PostgresContainer
@@ -45,6 +48,20 @@ def server_url() -> Generator[str, None, None]:
     with PostgresContainer("postgres:16-alpine") as pg:
         db_url = pg.get_connection_url().replace("psycopg2", "asyncpg")
 
+        # Set env vars so that database.py's get_settings()-based engine uses the right URL.
+        os.environ["OMNIDAPTER_DATABASE_URL"] = db_url
+        os.environ["OMNIDAPTER_API_KEY"] = TEST_API_KEY
+        os.environ["OMNIDAPTER_ENCRYPTION_KEY"] = TEST_ENCRYPTION_KEY
+
+        # Reset all global singletons so they pick up the new DB URL from env vars.
+        import omnidapter_server.config as _config_module
+        import omnidapter_server.database as _db_module
+        _config_module._settings = None
+        _db_module._engine = None
+        _db_module._session_factory = None
+
+        # Create all tables now that models are registered (create_app import above
+        # triggers model imports which register tables with Base.metadata).
         asyncio.run(_create_tables(db_url))
 
         settings = Settings(
