@@ -91,7 +91,7 @@ def _respond(data: object, request_id: str):
     return _wrap(data, request_id)
 
 
-@router.get("/connections/{connection_id}/calendars")
+@router.get("/connections/{connection_id}/calendars", operation_id="list_calendars")
 async def list_calendars(
     connection_id: str,
     request: Request,
@@ -113,7 +113,7 @@ async def list_calendars(
     return _respond(result, request_id)
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}", operation_id="get_calendar")
 async def get_calendar(
     connection_id: str,
     calendar_id: str,
@@ -136,7 +136,7 @@ async def get_calendar(
     return _respond(result, request_id)
 
 
-@router.post("/connections/{connection_id}/calendars", status_code=201)
+@router.post("/connections/{connection_id}/calendars", status_code=201, operation_id="create_calendar")
 async def create_calendar(
     connection_id: str,
     body: CreateCalendarRequest,
@@ -159,7 +159,7 @@ async def create_calendar(
     return _respond(result, request_id)
 
 
-@router.patch("/connections/{connection_id}/calendars/{calendar_id}")
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}", operation_id="update_calendar")
 async def update_calendar(
     connection_id: str,
     calendar_id: str,
@@ -185,7 +185,7 @@ async def update_calendar(
     return _respond(result, request_id)
 
 
-@router.delete("/connections/{connection_id}/calendars/{calendar_id}", status_code=204)
+@router.delete("/connections/{connection_id}/calendars/{calendar_id}", status_code=204, operation_id="delete_calendar")
 async def delete_calendar(
     connection_id: str,
     calendar_id: str,
@@ -206,7 +206,7 @@ async def delete_calendar(
     )
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/events")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events", operation_id="list_events")
 async def list_events(
     connection_id: str,
     calendar_id: str,
@@ -282,7 +282,7 @@ async def list_events(
     }
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="get_event")
 async def get_event(
     connection_id: str,
     calendar_id: str,
@@ -306,7 +306,7 @@ async def get_event(
     return _respond(result, request_id)
 
 
-@router.post("/connections/{connection_id}/calendars/{calendar_id}/events", status_code=201)
+@router.post("/connections/{connection_id}/calendars/{calendar_id}/events", status_code=201, operation_id="create_event")
 async def create_event(
     connection_id: str,
     calendar_id: str,
@@ -332,7 +332,7 @@ async def create_event(
     return _respond(result, request_id)
 
 
-@router.patch("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}")
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="update_event")
 async def update_event(
     connection_id: str,
     calendar_id: str,
@@ -360,7 +360,9 @@ async def update_event(
 
 
 @router.delete(
-    "/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", status_code=204
+    "/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}",
+    status_code=204,
+    operation_id="delete_event",
 )
 async def delete_event(
     connection_id: str,
@@ -383,7 +385,7 @@ async def delete_event(
     )
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/availability")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/availability", operation_id="get_availability")
 async def get_availability(
     connection_id: str,
     calendar_id: str,

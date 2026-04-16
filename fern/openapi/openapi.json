@@ -1,37 +1,18 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Omnidapter Hosted",
-    "description": "Multi-tenant hosted API with billing and team management",
-    "version": "0.1.0"
+    "title": "Omnidapter Server",
+    "description": "Self-hosted REST API wrapping the Omnidapter calendar integration library",
+    "version": "0.3.0"
   },
   "paths": {
-    "/v1/auth/login": {
+    "/v1/providers": {
       "get": {
         "tags": [
-          "auth"
+          "providers"
         ],
-        "summary": "Login",
-        "description": "Return the WorkOS AuthKit authorization URL.",
-        "operationId": "login_v1_auth_login_get",
-        "parameters": [
-          {
-            "name": "redirect_uri",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Redirect Uri"
-            }
-          }
-        ],
+        "summary": "List Providers",
+        "operationId": "list_providers",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -40,539 +21,25 @@
                 "schema": {}
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
-        }
+        },
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ]
       }
     },
-    "/v1/auth/callback": {
+    "/v1/providers/{provider_key}": {
       "get": {
         "tags": [
-          "auth"
+          "providers"
         ],
-        "summary": "Callback",
-        "description": "Exchange the WorkOS authorization code for a JWT access token.\n\nReturns the raw API key only on first signup.",
-        "operationId": "callback_v1_auth_callback_get",
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Code"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/auth/me": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Me",
-        "description": "Return the currently authenticated user and tenant.",
-        "operationId": "me_v1_auth_me_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
+        "summary": "Get Provider",
+        "operationId": "get_provider",
         "security": [
           {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/profile": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Get Profile",
-        "operationId": "get_profile_v1_dashboard_profile_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Update Profile",
-        "operationId": "update_profile_v1_dashboard_profile_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateProfileRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/tenant": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Get Tenant",
-        "operationId": "get_tenant_v1_dashboard_tenant_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Patch Tenant",
-        "operationId": "patch_tenant_v1_dashboard_tenant_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTenantRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/members": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Get Members",
-        "operationId": "get_members_v1_dashboard_members_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/members/{user_id}": {
-      "delete": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Delete Member",
-        "operationId": "delete_member_v1_dashboard_members__user_id__delete",
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "user_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "User Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dashboard/api-keys": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "List Api Keys",
-        "operationId": "list_api_keys_v1_dashboard_api_keys_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Create Api Key",
-        "operationId": "create_api_key_v1_dashboard_api_keys_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAPIKeyRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/api-keys/{key_id}": {
-      "delete": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Revoke Api Key",
-        "operationId": "revoke_api_key_v1_dashboard_api_keys__key_id__delete",
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "key_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Key Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dashboard/connections": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "List Connections",
-        "operationId": "list_connections_v1_dashboard_connections_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/connections/{connection_id}": {
-      "delete": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Revoke Connection",
-        "operationId": "revoke_connection_v1_dashboard_connections__connection_id__delete",
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "connection_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Connection Id"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/dashboard/provider-configs": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "List Provider Configs",
-        "operationId": "list_provider_configs_v1_dashboard_provider_configs_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/dashboard/provider-configs/{provider_key}": {
-      "put": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Upsert Provider Config",
-        "operationId": "upsert_provider_config_v1_dashboard_provider_configs__provider_key__put",
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "provider_key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Provider Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpsertProviderConfigRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Delete Provider Config",
-        "operationId": "delete_provider_config_v1_dashboard_provider_configs__provider_key__delete",
-        "security": [
-          {
-            "DashboardJWTAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -587,8 +54,13 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -601,30 +73,6 @@
             }
           }
         }
-      }
-    },
-    "/v1/dashboard/usage": {
-      "get": {
-        "tags": [
-          "dashboard"
-        ],
-        "summary": "Get Usage",
-        "operationId": "get_usage_v1_dashboard_usage_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "DashboardJWTAuth": []
-          }
-        ]
       }
     },
     "/v1/connections": {
@@ -633,10 +81,11 @@
           "connections"
         ],
         "summary": "Create Connection",
-        "operationId": "create_connection_v1_connections_post",
+        "description": "Create a new connection and begin the OAuth flow.",
+        "operationId": "create_connection",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "requestBody": {
@@ -675,10 +124,10 @@
           "connections"
         ],
         "summary": "List Connections",
-        "operationId": "list_connections_v1_connections_get",
+        "operationId": "list_connections",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -782,10 +231,10 @@
           "connections"
         ],
         "summary": "Get Connection Endpoint",
-        "operationId": "get_connection_endpoint_v1_connections__connection_id__get",
+        "operationId": "get_connection",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -825,10 +274,10 @@
           "connections"
         ],
         "summary": "Delete Connection",
-        "operationId": "delete_connection_v1_connections__connection_id__delete",
+        "operationId": "delete_connection",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -865,10 +314,10 @@
           "connections"
         ],
         "summary": "Reauthorize Connection",
-        "operationId": "reauthorize_connection_v1_connections__connection_id__reauthorize_post",
+        "operationId": "reauthorize_connection",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -920,10 +369,10 @@
           "calendar"
         ],
         "summary": "List Calendars",
-        "operationId": "list_calendars_v1_connections__connection_id__calendars_get",
+        "operationId": "list_calendars",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -963,10 +412,10 @@
           "calendar"
         ],
         "summary": "Create Calendar",
-        "operationId": "create_calendar_v1_connections__connection_id__calendars_post",
+        "operationId": "create_calendar",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1018,10 +467,10 @@
           "calendar"
         ],
         "summary": "Get Calendar",
-        "operationId": "get_calendar_v1_connections__connection_id__calendars__calendar_id__get",
+        "operationId": "get_calendar",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1070,10 +519,10 @@
           "calendar"
         ],
         "summary": "Update Calendar",
-        "operationId": "update_calendar_v1_connections__connection_id__calendars__calendar_id__patch",
+        "operationId": "update_calendar",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1132,10 +581,10 @@
           "calendar"
         ],
         "summary": "Delete Calendar",
-        "operationId": "delete_calendar_v1_connections__connection_id__calendars__calendar_id__delete",
+        "operationId": "delete_calendar",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1181,10 +630,10 @@
           "calendar"
         ],
         "summary": "List Events",
-        "operationId": "list_events_v1_connections__connection_id__calendars__calendar_id__events_get",
+        "operationId": "list_events",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1298,10 +747,10 @@
           "calendar"
         ],
         "summary": "Create Event",
-        "operationId": "create_event_v1_connections__connection_id__calendars__calendar_id__events_post",
+        "operationId": "create_event",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1362,10 +811,10 @@
           "calendar"
         ],
         "summary": "Get Event",
-        "operationId": "get_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__get",
+        "operationId": "get_event",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1423,10 +872,10 @@
           "calendar"
         ],
         "summary": "Update Event",
-        "operationId": "update_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__patch",
+        "operationId": "update_event",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1494,10 +943,10 @@
           "calendar"
         ],
         "summary": "Delete Event",
-        "operationId": "delete_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__delete",
+        "operationId": "delete_event",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1552,10 +1001,10 @@
           "calendar"
         ],
         "summary": "Get Availability",
-        "operationId": "get_availability_v1_connections__connection_id__calendars__calendar_id__availability_get",
+        "operationId": "get_availability",
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ],
         "parameters": [
@@ -1620,253 +1069,14 @@
         }
       }
     },
-    "/v1/provider-configs": {
-      "get": {
-        "tags": [
-          "provider-configs"
-        ],
-        "summary": "List Provider Configs",
-        "operationId": "list_provider_configs_v1_provider_configs_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ]
-      }
-    },
-    "/v1/provider-configs/{provider_key}": {
-      "get": {
-        "tags": [
-          "provider-configs"
-        ],
-        "summary": "Get Provider Config",
-        "operationId": "get_provider_config_v1_provider_configs__provider_key__get",
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "provider_key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Provider Key"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "provider-configs"
-        ],
-        "summary": "Upsert Provider Config",
-        "operationId": "upsert_provider_config_v1_provider_configs__provider_key__put",
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "provider_key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Provider Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpsertProviderConfigRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "provider-configs"
-        ],
-        "summary": "Patch Provider Config",
-        "description": "Enable or disable a provider for the Connect UI.\n\nIf no config exists yet, one is created with ``is_enabled`` set and null\nOAuth credentials \u2014 this lets an org explicitly disable a fallback provider\nor pre-stage an enabled record for a non-OAuth provider.",
-        "operationId": "patch_provider_config_v1_provider_configs__provider_key__patch",
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "provider_key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Provider Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PatchProviderConfigRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "provider-configs"
-        ],
-        "summary": "Delete Provider Config",
-        "operationId": "delete_provider_config_v1_provider_configs__provider_key__delete",
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "provider_key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Provider Key"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/providers": {
-      "get": {
-        "tags": [
-          "providers"
-        ],
-        "summary": "List Providers Management",
-        "description": "Return all platform-supported providers with per-tenant configuration status.\n\nUsed by the admin dashboard to manage which providers are enabled and how\nthey are configured (own OAuth app vs hosted fallback).",
-        "operationId": "list_providers_management_v1_providers_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HostedAPIKeyAuth": []
-          }
-        ]
-      }
-    },
     "/v1/link-tokens": {
       "post": {
         "tags": [
           "link-tokens"
         ],
         "summary": "Create Link Token Endpoint",
-        "description": "Create a short-lived link token for the Connect UI.\n\nPass the returned token to the embedded or redirect Connect UI as a\nBearer token. The token grants permission to list providers and initiate\na connection on behalf of the tenant, scoped to ``end_user_id`` if provided.\n\nSet ``connection_id`` to create a *reconnect* token \u2014 the connect UI will\nskip provider selection and go directly to the authorization flow for the\nexisting connection.",
-        "operationId": "create_link_token_endpoint_v1_link_tokens_post",
+        "description": "Create a short-lived link token for the Connect UI.\n\nPass the returned token to the embedded or redirect Connect UI as a\nBearer token. The token grants permission to list providers and initiate\na connection, optionally scoped to ``end_user_id``.\n\nSet ``connection_id`` to create a *reconnect* token \u2014 the connect UI will\nskip provider selection and go directly to the authorization flow for the\nexisting connection.",
+        "operationId": "create_link_token",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1899,7 +1109,7 @@
         },
         "security": [
           {
-            "HostedAPIKeyAuth": []
+            "APIKeyAuth": []
           }
         ]
       }
@@ -1910,7 +1120,7 @@
           "connect"
         ],
         "summary": "Create Session",
-        "description": "Exchange a one-time bootstrap link token (lt_*) for a short-lived session token (cs_*).\n\nThe bootstrap token is consumed immediately and permanently on first call.\nSubsequent calls with the same token return ``token_already_used``.\n\nThis endpoint requires **no** Authorization header.  The bootstrap token is\npassed in the request body so it never appears in server logs or the\nbrowser's address bar after the initial page load.\n\nThe hosted version additionally verifies that the bootstrap token belongs to\na known tenant before issuing the session token.",
+        "description": "Exchange a one-time bootstrap link token (lt_*) for a short-lived session token (cs_*).\n\nThe bootstrap token is consumed immediately and permanently on first call \u2014\nsubsequent calls with the same token return ``token_already_used``.  The\nreturned ``cs_`` session token is used as the ``Authorization: Bearer``\ncredential for all other ``/connect/*`` endpoints.\n\nThis endpoint requires **no** Authorization header.  The bootstrap token\nis passed in the request body so it never appears in server logs or the\nbrowser's address bar after the initial page load.",
         "operationId": "create_session_connect_session_post",
         "requestBody": {
           "content": {
@@ -1954,7 +1164,7 @@
           "connect"
         ],
         "summary": "List Providers",
-        "description": "List providers available for this connect session.\n\n- Filters by ``allowed_providers`` on the link token (if set).\n- Respects each provider's ``is_enabled`` flag per tenant.\n- Returns only the locked provider for reconnect tokens.\n- Includes ``credential_schema`` for non-OAuth providers so the UI can\n  render a dynamic credential form.\n\nReturns an empty list if no providers are available (error shown in UI).",
+        "description": "List providers available for this connect session.\n\n- Filters by ``allowed_providers`` on the link token (if set).\n- Returns only the locked provider for reconnect tokens.\n- Includes ``credential_schema`` for non-OAuth providers so the UI can\n  render a dynamic credential form.\n\nReturns an empty list if no providers are available (error shown in UI).",
         "operationId": "list_providers_connect_providers_get",
         "responses": {
           "200": {
@@ -1979,7 +1189,7 @@
           "connect"
         ],
         "summary": "Create Connection",
-        "description": "Initiate or complete a provider connection on behalf of the link token's tenant.\n\nBehavior varies by provider type and token scope:\n\n**OAuth providers (``credentials`` is null):**\nCreates a pending connection and returns ``authorization_url`` for the\nbrowser to redirect to. For reconnect tokens, reauthorizes the existing\nconnection.\n\n**Non-OAuth providers (``credentials`` provided):**\nValidates and stores credentials immediately. Returns ``status: \"active\"``\nwith no ``authorization_url`` on success. Returns 400 with inline errors on\nvalidation failure \u2014 the user can retry without a new link token.",
+        "description": "Initiate or complete a provider connection on behalf of the link token's end user.\n\nBehavior varies by provider type and token scope:\n\n**OAuth providers (``credentials`` is null):**\nCreates a pending connection and returns ``authorization_url`` for the\nbrowser to redirect to. For reconnect tokens, reauthorizes the existing\nconnection.\n\n**Non-OAuth providers (``credentials`` provided):**\nValidates and stores credentials immediately. Returns ``status: \"active\"``\nwith no ``authorization_url`` on success. Returns 400 with inline errors on\nvalidation failure \u2014 the user can retry without a new link token.",
         "operationId": "create_connection_connect_connections_post",
         "requestBody": {
           "content": {
@@ -2132,7 +1342,13 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Endpoint Health Get"
+                }
               }
             }
           }
@@ -2415,19 +1631,6 @@
         ],
         "title": "ConnectSessionRequest",
         "description": "Bootstrap token submitted in the request body \u2014 never in the URL."
-      },
-      "CreateAPIKeyRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "CreateAPIKeyRequest"
       },
       "CreateCalendarRequest": {
         "properties": {
@@ -2727,7 +1930,7 @@
               {
                 "type": "integer",
                 "maximum": 86400.0,
-                "exclusiveMinimum": 0.0
+                "minimum": 60.0
               },
               {
                 "type": "null"
@@ -2773,19 +1976,6 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
-      },
-      "PatchProviderConfigRequest": {
-        "properties": {
-          "is_enabled": {
-            "type": "boolean",
-            "title": "Is Enabled"
-          }
-        },
-        "type": "object",
-        "required": [
-          "is_enabled"
-        ],
-        "title": "PatchProviderConfigRequest"
       },
       "ReauthorizeConnectionRequest": {
         "properties": {
@@ -3141,64 +2331,6 @@
         "title": "UpdateEventRequest",
         "description": "Request model for updating a calendar event.\n\nWhen used via the REST API, ``calendar_id`` and ``event_id`` are injected\nfrom URL path parameters.  When using the Python library directly, callers\nmust supply non-empty values for both fields."
       },
-      "UpdateProfileRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "UpdateProfileRequest"
-      },
-      "UpdateTenantRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "title": "UpdateTenantRequest"
-      },
-      "UpsertProviderConfigRequest": {
-        "properties": {
-          "client_id": {
-            "type": "string",
-            "title": "Client Id"
-          },
-          "client_secret": {
-            "type": "string",
-            "title": "Client Secret"
-          },
-          "scopes": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scopes"
-          }
-        },
-        "type": "object",
-        "required": [
-          "client_id",
-          "client_secret"
-        ],
-        "title": "UpsertProviderConfigRequest"
-      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -3241,19 +2373,14 @@
       }
     },
     "securitySchemes": {
-      "DashboardJWTAuth": {
+      "APIKeyAuth": {
         "type": "http",
-        "description": "Dashboard Session JWT (Bearer <token>)",
-        "scheme": "bearer"
-      },
-      "HostedAPIKeyAuth": {
-        "type": "http",
-        "description": "Main Integration API Key (omni_*)",
+        "description": "Main Server API Key (omni_*)",
         "scheme": "bearer"
       },
       "LinkTokenAuth": {
         "type": "http",
-        "description": "Connect UI Link Token (lt_*)",
+        "description": "Connect UI session token (cs_*). The one-time lt_* bootstrap token is only accepted by POST /connect/init.",
         "scheme": "bearer"
       }
     }
