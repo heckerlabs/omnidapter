@@ -43,8 +43,12 @@ jobs:
     needs: validate
     uses: ./.github/workflows/_test-python.yml
 
+  test-sdk:
+    needs: validate
+    uses: ./.github/workflows/_test-sdk.yml
+
   open-pr:
-    needs: [validate, test]
+    needs: [validate, test, test-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
