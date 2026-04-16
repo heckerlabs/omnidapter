@@ -28,7 +28,7 @@ describe("OmnidapterConnect constructor", () => {
         const c = new OmnidapterConnect();
         // Access private via type cast
         expect((c as unknown as { _baseUrl: string })._baseUrl).toBe(
-            "https://app.omnidapter.io"
+            "https://omnidapter.heckerlabs.ai"
         );
     });
 
@@ -44,7 +44,7 @@ describe("OmnidapterConnect constructor", () => {
 
 describe("open() — popup blocked", () => {
     it("calls onError with popup_blocked when window.open returns null", () => {
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
         const onError = vi.fn();
 
@@ -86,7 +86,7 @@ describe("open() — popup opened", () => {
     });
 
     it("opens popup with correct URL including token", () => {
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_testtoken" });
 
         expect(openSpy).toHaveBeenCalledWith(
@@ -97,14 +97,14 @@ describe("open() — popup opened", () => {
     });
 
     it("adds a message event listener", () => {
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x" });
         expect(addEventListenerSpy).toHaveBeenCalledWith("message", expect.any(Function));
     });
 
     it("fires onSuccess when receiving success postMessage from correct origin", () => {
         const onSuccess = vi.fn();
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x", onSuccess });
 
         // Extract the message listener that was registered
@@ -116,7 +116,7 @@ describe("open() — popup opened", () => {
         // Simulate postMessage from the correct origin and source (the popup window)
         listener(
             new MessageEvent("message", {
-                origin: "https://app.omnidapter.io",
+                origin: "https://omnidapter.heckerlabs.ai",
                 source: mockPopup as unknown as Window,
                 data: {
                     type: "omnidapter:success",
@@ -131,7 +131,7 @@ describe("open() — popup opened", () => {
 
     it("ignores postMessage from wrong origin", () => {
         const onSuccess = vi.fn();
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x", onSuccess });
 
         const listener = addEventListenerSpy.mock.calls.find(
@@ -150,7 +150,7 @@ describe("open() — popup opened", () => {
 
     it("fires onError when receiving error postMessage", () => {
         const onError = vi.fn();
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x", onError });
 
         const listener = addEventListenerSpy.mock.calls.find(
@@ -159,7 +159,7 @@ describe("open() — popup opened", () => {
 
         listener(
             new MessageEvent("message", {
-                origin: "https://app.omnidapter.io",
+                origin: "https://omnidapter.heckerlabs.ai",
                 source: mockPopup as unknown as Window,
                 data: {
                     type: "omnidapter:error",
@@ -177,7 +177,7 @@ describe("open() — popup opened", () => {
 
     it("fires onClose when popup is manually closed", () => {
         const onClose = vi.fn();
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x", onClose });
 
         // Simulate user closing the popup
@@ -188,7 +188,7 @@ describe("open() — popup opened", () => {
     });
 
     it("focuses existing popup instead of opening a second one", () => {
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x" });
         c.open({ token: "lt_x" }); // second call
 
@@ -198,7 +198,7 @@ describe("open() — popup opened", () => {
 
     it("removes event listener after success", () => {
         const onSuccess = vi.fn();
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x", onSuccess });
 
         const listener = addEventListenerSpy.mock.calls.find(
@@ -207,7 +207,7 @@ describe("open() — popup opened", () => {
 
         listener(
             new MessageEvent("message", {
-                origin: "https://app.omnidapter.io",
+                origin: "https://omnidapter.heckerlabs.ai",
                 source: mockPopup as unknown as Window,
                 data: { type: "omnidapter:success", connectionId: "conn_abc", provider: "google" },
             })
@@ -227,7 +227,7 @@ describe("close()", () => {
         vi.spyOn(window, "open").mockReturnValue(mockPopup as unknown as Window);
         vi.useFakeTimers();
 
-        const c = new OmnidapterConnect({ baseUrl: "https://app.omnidapter.io" });
+        const c = new OmnidapterConnect({ baseUrl: "https://omnidapter.heckerlabs.ai" });
         c.open({ token: "lt_x" });
         c.close();
 

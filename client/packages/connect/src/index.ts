@@ -9,7 +9,7 @@
  * import { OmnidapterConnect } from '@omnidapter/connect';
  *
  * const connect = new OmnidapterConnect({
- *   baseUrl: 'https://app.omnidapter.io',
+ *   baseUrl: 'https://omnidapter.heckerlabs.ai',
  * });
  *
  * connect.open({
@@ -86,7 +86,7 @@ function isOmnidapterMessage(data: unknown): data is OmnidapterMessage {
 // OmnidapterConnect class
 // ---------------------------------------------------------------------------
 
-const DEFAULT_BASE_URL = "https://app.omnidapter.io";
+const DEFAULT_BASE_URL = "https://omnidapter.heckerlabs.ai";
 
 export class OmnidapterConnect {
     private readonly _baseUrl: string;
