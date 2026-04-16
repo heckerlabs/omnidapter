@@ -22,9 +22,8 @@ docker run --rm \
   --skip-validate-spec \
   --additional-properties=packageName=omnidapter_sdk,projectName=omnidapter-sdk,library=urllib3
 
-# Copy only the package source, not setup.py/README/etc.
-rm -rf "$PY_OUT"
-cp -r /tmp/oag-python/omnidapter_sdk "$PY_OUT"
+# Sync generated source into place, preserving handwritten client.py.
+rsync -a --delete --exclude=client.py /tmp/oag-python/omnidapter_sdk/ "$PY_OUT/"
 sudo rm -rf /tmp/oag-python
 
 echo "→ Generating TypeScript SDK..."
@@ -38,9 +37,9 @@ docker run --rm \
   --skip-validate-spec \
   --additional-properties=npmName=@omnidapter/sdk,supportsES6=true,withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models
 
-# Copy only the generated source, not package.json/tsconfig/etc.
-rm -rf "$TS_OUT"
-cp -r /tmp/oag-typescript/src "$TS_OUT"
+# Sync generated source into place, preserving handwritten OmnidapterClient.ts.
+mkdir -p "$TS_OUT"
+rsync -a --delete --exclude=OmnidapterClient.ts /tmp/oag-typescript/src/ "$TS_OUT/"
 sudo rm -rf /tmp/oag-typescript
 
 echo "✓ SDKs generated."
