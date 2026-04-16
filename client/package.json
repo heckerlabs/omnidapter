@@ -1,5 +1,5 @@
 {
-  "name": "@heckerlabs/omnidapter-workspace",
+  "name": "@omnidapter/workspace",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -7,15 +7,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:ui": "npm run dev -w @heckerlabs/omnidapter-connect-ui",
-    "dev:demo": "npm run dev -w @heckerlabs/omnidapter-connect-demo",
-    "build:ui": "npm run build -w @heckerlabs/omnidapter-connect-ui",
+    "dev:ui": "npm run dev -w @omnidapter/connect-ui",
+    "dev:demo": "npm run dev -w @omnidapter/connect-demo",
+    "build:ui": "npm run build -w @omnidapter/connect-ui",
     "build:sdk": "npm run build -w @omnidapter/connect && npm run build -w @omnidapter/sdk",
-    "build:demo": "npm run build -w @heckerlabs/omnidapter-connect-demo",
+    "build:demo": "npm run build -w @omnidapter/connect-demo",
     "build": "npm run build --workspaces --if-present",
-    "test:ui": "npm run test -w @heckerlabs/omnidapter-connect-ui",
+    "test:ui": "npm run test -w @omnidapter/connect-ui",
     "test:sdk": "npm run test -w @omnidapter/connect",
-    "test:demo": "npm run test -w @heckerlabs/omnidapter-connect-demo",
+    "test:demo": "npm run test -w @omnidapter/connect-demo",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
