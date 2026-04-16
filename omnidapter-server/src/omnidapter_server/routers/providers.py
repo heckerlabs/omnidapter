@@ -22,7 +22,7 @@ def _build_omni(settings: Settings) -> Omnidapter:
     return Omnidapter(registry=build_provider_registry(settings))
 
 
-@router.get("")
+@router.get("", operation_id="list_providers")
 async def list_providers(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -34,7 +34,7 @@ async def list_providers(
     return {"data": providers, "meta": {"request_id": request_id}}
 
 
-@router.get("/{provider_key}")
+@router.get("/{provider_key}", operation_id="get_provider")
 async def get_provider(
     provider_key: str,
     request: Request,

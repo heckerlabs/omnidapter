@@ -44,7 +44,7 @@ async def _resolve_reconnect_provider(
     return conn.provider_key
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, operation_id="create_link_token")
 async def create_link_token_endpoint(
     body: CreateLinkTokenRequest,
     auth: Annotated[AuthContext, Depends(get_auth_context)],

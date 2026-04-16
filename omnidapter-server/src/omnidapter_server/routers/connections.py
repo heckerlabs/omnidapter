@@ -109,7 +109,7 @@ async def get_connection(
     )
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, operation_id="create_connection")
 async def create_connection(
     body: CreateConnectionRequest,
     request: Request,
@@ -143,7 +143,7 @@ async def create_connection(
     }
 
 
-@router.get("")
+@router.get("", operation_id="list_connections")
 async def list_connections(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: AsyncSession = Depends(get_session),
@@ -177,7 +177,7 @@ async def list_connections(
     }
 
 
-@router.get("/{connection_id}")
+@router.get("/{connection_id}", operation_id="get_connection")
 async def get_connection_endpoint(
     connection_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -191,7 +191,7 @@ async def get_connection_endpoint(
     }
 
 
-@router.delete("/{connection_id}", status_code=204)
+@router.delete("/{connection_id}", status_code=204, operation_id="delete_connection")
 async def delete_connection(
     connection_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -201,7 +201,7 @@ async def delete_connection(
     await transition_to_revoked(conn.id, session, reason="Deleted by API")
 
 
-@router.post("/{connection_id}/reauthorize", status_code=200)
+@router.post("/{connection_id}/reauthorize", status_code=200, operation_id="reauthorize_connection")
 async def reauthorize_connection(
     connection_id: str,
     body: ReauthorizeConnectionRequest,
