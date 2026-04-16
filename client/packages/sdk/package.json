@@ -1,0 +1,28 @@
+{
+  "name": "@omnidapter/sdk",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Omnidapter API client SDK",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "omnidapter",
+    "calendar",
+    "sdk",
+    "api"
+  ],
+  "license": "MIT"
+}
