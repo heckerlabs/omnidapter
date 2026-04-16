@@ -1,0 +1,3261 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Omnidapter Hosted",
+    "description": "Multi-tenant hosted API with billing and team management",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/auth/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Return the WorkOS AuthKit authorization URL.",
+        "operationId": "login_v1_auth_login_get",
+        "parameters": [
+          {
+            "name": "redirect_uri",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Redirect Uri"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Callback",
+        "description": "Exchange the WorkOS authorization code for a JWT access token.\n\nReturns the raw API key only on first signup.",
+        "operationId": "callback_v1_auth_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Me",
+        "description": "Return the currently authenticated user and tenant.",
+        "operationId": "me_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/profile": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Profile",
+        "operationId": "get_profile_v1_dashboard_profile_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Update Profile",
+        "operationId": "update_profile_v1_dashboard_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/tenant": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Tenant",
+        "operationId": "get_tenant_v1_dashboard_tenant_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Patch Tenant",
+        "operationId": "patch_tenant_v1_dashboard_tenant_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/members": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Members",
+        "operationId": "get_members_v1_dashboard_members_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/members/{user_id}": {
+      "delete": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Delete Member",
+        "operationId": "delete_member_v1_dashboard_members__user_id__delete",
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/api-keys": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Api Keys",
+        "operationId": "list_api_keys_v1_dashboard_api_keys_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Create Api Key",
+        "operationId": "create_api_key_v1_dashboard_api_keys_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAPIKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/api-keys/{key_id}": {
+      "delete": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Revoke Api Key",
+        "operationId": "revoke_api_key_v1_dashboard_api_keys__key_id__delete",
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/connections": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Connections",
+        "operationId": "list_connections_v1_dashboard_connections_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/connections/{connection_id}": {
+      "delete": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Revoke Connection",
+        "operationId": "revoke_connection_v1_dashboard_connections__connection_id__delete",
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/provider-configs": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "List Provider Configs",
+        "operationId": "list_provider_configs_v1_dashboard_provider_configs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/dashboard/provider-configs/{provider_key}": {
+      "put": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Upsert Provider Config",
+        "operationId": "upsert_provider_config_v1_dashboard_provider_configs__provider_key__put",
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertProviderConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Delete Provider Config",
+        "operationId": "delete_provider_config_v1_dashboard_provider_configs__provider_key__delete",
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dashboard/usage": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Usage",
+        "operationId": "get_usage_v1_dashboard_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "DashboardJWTAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/connections": {
+      "post": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Create Connection",
+        "operationId": "create_connection_v1_connections_post",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "List Connections",
+        "operationId": "list_connections_v1_connections_get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "external_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "External Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}": {
+      "get": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Get Connection Endpoint",
+        "operationId": "get_connection_endpoint_v1_connections__connection_id__get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Delete Connection",
+        "operationId": "delete_connection_v1_connections__connection_id__delete",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/reauthorize": {
+      "post": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Reauthorize Connection",
+        "operationId": "reauthorize_connection_v1_connections__connection_id__reauthorize_post",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthorizeConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List Calendars",
+        "operationId": "list_calendars_v1_connections__connection_id__calendars_get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create Calendar",
+        "operationId": "create_calendar_v1_connections__connection_id__calendars_post",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Calendar",
+        "operationId": "get_calendar_v1_connections__connection_id__calendars__calendar_id__get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Update Calendar",
+        "operationId": "update_calendar_v1_connections__connection_id__calendars__calendar_id__patch",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Delete Calendar",
+        "operationId": "delete_calendar_v1_connections__connection_id__calendars__calendar_id__delete",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/events": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events_v1_connections__connection_id__calendars__calendar_id__events_get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)",
+              "title": "Start"
+            },
+            "description": "Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)",
+              "title": "End"
+            },
+            "description": "Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of events to return per page",
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of events to return per page"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of events to skip before returning results",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of events to skip before returning results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create Event",
+        "operationId": "create_event_v1_connections__connection_id__calendars__calendar_id__events_post",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Event",
+        "operationId": "get_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Update Event",
+        "operationId": "update_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__patch",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Delete Event",
+        "operationId": "delete_event_v1_connections__connection_id__calendars__calendar_id__events__event_id__delete",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/availability": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Availability",
+        "operationId": "get_availability_v1_connections__connection_id__calendars__calendar_id__availability_get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/provider-configs": {
+      "get": {
+        "tags": [
+          "provider-configs"
+        ],
+        "summary": "List Provider Configs",
+        "operationId": "list_provider_configs_v1_provider_configs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/provider-configs/{provider_key}": {
+      "get": {
+        "tags": [
+          "provider-configs"
+        ],
+        "summary": "Get Provider Config",
+        "operationId": "get_provider_config_v1_provider_configs__provider_key__get",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "provider-configs"
+        ],
+        "summary": "Upsert Provider Config",
+        "operationId": "upsert_provider_config_v1_provider_configs__provider_key__put",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertProviderConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "provider-configs"
+        ],
+        "summary": "Patch Provider Config",
+        "description": "Enable or disable a provider for the Connect UI.\n\nIf no config exists yet, one is created with ``is_enabled`` set and null\nOAuth credentials \u2014 this lets an org explicitly disable a fallback provider\nor pre-stage an enabled record for a non-OAuth provider.",
+        "operationId": "patch_provider_config_v1_provider_configs__provider_key__patch",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchProviderConfigRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "provider-configs"
+        ],
+        "summary": "Delete Provider Config",
+        "operationId": "delete_provider_config_v1_provider_configs__provider_key__delete",
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/providers": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "List Providers Management",
+        "description": "Return all platform-supported providers with per-tenant configuration status.\n\nUsed by the admin dashboard to manage which providers are enabled and how\nthey are configured (own OAuth app vs hosted fallback).",
+        "operationId": "list_providers_management_v1_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/link-tokens": {
+      "post": {
+        "tags": [
+          "link-tokens"
+        ],
+        "summary": "Create Link Token Endpoint",
+        "description": "Create a short-lived link token for the Connect UI.\n\nPass the returned token to the embedded or redirect Connect UI as a\nBearer token. The token grants permission to list providers and initiate\na connection on behalf of the tenant, scoped to ``end_user_id`` if provided.\n\nSet ``connection_id`` to create a *reconnect* token \u2014 the connect UI will\nskip provider selection and go directly to the authorization flow for the\nexisting connection.",
+        "operationId": "create_link_token_endpoint_v1_link_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HostedAPIKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/connect/session": {
+      "post": {
+        "tags": [
+          "connect"
+        ],
+        "summary": "Create Session",
+        "description": "Exchange a one-time bootstrap link token (lt_*) for a short-lived session token (cs_*).\n\nThe bootstrap token is consumed immediately and permanently on first call.\nSubsequent calls with the same token return ``token_already_used``.\n\nThis endpoint requires **no** Authorization header.  The bootstrap token is\npassed in the request body so it never appears in server logs or the\nbrowser's address bar after the initial page load.\n\nThe hosted version additionally verifies that the bootstrap token belongs to\na known tenant before issuing the session token.",
+        "operationId": "create_session_connect_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Session Connect Session Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connect/providers": {
+      "get": {
+        "tags": [
+          "connect"
+        ],
+        "summary": "List Providers",
+        "description": "List providers available for this connect session.\n\n- Filters by ``allowed_providers`` on the link token (if set).\n- Respects each provider's ``is_enabled`` flag per tenant.\n- Returns only the locked provider for reconnect tokens.\n- Includes ``credential_schema`` for non-OAuth providers so the UI can\n  render a dynamic credential form.\n\nReturns an empty list if no providers are available (error shown in UI).",
+        "operationId": "list_providers_connect_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "LinkTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/connect/connections": {
+      "post": {
+        "tags": [
+          "connect"
+        ],
+        "summary": "Create Connection",
+        "description": "Initiate or complete a provider connection on behalf of the link token's tenant.\n\nBehavior varies by provider type and token scope:\n\n**OAuth providers (``credentials`` is null):**\nCreates a pending connection and returns ``authorization_url`` for the\nbrowser to redirect to. For reconnect tokens, reauthorizes the existing\nconnection.\n\n**Non-OAuth providers (``credentials`` provided):**\nValidates and stores credentials immediately. Returns ``status: \"active\"``\nwith no ``authorization_url`` on success. Returns 400 with inline errors on\nvalidation failure \u2014 the user can retry without a new link token.",
+        "operationId": "create_connection_connect_connections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectCreateConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "LinkTokenAuth": []
+          }
+        ]
+      }
+    },
+    "/oauth/{provider_key}/callback": {
+      "get": {
+        "tags": [
+          "oauth"
+        ],
+        "summary": "Oauth Callback",
+        "description": "Handle OAuth callback from provider.",
+        "operationId": "oauth_callback_oauth__provider_key__callback_get",
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          },
+          {
+            "name": "error_description",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Description"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Endpoint",
+        "operationId": "health_endpoint_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Attendee": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttendeeStatus",
+            "default": "needs_action"
+          },
+          "is_organizer": {
+            "type": "boolean",
+            "title": "Is Organizer",
+            "default": false
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self",
+            "default": false
+          },
+          "is_resource": {
+            "type": "boolean",
+            "title": "Is Resource",
+            "default": false
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "default": false
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "Attendee",
+        "description": "An event attendee."
+      },
+      "AttendeeStatus": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "declined",
+          "tentative",
+          "needs_action",
+          "unknown"
+        ],
+        "title": "AttendeeStatus"
+      },
+      "ConferenceData": {
+        "properties": {
+          "conference_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conference Id"
+          },
+          "conference_solution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conference Solution Name"
+          },
+          "entry_points": {
+            "items": {
+              "$ref": "#/components/schemas/ConferenceEntryPoint"
+            },
+            "type": "array",
+            "title": "Entry Points",
+            "default": []
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "title": "ConferenceData",
+        "description": "Conference/video call information attached to an event."
+      },
+      "ConferenceEntryPoint": {
+        "properties": {
+          "entry_point_type": {
+            "type": "string",
+            "title": "Entry Point Type"
+          },
+          "uri": {
+            "type": "string",
+            "title": "Uri"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "pin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_point_type",
+          "uri"
+        ],
+        "title": "ConferenceEntryPoint",
+        "description": "A single entry point for a conference (e.g., video URL, phone dial-in)."
+      },
+      "ConnectCreateConnectionRequest": {
+        "properties": {
+          "provider_key": {
+            "type": "string",
+            "title": "Provider Key"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "redirect_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Uri"
+          },
+          "credentials": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credentials"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_key"
+        ],
+        "title": "ConnectCreateConnectionRequest",
+        "description": "Request body for POST /connect/connections."
+      },
+      "ConnectSessionRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ConnectSessionRequest",
+        "description": "Bootstrap token submitted in the request body \u2014 never in the URL."
+      },
+      "CreateAPIKeyRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CreateAPIKeyRequest"
+      },
+      "CreateCalendarRequest": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Color"
+          },
+          "foreground_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreground Color"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "CreateCalendarRequest",
+        "description": "Request model for creating a calendar."
+      },
+      "CreateConnectionRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "redirect_url": {
+            "type": "string",
+            "title": "Redirect Url"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "redirect_url"
+        ],
+        "title": "CreateConnectionRequest"
+      },
+      "CreateEventRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "End"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day",
+            "default": false
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "attendees": {
+            "items": {
+              "$ref": "#/components/schemas/Attendee"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "default": []
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conference_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConferenceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reminder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "start",
+          "end"
+        ],
+        "title": "CreateEventRequest",
+        "description": "Request model for creating a calendar event.\n\nWhen used via the REST API, ``calendar_id`` is injected from the URL path\nparameter and must not be set in the request body.  When using the Python\nlibrary directly, callers must supply a non-empty ``calendar_id``."
+      },
+      "CreateLinkTokenRequest": {
+        "properties": {
+          "end_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End User Id"
+          },
+          "allowed_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Providers"
+          },
+          "redirect_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Uri"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 86400.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          }
+        },
+        "type": "object",
+        "title": "CreateLinkTokenRequest"
+      },
+      "EventStatus": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "tentative",
+          "cancelled",
+          "unknown"
+        ],
+        "title": "EventStatus"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PatchProviderConfigRequest": {
+        "properties": {
+          "is_enabled": {
+            "type": "boolean",
+            "title": "Is Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_enabled"
+        ],
+        "title": "PatchProviderConfigRequest"
+      },
+      "ReauthorizeConnectionRequest": {
+        "properties": {
+          "redirect_url": {
+            "type": "string",
+            "title": "Redirect Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "redirect_url"
+        ],
+        "title": "ReauthorizeConnectionRequest"
+      },
+      "Recurrence": {
+        "properties": {
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rules",
+            "default": []
+          },
+          "recurring_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurring Event Id"
+          },
+          "original_start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Start Time"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "title": "Recurrence",
+        "description": "Recurrence information for recurring events.\n\n`rules` contains RRULE/EXRULE/RDATE/EXDATE strings (RFC 5545 format)."
+      },
+      "Reminder": {
+        "properties": {
+          "use_default": {
+            "type": "boolean",
+            "title": "Use Default",
+            "default": false
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/ReminderOverride"
+            },
+            "type": "array",
+            "title": "Overrides",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "Reminder",
+        "description": "Reminder configuration for an event."
+      },
+      "ReminderOverride": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "minutes_before": {
+            "type": "integer",
+            "title": "Minutes Before"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "minutes_before"
+        ],
+        "title": "ReminderOverride",
+        "description": "A single reminder override for an event."
+      },
+      "UpdateCalendarRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Color"
+          },
+          "foreground_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreground Color"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "UpdateCalendarRequest",
+        "description": "Request model for updating a calendar.\n\nWhen used via the REST API, ``calendar_id`` is injected from the URL path\nparameter.  When using the Python library directly, callers must supply a\nnon-empty ``calendar_id``."
+      },
+      "UpdateEventRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id",
+            "default": ""
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "all_day": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "All Day"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "attendees": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Attendee"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attendees"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conference_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConferenceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reminder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "UpdateEventRequest",
+        "description": "Request model for updating a calendar event.\n\nWhen used via the REST API, ``calendar_id`` and ``event_id`` are injected\nfrom URL path parameters.  When using the Python library directly, callers\nmust supply non-empty values for both fields."
+      },
+      "UpdateProfileRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "UpdateProfileRequest"
+      },
+      "UpdateTenantRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "UpdateTenantRequest"
+      },
+      "UpsertProviderConfigRequest": {
+        "properties": {
+          "client_id": {
+            "type": "string",
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "type": "string",
+            "title": "Client Secret"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "client_id",
+          "client_secret"
+        ],
+        "title": "UpsertProviderConfigRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "DashboardJWTAuth": {
+        "type": "http",
+        "description": "Dashboard Session JWT (Bearer <token>)",
+        "scheme": "bearer"
+      },
+      "HostedAPIKeyAuth": {
+        "type": "http",
+        "description": "Main Integration API Key (omni_*)",
+        "scheme": "bearer"
+      },
+      "LinkTokenAuth": {
+        "type": "http",
+        "description": "Connect UI Link Token (lt_*)",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
