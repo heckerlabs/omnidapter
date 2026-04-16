@@ -52,6 +52,7 @@ jobs:
       version: ${{ needs.parse.outputs.version }}
       package_dir: omnidapter-sdk
       package_name: omnidapter-sdk
+      generate_sdk: true
     secrets:
       PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
@@ -70,6 +71,7 @@ jobs:
     with:
       version: ${{ needs.parse.outputs.version }}
       workspace: "@omnidapter/sdk"
+      generate_sdk: true
     secrets:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 

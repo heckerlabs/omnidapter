@@ -11,6 +11,11 @@ on:
         required: true
         type: string
         description: npm workspace name (e.g. @omnidapter/connect)
+      generate_sdk:
+        required: false
+        type: boolean
+        default: false
+        description: Run generate_sdks.sh before building
     secrets:
       NPM_TOKEN:
         required: true
@@ -25,6 +30,13 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+
+      - uses: astral-sh/setup-uv@v5
+        if: inputs.generate_sdk
+
+      - name: Generate SDKs
+        if: inputs.generate_sdk
+        run: bash scripts/generate_sdks.sh
 
       - name: Install dependencies
         run: npm ci

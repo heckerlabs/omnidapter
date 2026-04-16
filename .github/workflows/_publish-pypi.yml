@@ -15,6 +15,11 @@ on:
         required: true
         type: string
         description: PyPI package name for version check (e.g. omnidapter-sdk)
+      generate_sdk:
+        required: false
+        type: boolean
+        default: false
+        description: Run generate_sdks.sh before building
     secrets:
       PYPI_TOKEN:
         required: true
@@ -26,6 +31,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: astral-sh/setup-uv@v5
+
+      - name: Generate SDKs
+        if: inputs.generate_sdk
+        run: bash scripts/generate_sdks.sh
 
       - name: Check version not already published
         env:
