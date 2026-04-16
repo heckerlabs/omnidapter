@@ -11,5 +11,12 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate SDKs
+        run: bash scripts/generate_sdks.sh
+
       - name: Run SDK integration tests
         run: uv run pytest omnidapter-sdk/tests/ -v --tb=short
