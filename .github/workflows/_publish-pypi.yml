@@ -1,0 +1,53 @@
+name: Publish PyPI Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: Package version to publish
+      package_dir:
+        required: true
+        type: string
+        description: Directory containing pyproject.toml (e.g. omnidapter-sdk)
+      package_name:
+        required: true
+        type: string
+        description: PyPI package name for version check (e.g. omnidapter-sdk)
+    secrets:
+      PYPI_TOKEN:
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Check version not already published
+        env:
+          VERSION: ${{ inputs.version }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
+        run: |
+          EXISTING=$(pip index versions "$PACKAGE_NAME" 2>/dev/null | grep -o "$VERSION" || echo "")
+          if [[ -n "$EXISTING" ]]; then
+            echo "❌ $PACKAGE_NAME==$VERSION already published to PyPI"
+            exit 1
+          fi
+          echo "✓ $PACKAGE_NAME==$VERSION not yet published"
+
+      - name: Build package
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+        run: uv build
+        working-directory: ${{ inputs.package_dir }}
+
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+        run: uv publish
+        working-directory: ${{ inputs.package_dir }}

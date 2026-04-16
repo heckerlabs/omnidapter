@@ -19,8 +19,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate version format
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "❌ Invalid version format. Use semver: 1.2.3"
             exit 1
@@ -28,8 +29,9 @@ jobs:
           echo "✓ Version format valid: $VERSION"
 
       - name: Check version not already tagged
+        env:
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
           git fetch --tags
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "❌ Tag v$VERSION already exists"
@@ -47,29 +49,65 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      VERSION: ${{ github.event.inputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Bump version in pyproject.toml
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Fern CLI
+        run: npm install -g fern-api --min-release-age=0
+
+      - name: Regenerate SDKs from OpenAPI spec
+        if: ${{ env.FERN_TOKEN != '' }}
+        env:
+          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
+        run: fern generate --force
+        working-directory: fern
+
+      - name: Warn if Fern token not set
+        if: ${{ env.FERN_TOKEN == '' }}
+        env:
+          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
+        run: echo "⚠️  FERN_TOKEN not set — skipping SDK regeneration. Pre-committed SDK files will be used."
+
+      - name: Bump Python package versions
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          FILE="omnidapter-server/pyproject.toml"
-          CURRENT=$(grep '^version = ' "$FILE" | sed 's/version = "\(.*\)"/\1/')
-          if [[ "$CURRENT" == "$VERSION" ]]; then
-            echo "❌ $FILE is already at v$VERSION — bump the version first"
-            exit 1
-          fi
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE"
-          grep -q "version = \"$VERSION\"" "$FILE" || { echo "❌ Version bump failed — check pyproject.toml format"; exit 1; }
-          echo "✓ Bumped omnidapter-server from $CURRENT to $VERSION"
+          for FILE in omnidapter-server/pyproject.toml omnidapter-sdk/pyproject.toml; do
+            CURRENT=$(grep '^version = ' "$FILE" | sed 's/version = "\(.*\)"/\1/')
+            if [[ "$CURRENT" == "$VERSION" ]]; then
+              echo "❌ $FILE is already at v$VERSION"
+              exit 1
+            fi
+            sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$FILE"
+            grep -q "version = \"$VERSION\"" "$FILE" || { echo "❌ Version bump failed for $FILE"; exit 1; }
+            echo "✓ Bumped $FILE from $CURRENT to $VERSION"
+          done
+
+      - name: Bump npm package versions
+        run: |
+          for FILE in client/packages/connect/package.json client/packages/sdk/package.json; do
+            node -e "
+              const fs = require('fs');
+              const ver = process.env.VERSION;
+              const pkg = JSON.parse(fs.readFileSync('$FILE', 'utf8'));
+              if (pkg.version === ver) { console.error('❌ $FILE is already at v' + ver); process.exit(1); }
+              console.log('✓ Bumped $FILE from ' + pkg.version + ' to ' + ver);
+              pkg.version = ver;
+              fs.writeFileSync('$FILE', JSON.stringify(pkg, null, 2) + '\n');
+            "
+          done
 
       - name: Push branch and open PR
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
           BRANCH="release/v$VERSION"
 
           if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null 2>&1; then
@@ -80,7 +118,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add omnidapter-server/pyproject.toml
+          git add \
+            omnidapter-server/pyproject.toml \
+            omnidapter-sdk/pyproject.toml \
+            client/packages/connect/package.json \
+            client/packages/sdk/package.json \
+            client/packages/sdk/ \
+            omnidapter-sdk/omnidapter_sdk/
           git commit -m "Release v$VERSION"
           git push origin "$BRANCH"
 
@@ -88,8 +132,15 @@ jobs:
             --base main \
             --head "$BRANCH" \
             --title "Release v$VERSION" \
-            --body "Bump \`omnidapter-server\` to v$VERSION. Merging this PR will publish the Docker image to GHCR and create a GitHub release." \
+            --body "Bump all packages to v${VERSION} and regenerate SDKs.
+
+**Packages:**
+- \`omnidapter-server\` → v${VERSION} (Docker/PyPI)
+- \`omnidapter-sdk\` → v${VERSION} (PyPI)
+- \`@omnidapter/connect\` → v${VERSION} (npm)
+- \`@omnidapter/sdk\` → v${VERSION} (npm)
+
+Merging this PR will trigger \`release-publish\` to publish all packages and create a GitHub release." \
             --label release
 
           echo "✓ Opened release PR for v$VERSION"
-
