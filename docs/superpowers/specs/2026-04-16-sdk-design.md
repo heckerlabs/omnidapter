@@ -13,7 +13,7 @@ Add two SDK packages to Omnidapter and improve the existing connect package:
 - **`@omnidapter/sdk`** — Fern-generated TypeScript client for the hosted API
 - **`omnidapter-sdk`** — Fern-generated Python client for the hosted API
 
-All three are published as part of the existing release workflow.
+All three are published as part of the release workflow. `omnidapter-hosted` is not released publicly — it is a private SaaS component that will eventually live in its own separate repository.
 
 ---
 
@@ -81,7 +81,7 @@ Behavior:
 
 ### Source of truth
 
-The hosted FastAPI app auto-generates an OpenAPI spec. A checked-in copy lives at `fern/openapi/openapi.json` and is refreshed as part of the release PR.
+The hosted FastAPI app auto-generates an OpenAPI spec. A checked-in copy lives at `fern/openapi/openapi.json`. It is updated manually whenever the hosted API changes — it is not tied to the SDK release trigger, since hosted is deployed independently.
 
 ### Naming overrides
 
@@ -140,13 +140,11 @@ token = await client.link_tokens.create(external_user_id="user_123")
 
 The release PR (same trigger as today) includes:
 
-1. Version bumps across all packages:
-   - `omnidapter-hosted` (Python)
+1. Version bumps for the three public packages:
    - `omnidapter-sdk` (Python)
    - `@omnidapter/connect` (npm)
    - `@omnidapter/sdk` (npm)
-2. Exported `fern/openapi/openapi.json` from the hosted app
-3. Fern-generated SDK code committed into `client/packages/sdk/` and `omnidapter-sdk/`
+2. Fern-generated SDK code committed into `client/packages/sdk/` and `omnidapter-sdk/`
 
 All generated diffs are reviewable in the PR before merge.
 
@@ -155,9 +153,8 @@ All generated diffs are reviewable in the PR before merge.
 Merging the release PR triggers:
 
 1. Git tag + GitHub Release created
-2. Docker image published to GHCR
-3. `@omnidapter/connect` published to npm
-4. `@omnidapter/sdk` published to npm
-5. `omnidapter-sdk` published to PyPI
+2. `@omnidapter/connect` published to npm
+3. `@omnidapter/sdk` published to npm
+4. `omnidapter-sdk` published to PyPI
 
-The publish job runs after Docker, using already-committed generated code — no generation happens at publish time.
+Publishing uses already-committed generated code — no generation happens at publish time. `omnidapter-hosted` is not part of this workflow.
