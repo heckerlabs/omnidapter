@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
     test: {
@@ -6,16 +7,15 @@ export default defineConfig({
     },
     build: {
         lib: {
-            entry: "src/index.ts",
-            name: "OmnidapterConnect",
-            fileName: (format) => `omnidapter-connect.${format}.js`,
-            formats: ["es", "umd"],
+            entry: {
+                index: resolve(__dirname, "src/index.ts"),
+                react: resolve(__dirname, "src/react.ts"),
+            },
+            formats: ["es"],
+            fileName: (_, entryName) => `${entryName}.js`,
         },
         rollupOptions: {
-            external: [],
-            output: {
-                globals: {},
-            },
+            external: ["react"],
         },
         minify: "esbuild",
         target: "es2020",
