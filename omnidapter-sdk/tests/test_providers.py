@@ -7,9 +7,8 @@ from omnidapter_sdk.exceptions import ApiException
 
 def test_list_providers_returns_envelope(sdk_client: OmnidapterClient):
     body = sdk_client.providers.list_providers()
-    assert "data" in body
-    assert "meta" in body
-    assert isinstance(body["data"], list)
+    assert isinstance(body.data, list)
+    assert body.meta is not None
 
 
 def test_get_unknown_provider_raises_404(sdk_client: OmnidapterClient):
