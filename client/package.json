@@ -10,7 +10,7 @@
     "dev:ui": "npm run dev -w @heckerlabs/omnidapter-connect-ui",
     "dev:demo": "npm run dev -w @heckerlabs/omnidapter-connect-demo",
     "build:ui": "npm run build -w @heckerlabs/omnidapter-connect-ui",
-    "build:sdk": "npm run build -w @omnidapter/connect",
+    "build:sdk": "npm run build -w @omnidapter/connect && npm run build -w @omnidapter/sdk",
     "build:demo": "npm run build -w @heckerlabs/omnidapter-connect-demo",
     "build": "npm run build --workspaces --if-present",
     "test:ui": "npm run test -w @heckerlabs/omnidapter-connect-ui",
