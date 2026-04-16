@@ -56,26 +56,16 @@ jobs:
         with:
           ref: main
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: "20"
+          python-version: "3.12"
 
-      - name: Install Fern CLI
-        run: npm install -g fern-api --min-release-age=0
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Regenerate SDKs from OpenAPI spec
-        if: ${{ env.FERN_TOKEN != '' }}
-        env:
-          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
-        run: fern generate --force
-        working-directory: fern
-
-      - name: Warn if Fern token not set
-        if: ${{ env.FERN_TOKEN == '' }}
-        env:
-          FERN_TOKEN: ${{ secrets.FERN_TOKEN }}
-        run: echo "⚠️  FERN_TOKEN not set — skipping SDK regeneration. Pre-committed SDK files will be used."
+        run: bash scripts/generate_sdks.sh
 
       - name: Bump Python package versions
         run: |
