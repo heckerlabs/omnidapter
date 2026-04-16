@@ -58,6 +58,8 @@ __all__ = [
     "ValidationError",
 ]
 
+from omnidapter_sdk.client import OmnidapterClient as OmnidapterClient
+
 # import apis into sdk package
 from omnidapter_sdk.api.calendar_api import CalendarApi as CalendarApi
 from omnidapter_sdk.api.connections_api import ConnectionsApi as ConnectionsApi
