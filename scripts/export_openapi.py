@@ -1,4 +1,5 @@
 """Export the omnidapter-hosted OpenAPI spec to fern/openapi/openapi.json."""
+
 from __future__ import annotations
 
 import json

@@ -6,9 +6,7 @@ import typing
 from .utilities import validate_response
 
 
-async def test_get_profile(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_profile(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.get_profile()
@@ -18,9 +16,7 @@ async def test_get_profile(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_update_profile(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_update_profile(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.update_profile(name="name")
@@ -30,9 +26,7 @@ async def test_update_profile(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_tenant(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_tenant(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.get_tenant()
@@ -42,9 +36,7 @@ async def test_get_tenant(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_patch_tenant(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_patch_tenant(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.patch_tenant(name="name")
@@ -54,9 +46,7 @@ async def test_patch_tenant(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_members(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_members(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.get_members()
@@ -66,9 +56,7 @@ async def test_get_members(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_delete_member(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_delete_member(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
         client.dashboard.delete_member(user_id="user_id")  # type: ignore[func-returns-value]
@@ -81,9 +69,7 @@ async def test_delete_member(
     )
 
 
-async def test_list_api_keys(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_api_keys(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.list_api_keys()
@@ -93,9 +79,7 @@ async def test_list_api_keys(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_create_api_key(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_api_key(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.create_api_key(name="name")
@@ -105,9 +89,7 @@ async def test_create_api_key(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_revoke_api_key(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_revoke_api_key(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
         client.dashboard.revoke_api_key(key_id="key_id")  # type: ignore[func-returns-value]
@@ -120,9 +102,7 @@ async def test_revoke_api_key(
     )
 
 
-async def test_list_connections(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_connections(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.list_connections()
@@ -132,9 +112,7 @@ async def test_list_connections(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_revoke_connection(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_revoke_connection(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
         client.dashboard.revoke_connection(connection_id="connection_id")  # type: ignore[func-returns-value]
@@ -194,9 +172,7 @@ async def test_delete_provider_config(
     )
 
 
-async def test_get_usage(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_usage(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.dashboard.get_usage()

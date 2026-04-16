@@ -18,9 +18,7 @@ async def test_list_provider_configs(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_provider_config(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_provider_config(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.provider_configs.get_provider_config(provider_key="provider_key")
@@ -62,9 +60,7 @@ async def test_delete_provider_config(
     )
 
     assert (
-        await async_client.provider_configs.delete_provider_config(
-            provider_key="provider_key"
-        )  # type: ignore[func-returns-value]
+        await async_client.provider_configs.delete_provider_config(provider_key="provider_key")  # type: ignore[func-returns-value]
         is None
     )
 

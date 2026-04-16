@@ -6,9 +6,7 @@ import typing
 from .utilities import validate_response
 
 
-async def test_create_session(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_session(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Tuple[typing.Any, typing.Any] = ("dict", {0: (None, None)})
     response = client.connect.create_session(token="token")
@@ -18,9 +16,7 @@ async def test_create_session(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_list_providers(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_providers(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.connect.list_providers()
@@ -30,15 +26,11 @@ async def test_list_providers(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_create_connection(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_connection(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.connect.create_connection(provider_key="provider_key")
     validate_response(response, expected_response, expected_types)
 
-    async_response = await async_client.connect.create_connection(
-        provider_key="provider_key"
-    )
+    async_response = await async_client.connect.create_connection(provider_key="provider_key")
     validate_response(async_response, expected_response, expected_types)

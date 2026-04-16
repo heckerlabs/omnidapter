@@ -6,15 +6,11 @@ import typing
 from .utilities import validate_response
 
 
-async def test_oauth_callback(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_oauth_callback(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.oauth.oauth_callback(provider_key="provider_key")
     validate_response(response, expected_response, expected_types)
 
-    async_response = await async_client.oauth.oauth_callback(
-        provider_key="provider_key"
-    )
+    async_response = await async_client.oauth.oauth_callback(provider_key="provider_key")
     validate_response(async_response, expected_response, expected_types)
