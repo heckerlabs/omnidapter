@@ -113,6 +113,16 @@ actions:
     update:
       x-fern-sdk-group-name: dashboard
 
+  # --- Remove path params from request body schemas (they're already path params) ---
+  - target: "$.components.schemas.CreateEventRequest.properties.calendar_id"
+    remove: true
+  - target: "$.components.schemas.UpdateCalendarRequest.properties.calendar_id"
+    remove: true
+  - target: "$.components.schemas.UpdateEventRequest.properties.calendar_id"
+    remove: true
+  - target: "$.components.schemas.UpdateEventRequest.properties.event_id"
+    remove: true
+
   # --- API Keys ---
   - target: "$.paths['/v1/dashboard/api-keys']"
     update:

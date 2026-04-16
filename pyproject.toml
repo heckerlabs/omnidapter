@@ -6,6 +6,7 @@ dependencies = [
     "omnidapter",
     "omnidapter-server",
     "omnidapter-hosted",
+    "omnidapter-sdk",
 ]
 
 [tool.uv.workspace]
@@ -15,6 +16,7 @@ members = ["omnidapter-*"]
 omnidapter = { workspace = true }
 omnidapter-server = { workspace = true }
 omnidapter-hosted = { workspace = true }
+omnidapter-sdk = { workspace = true }
 
 [dependency-groups]
 dev = [

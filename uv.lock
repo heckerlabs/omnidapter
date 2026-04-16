@@ -6,6 +6,7 @@ requires-python = ">=3.10"
 members = [
     "omnidapter",
     "omnidapter-hosted",
+    "omnidapter-sdk",
     "omnidapter-server",
     "omnidapter-workspace",
 ]
@@ -1104,8 +1105,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "omnidapter-sdk"
+version = "0.0.0"
+source = { editable = "omnidapter-sdk" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.21.2" },
+    { name = "pydantic", specifier = ">=1.9.2" },
+]
+
+[[package]]
 name = "omnidapter-server"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "omnidapter-server" }
 dependencies = [
     { name = "alembic" },
@@ -1145,6 +1161,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "omnidapter" },
     { name = "omnidapter-hosted" },
+    { name = "omnidapter-sdk" },
     { name = "omnidapter-server" },
 ]
 
@@ -1167,6 +1184,7 @@ dev = [
 requires-dist = [
     { name = "omnidapter", editable = "omnidapter-core" },
     { name = "omnidapter-hosted", editable = "omnidapter-hosted" },
+    { name = "omnidapter-sdk", editable = "omnidapter-sdk" },
     { name = "omnidapter-server", editable = "omnidapter-server" },
 ]
 
