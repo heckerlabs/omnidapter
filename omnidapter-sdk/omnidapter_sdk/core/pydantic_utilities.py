@@ -86,9 +86,7 @@ class UniversalBaseModel(pydantic.BaseModel):
         )  # type: ignore # Pydantic v2
 
         @pydantic.model_serializer(mode="wrap", when_used="json")  # type: ignore # Pydantic v2
-        def serialize_model(
-            self, handler: pydantic.SerializerFunctionWrapHandler
-        ) -> typing.Any:  # type: ignore # Pydantic v2
+        def serialize_model(self, handler: pydantic.SerializerFunctionWrapHandler) -> typing.Any:  # type: ignore # Pydantic v2
             serialized = handler(self)
             data = {
                 k: serialize_datetime(v) if isinstance(v, dt.datetime) else v
@@ -192,9 +190,7 @@ class UniversalBaseModel(pydantic.BaseModel):
                 **kwargs,
             }
 
-            dict_dump = super().dict(
-                **kwargs_with_defaults_exclude_unset_include_fields
-            )
+            dict_dump = super().dict(**kwargs_with_defaults_exclude_unset_include_fields)
 
         return convert_and_respect_annotation_metadata(
             object_=dict_dump, annotation=self.__class__, direction="write"
@@ -210,9 +206,7 @@ def _union_list_of_pydantic_dicts(
         if isinstance(item, dict):
             converted_list.append(deep_union_pydantic_dicts(item, destination_value))
         elif isinstance(item, list):
-            converted_list.append(
-                _union_list_of_pydantic_dicts(item, destination_value)
-            )
+            converted_list.append(_union_list_of_pydantic_dicts(item, destination_value))
         else:
             converted_list.append(item)
     return converted_list
@@ -288,9 +282,7 @@ def universal_field_validator(
 ) -> typing.Callable[[AnyCallable], AnyCallable]:
     def decorator(func: AnyCallable) -> AnyCallable:
         if IS_PYDANTIC_V2:
-            return pydantic.field_validator(
-                field_name, mode="before" if pre else "after"
-            )(func)  # type: ignore # Pydantic v2
+            return pydantic.field_validator(field_name, mode="before" if pre else "after")(func)  # type: ignore # Pydantic v2
         else:
             return pydantic.validator(field_name, pre=pre)(func)  # type: ignore # Pydantic v1
 

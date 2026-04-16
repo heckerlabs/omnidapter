@@ -16,9 +16,7 @@ async def test_login(client: OmnidapterApi, async_client: AsyncOmnidapterApi) ->
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_callback(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_callback(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.auth.callback(code="code")

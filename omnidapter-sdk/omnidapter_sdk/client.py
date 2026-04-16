@@ -78,9 +78,7 @@ class OmnidapterApi:
             token=token,
             httpx_client=httpx_client
             if httpx_client is not None
-            else httpx.Client(
-                timeout=_defaulted_timeout, follow_redirects=follow_redirects
-            )
+            else httpx.Client(timeout=_defaulted_timeout, follow_redirects=follow_redirects)
             if follow_redirects is not None
             else httpx.Client(timeout=_defaulted_timeout),
             timeout=_defaulted_timeout,
@@ -89,9 +87,7 @@ class OmnidapterApi:
         self.dashboard = DashboardClient(client_wrapper=self._client_wrapper)
         self.connections = ConnectionsClient(client_wrapper=self._client_wrapper)
         self.calendar = CalendarClient(client_wrapper=self._client_wrapper)
-        self.provider_configs = ProviderConfigsClient(
-            client_wrapper=self._client_wrapper
-        )
+        self.provider_configs = ProviderConfigsClient(client_wrapper=self._client_wrapper)
         self.providers = ProvidersClient(client_wrapper=self._client_wrapper)
         self.link_tokens = LinkTokensClient(client_wrapper=self._client_wrapper)
         self.connect = ConnectClient(client_wrapper=self._client_wrapper)
@@ -191,9 +187,7 @@ class AsyncOmnidapterApi:
             token=token,
             httpx_client=httpx_client
             if httpx_client is not None
-            else httpx.AsyncClient(
-                timeout=_defaulted_timeout, follow_redirects=follow_redirects
-            )
+            else httpx.AsyncClient(timeout=_defaulted_timeout, follow_redirects=follow_redirects)
             if follow_redirects is not None
             else httpx.AsyncClient(timeout=_defaulted_timeout),
             timeout=_defaulted_timeout,
@@ -202,9 +196,7 @@ class AsyncOmnidapterApi:
         self.dashboard = AsyncDashboardClient(client_wrapper=self._client_wrapper)
         self.connections = AsyncConnectionsClient(client_wrapper=self._client_wrapper)
         self.calendar = AsyncCalendarClient(client_wrapper=self._client_wrapper)
-        self.provider_configs = AsyncProviderConfigsClient(
-            client_wrapper=self._client_wrapper
-        )
+        self.provider_configs = AsyncProviderConfigsClient(client_wrapper=self._client_wrapper)
         self.providers = AsyncProvidersClient(client_wrapper=self._client_wrapper)
         self.link_tokens = AsyncLinkTokensClient(client_wrapper=self._client_wrapper)
         self.connect = AsyncConnectClient(client_wrapper=self._client_wrapper)

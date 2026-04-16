@@ -7,28 +7,20 @@ from .utilities import validate_response
 import datetime
 
 
-async def test_list_calendars(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_calendars(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.list_calendars(connection_id="connection_id")
     validate_response(response, expected_response, expected_types)
 
-    async_response = await async_client.calendar.list_calendars(
-        connection_id="connection_id"
-    )
+    async_response = await async_client.calendar.list_calendars(connection_id="connection_id")
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_create_calendar(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_calendar(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
-    response = client.calendar.create_calendar(
-        connection_id="connection_id", summary="summary"
-    )
+    response = client.calendar.create_calendar(connection_id="connection_id", summary="summary")
     validate_response(response, expected_response, expected_types)
 
     async_response = await async_client.calendar.create_calendar(
@@ -37,9 +29,7 @@ async def test_create_calendar(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_calendar(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_calendar(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.get_calendar(
@@ -53,14 +43,10 @@ async def test_get_calendar(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_delete_calendar(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_delete_calendar(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
-        client.calendar.delete_calendar(
-            connection_id="connection_id", calendar_id="calendar_id"
-        )  # type: ignore[func-returns-value]
+        client.calendar.delete_calendar(connection_id="connection_id", calendar_id="calendar_id")  # type: ignore[func-returns-value]
         is None
     )
 
@@ -72,9 +58,7 @@ async def test_delete_calendar(
     )
 
 
-async def test_update_calendar(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_update_calendar(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.update_calendar(
@@ -88,14 +72,10 @@ async def test_update_calendar(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_list_events(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_events(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
-    response = client.calendar.list_events(
-        connection_id="connection_id", calendar_id="calendar_id"
-    )
+    response = client.calendar.list_events(connection_id="connection_id", calendar_id="calendar_id")
     validate_response(response, expected_response, expected_types)
 
     async_response = await async_client.calendar.list_events(
@@ -104,9 +84,7 @@ async def test_list_events(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_create_event(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_event(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.create_event(
@@ -128,9 +106,7 @@ async def test_create_event(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_event(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_event(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.get_event(
@@ -144,9 +120,7 @@ async def test_get_event(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_delete_event(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_delete_event(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
         client.calendar.delete_event(
@@ -167,9 +141,7 @@ async def test_delete_event(
     )
 
 
-async def test_update_event(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_update_event(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.update_event(
@@ -183,9 +155,7 @@ async def test_update_event(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_get_availability(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_get_availability(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.calendar.get_availability(

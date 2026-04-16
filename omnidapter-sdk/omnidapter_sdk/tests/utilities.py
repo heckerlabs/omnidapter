@@ -8,9 +8,7 @@ from dateutil import parser
 import pydantic
 
 
-def cast_field(
-    json_expectation: typing.Any, type_expectation: typing.Any
-) -> typing.Any:
+def cast_field(json_expectation: typing.Any, type_expectation: typing.Any) -> typing.Any:
     # Cast these specific types which come through as string and expect our
     # models to cast to the correct type.
     if type_expectation == "uuid":
@@ -94,10 +92,10 @@ def validate_field(
 
     # When dealing with containers of models, etc. we're validating them implicitly, so no need to check the resultant list
     if not is_container_of_complex_type:
-        assert (
-            json_expectation == response
-        ), "Primitives found, expected: {0} (type: {1}), Actual: {2} (type: {3})".format(
-            json_expectation, type(json_expectation), response, type(response)
+        assert json_expectation == response, (
+            "Primitives found, expected: {0} (type: {1}), Actual: {2} (type: {3})".format(
+                json_expectation, type(json_expectation), response, type(response)
+            )
         )
 
 
@@ -122,10 +120,10 @@ def validate_response(
         return
 
     if isinstance(response, list):
-        assert len(response) == len(
-            json_expectation
-        ), "Length mismatch, expected: {0}, Actual: {1}".format(
-            len(response), len(json_expectation)
+        assert len(response) == len(json_expectation), (
+            "Length mismatch, expected: {0}, Actual: {1}".format(
+                len(response), len(json_expectation)
+            )
         )
         content_expectation = type_expectations
         if isinstance(type_expectations, tuple):
@@ -142,10 +140,8 @@ def validate_response(
             response_json = response.dict(by_alias=True)
 
         for key, value in json_expectation.items():
-            assert (
-                key in response_json
-            ), "Field {0} not found within the response object: {1}".format(
-                key, response_json
+            assert key in response_json, (
+                "Field {0} not found within the response object: {1}".format(key, response_json)
             )
 
             type_expectation = None
@@ -169,6 +165,6 @@ def validate_response(
 
             # Ensure there are no additional fields here either
             del response_json[key]
-        assert (
-            len(response_json) == 0
-        ), "Additional fields found, expected None: {0}".format(response_json)
+        assert len(response_json) == 0, "Additional fields found, expected None: {0}".format(
+            response_json
+        )

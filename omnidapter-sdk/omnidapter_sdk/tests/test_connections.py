@@ -6,9 +6,7 @@ import typing
 from .utilities import validate_response
 
 
-async def test_list_connections(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_list_connections(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.connections.list_connections()
@@ -18,9 +16,7 @@ async def test_list_connections(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_create_connection(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_create_connection(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     expected_response: typing.Any = {"key": "value"}
     expected_types: typing.Any = None
     response = client.connections.create_connection(
@@ -48,9 +44,7 @@ async def test_get_connection_endpoint(
     validate_response(async_response, expected_response, expected_types)
 
 
-async def test_delete_connection(
-    client: OmnidapterApi, async_client: AsyncOmnidapterApi
-) -> None:
+async def test_delete_connection(client: OmnidapterApi, async_client: AsyncOmnidapterApi) -> None:
     # Type ignore to avoid mypy complaining about the function not being meant to return a value
     assert (
         client.connections.delete_connection(connection_id="connection_id")  # type: ignore[func-returns-value]

@@ -77,9 +77,7 @@ def _retry_timeout(response: httpx.Response, retries: int) -> float:
         return retry_after
 
     # Apply exponential backoff, capped at MAX_RETRY_DELAY_SECONDS.
-    retry_delay = min(
-        INITIAL_RETRY_DELAY_SECONDS * pow(2.0, retries), MAX_RETRY_DELAY_SECONDS
-    )
+    retry_delay = min(INITIAL_RETRY_DELAY_SECONDS * pow(2.0, retries), MAX_RETRY_DELAY_SECONDS)
 
     # Add a randomness / jitter to the retry delay to avoid overwhelming the server with retries.
     timeout = retry_delay * (1 - 0.25 * random())
@@ -111,8 +109,7 @@ def maybe_filter_request_body(
 ) -> typing.Optional[typing.Any]:
     if data is None:
         return (
-            jsonable_encoder(request_options.get("additional_body_parameters", {}))
-            or {}
+            jsonable_encoder(request_options.get("additional_body_parameters", {})) or {}
             if request_options is not None
             else None
         )
@@ -122,8 +119,7 @@ def maybe_filter_request_body(
         data_content = {
             **(jsonable_encoder(remove_omit_from_dict(data, omit))),  # type: ignore
             **(
-                jsonable_encoder(request_options.get("additional_body_parameters", {}))
-                or {}
+                jsonable_encoder(request_options.get("additional_body_parameters", {})) or {}
                 if request_options is not None
                 else {}
             ),
@@ -148,9 +144,7 @@ def get_request_body(
         json_body = maybe_filter_request_body(json, request_options, omit)
 
     # If you have an empty JSON body, you should just send None
-    return (
-        json_body if json_body != {} else None
-    ), data_body if data_body != {} else None
+    return (json_body if json_body != {} else None), data_body if data_body != {} else None
 
 
 class HttpClient:
@@ -201,8 +195,7 @@ class HttpClient:
         base_url = self.get_base_url(base_url)
         timeout = (
             request_options.get("timeout_in_seconds")
-            if request_options is not None
-            and request_options.get("timeout_in_seconds") is not None
+            if request_options is not None and request_options.get("timeout_in_seconds") is not None
             else self.base_timeout()
         )
 
@@ -233,10 +226,7 @@ class HttpClient:
                             {
                                 **(params if params is not None else {}),
                                 **(
-                                    request_options.get(
-                                        "additional_query_parameters", {}
-                                    )
-                                    or {}
+                                    request_options.get("additional_query_parameters", {}) or {}
                                     if request_options is not None
                                     else {}
                                 ),
@@ -305,8 +295,7 @@ class HttpClient:
         base_url = self.get_base_url(base_url)
         timeout = (
             request_options.get("timeout_in_seconds")
-            if request_options is not None
-            and request_options.get("timeout_in_seconds") is not None
+            if request_options is not None and request_options.get("timeout_in_seconds") is not None
             else self.base_timeout()
         )
 
@@ -337,9 +326,7 @@ class HttpClient:
                             {
                                 **(params if params is not None else {}),
                                 **(
-                                    request_options.get(
-                                        "additional_query_parameters", {}
-                                    )
+                                    request_options.get("additional_query_parameters", {})
                                     if request_options is not None
                                     else {}
                                 ),
@@ -412,8 +399,7 @@ class AsyncHttpClient:
         base_url = self.get_base_url(base_url)
         timeout = (
             request_options.get("timeout_in_seconds")
-            if request_options is not None
-            and request_options.get("timeout_in_seconds") is not None
+            if request_options is not None and request_options.get("timeout_in_seconds") is not None
             else self.base_timeout()
         )
 
@@ -445,10 +431,7 @@ class AsyncHttpClient:
                             {
                                 **(params if params is not None else {}),
                                 **(
-                                    request_options.get(
-                                        "additional_query_parameters", {}
-                                    )
-                                    or {}
+                                    request_options.get("additional_query_parameters", {}) or {}
                                     if request_options is not None
                                     else {}
                                 ),
@@ -516,8 +499,7 @@ class AsyncHttpClient:
         base_url = self.get_base_url(base_url)
         timeout = (
             request_options.get("timeout_in_seconds")
-            if request_options is not None
-            and request_options.get("timeout_in_seconds") is not None
+            if request_options is not None and request_options.get("timeout_in_seconds") is not None
             else self.base_timeout()
         )
 
@@ -548,9 +530,7 @@ class AsyncHttpClient:
                             {
                                 **(params if params is not None else {}),
                                 **(
-                                    request_options.get(
-                                        "additional_query_parameters", {}
-                                    )
+                                    request_options.get("additional_query_parameters", {})
                                     if request_options is not None
                                     else {}
                                 ),
