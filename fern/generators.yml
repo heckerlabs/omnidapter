@@ -1,0 +1,25 @@
+api:
+  specs:
+    - openapi: openapi/openapi.json
+      overrides: openapi/overrides.yml
+
+default-group: sdk
+
+groups:
+  sdk:
+    generators:
+      - name: fernapi/fern-typescript-node-sdk
+        version: 1.18.0
+        output:
+          location: local-file-system
+          path: ../client/packages/sdk
+        config:
+          packageName: "@omnidapter/sdk"
+      - name: fernapi/fern-python-sdk
+        version: 4.4.0
+        output:
+          location: local-file-system
+          path: ../omnidapter-sdk
+        config:
+          package_name: omnidapter_sdk
+          project_name: omnidapter-sdk
