@@ -27,7 +27,7 @@ export class OmnidapterApiClient {
     protected _auth: AuthClient | undefined;
     protected _dashboard: DashboardClient | undefined;
     protected _connections: ConnectionsClient | undefined;
-    protected _calendar: CalendarClient | undefined;
+    protected _calendars: CalendarClient | undefined;
     protected _providerConfigs: ProviderConfigsClient | undefined;
     protected _providers: ProvidersClient | undefined;
     protected _linkTokens: LinkTokensClient | undefined;
@@ -50,8 +50,8 @@ export class OmnidapterApiClient {
         return (this._connections ??= new ConnectionsClient(this._options));
     }
 
-    public get calendar(): CalendarClient {
-        return (this._calendar ??= new CalendarClient(this._options));
+    public get calendars(): CalendarClient {
+        return (this._calendars ??= new CalendarClient(this._options));
     }
 
     public get providerConfigs(): ProviderConfigsClient {
