@@ -21,11 +21,13 @@ from omnidapter_server.dependencies import (
 from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.provider_registry import build_provider_registry
+from omnidapter_server.schemas.common import ApiResponse, ListResponse
 from omnidapter_server.schemas.connection import (
     ConnectionResponse,
     CreateConnectionRequest,
     CreateConnectionResponse,
     ReauthorizeConnectionRequest,
+    ReauthorizeConnectionResponse,
 )
 from omnidapter_server.services.connection_flows import (
     create_connection_flow,
@@ -109,7 +111,7 @@ async def get_connection(
     )
 
 
-@router.post("", status_code=201, operation_id="create_connection")
+@router.post("", status_code=201, operation_id="create_connection", response_model=ApiResponse[CreateConnectionResponse])
 async def create_connection(
     body: CreateConnectionRequest,
     request: Request,
@@ -143,7 +145,7 @@ async def create_connection(
     }
 
 
-@router.get("", operation_id="list_connections")
+@router.get("", operation_id="list_connections", response_model=ListResponse[ConnectionResponse])
 async def list_connections(
     auth: Annotated[AuthContext, Depends(get_auth_context)],
     session: AsyncSession = Depends(get_session),
@@ -177,7 +179,7 @@ async def list_connections(
     }
 
 
-@router.get("/{connection_id}", operation_id="get_connection")
+@router.get("/{connection_id}", operation_id="get_connection", response_model=ApiResponse[ConnectionResponse])
 async def get_connection_endpoint(
     connection_id: str,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -201,7 +203,7 @@ async def delete_connection(
     await transition_to_revoked(conn.id, session, reason="Deleted by API")
 
 
-@router.post("/{connection_id}/reauthorize", status_code=200, operation_id="reauthorize_connection")
+@router.post("/{connection_id}/reauthorize", status_code=200, operation_id="reauthorize_connection", response_model=ApiResponse[ReauthorizeConnectionResponse])
 async def reauthorize_connection(
     connection_id: str,
     body: ReauthorizeConnectionRequest,

@@ -9,6 +9,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from omnidapter import (
+    AvailabilityResponse,
+    Calendar,
+    CalendarEvent,
     CreateCalendarRequest,
     CreateEventRequest,
     GetAvailabilityRequest,
@@ -31,6 +34,7 @@ from omnidapter_server.encryption import EncryptionService
 from omnidapter_server.errors import check_connection_status
 from omnidapter_server.models.connection import Connection
 from omnidapter_server.provider_registry import build_provider_registry
+from omnidapter_server.schemas.common import ApiResponse, EventListResponse
 from omnidapter_server.services.calendar_flows import (
     execute_calendar_operation,
     get_connection_ready_or_404,
@@ -91,7 +95,7 @@ def _respond(data: object, request_id: str):
     return _wrap(data, request_id)
 
 
-@router.get("/connections/{connection_id}/calendars", operation_id="list_calendars")
+@router.get("/connections/{connection_id}/calendars", operation_id="list_calendars", response_model=ApiResponse[list[Calendar]])
 async def list_calendars(
     connection_id: str,
     request: Request,
@@ -113,7 +117,7 @@ async def list_calendars(
     return _respond(result, request_id)
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}", operation_id="get_calendar")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}", operation_id="get_calendar", response_model=ApiResponse[Calendar])
 async def get_calendar(
     connection_id: str,
     calendar_id: str,
@@ -136,7 +140,7 @@ async def get_calendar(
     return _respond(result, request_id)
 
 
-@router.post("/connections/{connection_id}/calendars", status_code=201, operation_id="create_calendar")
+@router.post("/connections/{connection_id}/calendars", status_code=201, operation_id="create_calendar", response_model=ApiResponse[Calendar])
 async def create_calendar(
     connection_id: str,
     body: CreateCalendarRequest,
@@ -159,7 +163,7 @@ async def create_calendar(
     return _respond(result, request_id)
 
 
-@router.patch("/connections/{connection_id}/calendars/{calendar_id}", operation_id="update_calendar")
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}", operation_id="update_calendar", response_model=ApiResponse[Calendar])
 async def update_calendar(
     connection_id: str,
     calendar_id: str,
@@ -206,7 +210,7 @@ async def delete_calendar(
     )
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/events", operation_id="list_events")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events", operation_id="list_events", response_model=EventListResponse[CalendarEvent])
 async def list_events(
     connection_id: str,
     calendar_id: str,
@@ -282,7 +286,7 @@ async def list_events(
     }
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="get_event")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="get_event", response_model=ApiResponse[CalendarEvent])
 async def get_event(
     connection_id: str,
     calendar_id: str,
@@ -306,7 +310,7 @@ async def get_event(
     return _respond(result, request_id)
 
 
-@router.post("/connections/{connection_id}/calendars/{calendar_id}/events", status_code=201, operation_id="create_event")
+@router.post("/connections/{connection_id}/calendars/{calendar_id}/events", status_code=201, operation_id="create_event", response_model=ApiResponse[CalendarEvent])
 async def create_event(
     connection_id: str,
     calendar_id: str,
@@ -332,7 +336,7 @@ async def create_event(
     return _respond(result, request_id)
 
 
-@router.patch("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="update_event")
+@router.patch("/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}", operation_id="update_event", response_model=ApiResponse[CalendarEvent])
 async def update_event(
     connection_id: str,
     calendar_id: str,
@@ -385,7 +389,7 @@ async def delete_event(
     )
 
 
-@router.get("/connections/{connection_id}/calendars/{calendar_id}/availability", operation_id="get_availability")
+@router.get("/connections/{connection_id}/calendars/{calendar_id}/availability", operation_id="get_availability", response_model=ApiResponse[AvailabilityResponse])
 async def get_availability(
     connection_id: str,
     calendar_id: str,
