@@ -1,5 +1,5 @@
 {
-  "name": "@heckerlabs/omnidapter-connect-demo",
+  "name": "@omnidapter/connect-demo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
