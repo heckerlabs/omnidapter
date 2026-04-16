@@ -51,3 +51,9 @@ class CreateConnectionResponse(BaseModel):
     connection_id: str
     status: str
     authorization_url: str
+
+
+class ReauthorizeConnectionResponse(BaseModel):
+    connection_id: str
+    status: str
+    authorization_url: str
