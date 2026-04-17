@@ -6,15 +6,18 @@ set -euo pipefail
 SPEC="$(pwd)/openapi/openapi.json"
 PY_OUT="$(pwd)/omnidapter-sdk/omnidapter_sdk"
 TS_OUT="$(pwd)/client/packages/sdk/src"
-IMAGE="openapitools/openapi-generator-cli:latest"
+IMAGE="openapitools/openapi-generator-cli:v7.11.0"
+USER_ARG="--user $(id -u):$(id -g)"
+PY_TMP="$(mktemp -d)"
+TS_TMP="$(mktemp -d)"
 
 echo "→ Exporting OpenAPI spec from omnidapter-server..."
 uv run python scripts/export_openapi.py
 
 echo "→ Generating Python SDK..."
-docker run --rm \
+docker run --rm $USER_ARG \
   -v "$SPEC":/spec.json:ro \
-  -v /tmp/oag-python:/out \
+  -v "$PY_TMP":/out \
   "$IMAGE" generate \
   -i /spec.json \
   -g python \
@@ -23,13 +26,13 @@ docker run --rm \
   --additional-properties=packageName=omnidapter_sdk,projectName=omnidapter-sdk,library=urllib3
 
 # Sync generated source into place, preserving handwritten client.py.
-rsync -a --delete --exclude=client.py /tmp/oag-python/omnidapter_sdk/ "$PY_OUT/"
-sudo rm -rf /tmp/oag-python
+rsync -a --delete --exclude=client.py "$PY_TMP/omnidapter_sdk/" "$PY_OUT/"
+rm -rf "$PY_TMP"
 
 echo "→ Generating TypeScript SDK..."
-docker run --rm \
+docker run --rm $USER_ARG \
   -v "$SPEC":/spec.json:ro \
-  -v /tmp/oag-typescript:/out \
+  -v "$TS_TMP":/out \
   "$IMAGE" generate \
   -i /spec.json \
   -g typescript-fetch \
@@ -37,10 +40,10 @@ docker run --rm \
   --skip-validate-spec \
   --additional-properties=npmName=@omnidapter/sdk,supportsES6=true,withSeparateModelsAndApi=true,apiPackage=apis,modelPackage=models
 
-# Sync generated source into place, preserving handwritten OmnidapterClient.ts.
+# Sync generated source into place, preserving handwritten files.
 mkdir -p "$TS_OUT"
-rsync -a --delete --exclude=OmnidapterClient.ts /tmp/oag-typescript/src/ "$TS_OUT/"
-sudo rm -rf /tmp/oag-typescript
+rsync -a --delete --exclude=OmnidapterClient.ts --exclude=index.ts "$TS_TMP/src/" "$TS_OUT/"
+rm -rf "$TS_TMP"
 
 echo "✓ SDKs generated."
 echo "  Python: $PY_OUT"

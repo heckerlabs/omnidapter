@@ -26,3 +26,4 @@ omnidapter-sdk/omnidapter_sdk/*
 !omnidapter-sdk/omnidapter_sdk/client.py
 client/packages/sdk/src/*
 !client/packages/sdk/src/OmnidapterClient.ts
+!client/packages/sdk/src/index.ts

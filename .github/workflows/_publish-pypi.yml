@@ -41,7 +41,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           PACKAGE_NAME: ${{ inputs.package_name }}
         run: |
-          EXISTING=$(pip index versions "$PACKAGE_NAME" 2>/dev/null | grep -o "$VERSION" || echo "")
+          EXISTING=$(uv pip index versions "$PACKAGE_NAME" 2>/dev/null | grep -o "$VERSION" || echo "")
           if [[ -n "$EXISTING" ]]; then
             echo "❌ $PACKAGE_NAME==$VERSION already published to PyPI"
             exit 1

@@ -10,8 +10,8 @@
 Add two SDK packages to Omnidapter and improve the existing connect package:
 
 - **`@omnidapter/connect`** — rename of `connect-sdk`; adds a React hook entry point
-- **`@omnidapter/sdk`** — Fern-generated TypeScript client for the hosted API
-- **`omnidapter-sdk`** — Fern-generated Python client for the hosted API
+- **`@omnidapter/sdk`** — OpenAPI Generator TypeScript client for the server API
+- **`omnidapter-sdk`** — OpenAPI Generator Python client for the server API
 
 All three are published as part of the release workflow. `omnidapter-hosted` is not released publicly — it is a private SaaS component that will eventually live in its own separate repository.
 
@@ -22,16 +22,15 @@ All three are published as part of the release workflow. `omnidapter-hosted` is 
 ```
 client/packages/
   connect/          ← renamed from connect-sdk
-  sdk/              ← new, Fern-generated TypeScript
+  sdk/              ← new, OpenAPI Generator TypeScript
 
-omnidapter-sdk/     ← new, Fern-generated Python (UV workspace package)
+omnidapter-sdk/     ← new, OpenAPI Generator Python (UV workspace package)
 
-fern/               ← Fern config at repo root
-  fern.config.json
-  openapi/
-    openapi.json    ← checked-in, updated on each release
-    overrides.yml   ← operation name / grouping cleanup
-  generators.yml    ← Python + TypeScript generator config
+openapi/
+  openapi.json      ← checked-in, regenerated on each release
+scripts/
+  generate_sdks.sh  ← exports spec + runs OpenAPI Generator via Docker
+  export_openapi.py ← exports filtered FastAPI spec to openapi/openapi.json
 ```
 
 NPM org: `@heckerlabs` → `@omnidapter`. Requires `@omnidapter` org on npm.  
@@ -77,40 +76,27 @@ Behavior:
 
 ---
 
-## 3. `@omnidapter/sdk` + `omnidapter-sdk` (Fern-generated)
+## 3. `@omnidapter/sdk` + `omnidapter-sdk` (OpenAPI Generator)
 
 ### Source of truth
 
-The hosted FastAPI app auto-generates an OpenAPI spec. A checked-in copy lives at `fern/openapi/openapi.json`. It is updated manually whenever the hosted API changes — it is not tied to the SDK release trigger, since hosted is deployed independently.
+`omnidapter-server` FastAPI routes include explicit `operation_id` and `response_model` on every endpoint. `scripts/export_openapi.py` exports a filtered spec to `openapi/openapi.json` (excluding `/connect/`, `/oauth/`, `/health`). `scripts/generate_sdks.sh` runs OpenAPI Generator via Docker to produce both SDKs.
 
-### Naming overrides
+### Method naming
 
-`fern/openapi/overrides.yml` maps FastAPI's auto-generated operation IDs to clean, resource-grouped method names:
-
-```
-client.connections.list()
-client.connections.get(connection_id)
-client.connections.delete(connection_id)
-client.events.list(connection_id)
-client.link_tokens.create()
-client.api_keys.list()
-client.api_keys.create()
-client.api_keys.delete(key_id)
-# ...all hosted routes
-```
+Clean method names come from explicit `operation_id` on every FastAPI route (e.g. `list_connections`, `create_link_token`). No overrides file needed.
 
 ### Generated output
 
 | Language   | Output path          | Published as       |
 |------------|----------------------|--------------------|
-| TypeScript | `client/packages/sdk/` | `@omnidapter/sdk` on npm |
-| Python     | `omnidapter-sdk/`    | `omnidapter-sdk` on PyPI |
+| TypeScript | `client/packages/sdk/src/` | `@omnidapter/sdk` on npm |
+| Python     | `omnidapter-sdk/omnidapter_sdk/` | `omnidapter-sdk` on PyPI |
 
 Both SDKs include:
-- Auth (API key header) wired up by Fern
-- Typed request/response models
-- Typed error types
-- No handwritten transport code
+- Auth (Bearer token) wired up via handwritten `OmnidapterClient` wrapper
+- Typed request/response models (from FastAPI `response_model` schemas)
+- Generated API classes grouped by resource
 
 ### Usage examples
 
@@ -144,7 +130,7 @@ The release PR (same trigger as today) includes:
    - `omnidapter-sdk` (Python)
    - `@omnidapter/connect` (npm)
    - `@omnidapter/sdk` (npm)
-2. Fern-generated SDK code committed into `client/packages/sdk/` and `omnidapter-sdk/`
+2. Regenerated `openapi/openapi.json` committed (source of truth for SDK generation)
 
 All generated diffs are reviewable in the PR before merge.
 
