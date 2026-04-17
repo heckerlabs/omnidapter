@@ -118,7 +118,8 @@ jobs:
             client/packages/connect/package.json \
             client/packages/sdk/package.json \
             client/packages/sdk/ \
-            omnidapter-sdk/omnidapter_sdk/
+            omnidapter-sdk/omnidapter_sdk/ \
+            openapi/openapi.json
           git commit -m "Release v$VERSION"
           git push origin "$BRANCH"
 

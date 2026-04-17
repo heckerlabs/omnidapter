@@ -29,6 +29,7 @@ def main() -> None:
         if not any(path.startswith(p) for p in EXCLUDED_PREFIXES)
     }
 
+    OUTFILE.parent.mkdir(parents=True, exist_ok=True)
     OUTFILE.write_text(json.dumps(spec, indent=2) + "\n")
     print(f"✓ Exported OpenAPI spec to {OUTFILE}")
 
