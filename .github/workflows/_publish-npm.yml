@@ -60,6 +60,19 @@ jobs:
           fi
           echo "✓ $WORKSPACE@$VERSION not yet published"
 
+      - name: Verify package.json version matches input
+        env:
+          VERSION: ${{ inputs.version }}
+          WORKSPACE: ${{ inputs.workspace }}
+        run: |
+          PKG_VER=$(npm pkg get version -w "$WORKSPACE" --json | jq -r 'to_entries[0].value')
+          if [[ "$PKG_VER" != "$VERSION" ]]; then
+            echo "❌ package.json version ($PKG_VER) does not match input version ($VERSION)"
+            exit 1
+          fi
+          echo "✓ package.json version matches: $VERSION"
+        working-directory: client
+
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

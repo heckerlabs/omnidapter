@@ -18,11 +18,12 @@ os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://placehold
 
 import pytest
 import uvicorn
+from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_server.config import Settings
+from omnidapter_server.database import Base
+
 # Import create_app first so that all models register with Base.metadata.
 from omnidapter_server.main import create_app
-from omnidapter_server.database import Base
-from omnidapter_sdk.client import OmnidapterClient
 from sqlalchemy.ext.asyncio import create_async_engine
 from testcontainers.postgres import PostgresContainer
 
@@ -56,6 +57,7 @@ def server_url() -> Generator[str, None, None]:
         # Reset all global singletons so they pick up the new DB URL from env vars.
         import omnidapter_server.config as _config_module
         import omnidapter_server.database as _db_module
+
         _config_module._settings = None
         _db_module._engine = None
         _db_module._session_factory = None
@@ -83,6 +85,7 @@ def server_url() -> Generator[str, None, None]:
         while time.monotonic() < deadline:
             try:
                 import urllib.request
+
                 urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=1)
                 break
             except Exception:

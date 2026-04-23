@@ -28,15 +28,12 @@ def test_create_link_token_with_options(sdk_client: OmnidapterClient):
 
 def test_create_link_token_with_unknown_connection_raises_404(sdk_client: OmnidapterClient):
     with pytest.raises(ApiException) as exc_info:
-        sdk_client.link_tokens.create_link_token(
-            CreateLinkTokenRequest(connection_id=NIL_UUID)
-        )
+        sdk_client.link_tokens.create_link_token(CreateLinkTokenRequest(connection_id=NIL_UUID))
     assert exc_info.value.status == 404
 
 
 def test_create_link_token_ttl_too_short_rejected(sdk_client: OmnidapterClient):
     from pydantic import ValidationError
+
     with pytest.raises((ApiException, ValidationError)):
-        sdk_client.link_tokens.create_link_token(
-            CreateLinkTokenRequest(ttl_seconds=10)
-        )
+        sdk_client.link_tokens.create_link_token(CreateLinkTokenRequest(ttl_seconds=10))
