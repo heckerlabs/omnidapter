@@ -14,6 +14,8 @@ from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.database import get_session
 from omnidapter_server.dependencies import AuthContext, get_auth_context, get_request_id
 from omnidapter_server.models.connection import Connection
+from omnidapter_server.schemas.common import ApiResponse
+from omnidapter_server.schemas.link_token import LinkTokenData
 from omnidapter_server.services.link_tokens import create_link_token
 
 router = APIRouter(prefix="/link-tokens", tags=["link-tokens"])
@@ -44,7 +46,9 @@ async def _resolve_reconnect_provider(
     return conn.provider_key
 
 
-@router.post("", status_code=201)
+@router.post(
+    "", status_code=201, operation_id="create_link_token", response_model=ApiResponse[LinkTokenData]
+)
 async def create_link_token_endpoint(
     body: CreateLinkTokenRequest,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -87,7 +91,7 @@ async def create_link_token_endpoint(
     return {
         "data": {
             "token": raw_token,
-            "expires_at": link_token.expires_at.isoformat(),
+            "expires_at": link_token.expires_at,
             "connect_url": f"{settings.omnidapter_base_url}?token={raw_token}",
         },
         "meta": {"request_id": request_id},

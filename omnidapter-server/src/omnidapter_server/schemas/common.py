@@ -16,12 +16,23 @@ class PaginationMeta(BaseModel):
     has_more: bool
 
 
+class EventPaginationMeta(BaseModel):
+    limit: int
+    offset: int
+    count: int
+    has_more: bool
+
+
 class RequestMeta(BaseModel):
     request_id: str
 
 
 class ListMeta(RequestMeta):
     pagination: PaginationMeta
+
+
+class EventListMeta(RequestMeta):
+    pagination: EventPaginationMeta
 
 
 class ApiResponse(BaseModel, Generic[T]):
@@ -32,6 +43,11 @@ class ApiResponse(BaseModel, Generic[T]):
 class ListResponse(BaseModel, Generic[T]):
     data: list[T]
     meta: ListMeta
+
+
+class EventListResponse(BaseModel, Generic[T]):
+    data: list[T]
+    meta: EventListMeta
 
 
 class ErrorDetail(BaseModel):

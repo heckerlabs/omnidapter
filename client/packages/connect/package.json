@@ -1,0 +1,48 @@
+{
+  "name": "@omnidapter/connect",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Omnidapter Connect — embed a calendar authorization flow in your app",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "types": "./dist/react.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^18.3.1",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1",
+    "vitest": "^2.0.0"
+  },
+  "keywords": [
+    "omnidapter",
+    "connect",
+    "calendar",
+    "oauth"
+  ],
+  "license": "MIT"
+}

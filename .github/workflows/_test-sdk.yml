@@ -1,0 +1,22 @@
+name: Test SDK
+
+on:
+  workflow_call:
+
+jobs:
+  test-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate SDKs
+        run: bash scripts/generate_sdks.sh
+
+      - name: Run SDK integration tests
+        run: uv run pytest omnidapter-sdk/tests/ -v --tb=short

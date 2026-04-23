@@ -6,6 +6,7 @@ dependencies = [
     "omnidapter",
     "omnidapter-server",
     "omnidapter-hosted",
+    "omnidapter-sdk",
 ]
 
 [tool.uv.workspace]
@@ -15,6 +16,7 @@ members = ["omnidapter-*"]
 omnidapter = { workspace = true }
 omnidapter-server = { workspace = true }
 omnidapter-hosted = { workspace = true }
+omnidapter-sdk = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -87,13 +89,13 @@ filterwarnings = [
     # testcontainers uses @wait_container_is_ready internally — their issue, not ours
     "ignore::DeprecationWarning:testcontainers",
 ]
-testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests"]
+testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests", "omnidapter-sdk/tests"]
 markers = ["integration: integration tests requiring Docker or real providers"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-exclude = ["**/alembic/versions/*.py"]
+exclude = ["**/alembic/versions/*.py", "omnidapter-sdk/omnidapter_sdk/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -104,8 +106,10 @@ ignore = ["E501", "B008"]
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-extraPaths = [
+pythonVersion = "3.12"
+include = [
     "omnidapter-server/src",
     "omnidapter-hosted/src",
-    "omnidapter-core/src"
+    "omnidapter-core/src",
 ]
+exclude = ["omnidapter-sdk"]

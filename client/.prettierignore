@@ -3,3 +3,5 @@ node_modules
 coverage
 package-lock.json
 *.md
+# Fern-generated SDK — do not reformat
+packages/sdk

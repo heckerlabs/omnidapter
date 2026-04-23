@@ -11,41 +11,95 @@ concurrency:
 
 permissions:
   packages: write
-  id-token: write
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+    steps:
+      - id: check
+        env:
+          IS_MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          IS_INTERNAL: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
+        run: |
+          if [[ "$IS_MERGED" == "true" && "$IS_INTERNAL" == "true" && "$HEAD_REF" =~ ^release/ && "$HAS_LABEL" == "true" ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "✓ Release PR detected: $HEAD_REF"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "Not a release PR — skipping publish."
+          fi
+
   parse:
-    if: |
-      github.event.pull_request.merged &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.event.pull_request.head.ref, 'release/') &&
-      contains(github.event.pull_request.labels.*.name, 'release')
+    needs: check
+    if: needs.check.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.parse.outputs.version }}
     steps:
-      - name: Parse version from PR title
+      - name: Parse version from branch name
         id: parse
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          if [[ $TITLE =~ Release\ v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+          if [[ $BRANCH =~ ^release/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "✓ Releasing v$VERSION"
           else
-            echo "❌ Could not parse version from PR title: $TITLE"
+            echo "❌ Could not parse version from branch: $BRANCH"
             exit 1
           fi
 
-  publish:
+  publish-docker:
     needs: parse
     uses: ./.github/workflows/_publish-docker.yml
     with:
       version: ${{ needs.parse.outputs.version }}
+      environment: core
+
+  publish-omnidapter-core:
+    needs: parse
+    uses: ./.github/workflows/_publish-pypi.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
+      package_dir: omnidapter-core
+      package_name: omnidapter
+      environment: core
+
+  publish-omnidapter-sdk:
+    needs: parse
+    uses: ./.github/workflows/_publish-pypi.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
+      package_dir: omnidapter-sdk
+      package_name: omnidapter-sdk
+      generate_sdk: true
+      environment: sdk
+
+  publish-connect:
+    needs: parse
+    uses: ./.github/workflows/_publish-npm.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
+      workspace: "@omnidapter/connect"
+      environment: core
+
+  publish-sdk:
+    needs: parse
+    uses: ./.github/workflows/_publish-npm.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
+      workspace: "@omnidapter/sdk"
+      generate_sdk: true
+      environment: sdk
 
   tag:
-    needs: [parse, publish]
+    needs: [parse, publish-docker, publish-omnidapter-core, publish-omnidapter-sdk, publish-connect, publish-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -57,8 +111,21 @@ jobs:
       - name: Create git tag and GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.parse.outputs.version }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_NOTES: |
+            ## Packages
+
+            **Docker:** `ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ needs.parse.outputs.version }}`
+
+            **PyPI:**
+            - `pip install omnidapter==${{ needs.parse.outputs.version }}`
+            - `pip install omnidapter-sdk==${{ needs.parse.outputs.version }}`
+
+            **npm:**
+            - `npm install @omnidapter/connect@${{ needs.parse.outputs.version }}`
+            - `npm install @omnidapter/sdk@${{ needs.parse.outputs.version }}`
         run: |
-          VERSION="${{ needs.parse.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "v$VERSION" -m "Release v$VERSION"
@@ -66,7 +133,7 @@ jobs:
 
           gh release create "v$VERSION" \
             --title "v$VERSION" \
-            --notes "Docker image: \`ghcr.io/${{ github.repository_owner }}/omnidapter-server:$VERSION\`" \
-            --target ${{ github.event.pull_request.merge_commit_sha }}
+            --notes "$RELEASE_NOTES" \
+            --target "$MERGE_SHA"
 
           echo "✓ Released v$VERSION"
