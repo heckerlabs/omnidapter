@@ -6,12 +6,12 @@ WORKDIR /build
 COPY client/package.json client/package-lock.json client/tsconfig.base.json ./
 COPY client/apps/connect-ui/package.json apps/connect-ui/package.json
 COPY client/apps/connect-demo/package.json apps/connect-demo/package.json
-COPY client/packages/connect-sdk/package.json packages/connect-sdk/package.json
+COPY client/packages/connect/package.json packages/connect/package.json
 
-RUN npm ci --workspace=@heckerlabs/omnidapter-connect-ui
+RUN npm ci --workspace=@omnidapter/connect-ui
 
 COPY client/apps/connect-ui/ apps/connect-ui/
-RUN npm run build -w @heckerlabs/omnidapter-connect-ui
+RUN npm run build -w @omnidapter/connect-ui
 
 # Stage 2: Server
 FROM python:3.12-slim
