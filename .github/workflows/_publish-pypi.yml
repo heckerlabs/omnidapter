@@ -7,10 +7,6 @@ on:
         required: true
         type: string
         description: Package version to publish
-      package_dir:
-        required: true
-        type: string
-        description: Directory containing pyproject.toml (e.g. omnidapter-sdk)
       package_name:
         required: true
         type: string
@@ -54,9 +50,9 @@ jobs:
           echo "✓ $PACKAGE_NAME==$VERSION not yet published"
 
       - name: Build package
-        run: uv build
-        working-directory: ${{ inputs.package_dir }}
+        env:
+          PACKAGE_NAME: ${{ inputs.package_name }}
+        run: uv build --package "$PACKAGE_NAME"
 
       - name: Publish to PyPI
         run: uv publish
-        working-directory: ${{ inputs.package_dir }}
