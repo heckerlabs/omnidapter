@@ -1,6 +1,6 @@
 # @omnidapter/sdk
 
-TypeScript client for the [Omnidapter](https://omnidapter.com) API.
+TypeScript client for the [Omnidapter](https://omnidapter.heckerlabs.ai) API.
 
 Omnidapter lets you connect to your users' calendars (and other services) through a single unified API. You create a link token, send the user through the Connect UI to authorise their account, and then read their data using the connection that comes back.
 
