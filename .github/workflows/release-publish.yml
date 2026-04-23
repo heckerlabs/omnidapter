@@ -80,7 +80,6 @@ jobs:
     uses: ./.github/workflows/_publish-pypi.yml
     with:
       version: ${{ needs.parse.outputs.version }}
-      package_dir: omnidapter-core
       package_name: omnidapter
       environment: core
 
@@ -89,7 +88,6 @@ jobs:
     uses: ./.github/workflows/_publish-pypi.yml
     with:
       version: ${{ needs.parse.outputs.version }}
-      package_dir: omnidapter-sdk
       package_name: omnidapter-sdk
       generate_sdk: true
       environment: sdk
