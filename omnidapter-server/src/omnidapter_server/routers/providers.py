@@ -35,7 +35,9 @@ async def list_providers(
     return {"data": providers, "meta": {"request_id": request_id}}
 
 
-@router.get("/{provider_key}", operation_id="get_provider", response_model=ApiResponse[ProviderMetadata])
+@router.get(
+    "/{provider_key}", operation_id="get_provider", response_model=ApiResponse[ProviderMetadata]
+)
 async def get_provider(
     provider_key: str,
     request: Request,

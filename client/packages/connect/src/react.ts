@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { OmnidapterConnect } from "./index";
 import type { OmnidapterConnectOptions, OpenOptions } from "./index";
 
+/**
+ * React hook for Omnidapter Connect.
+ * Note: `options` (including `baseUrl`) are read only on mount and not updated if the prop changes.
+ */
 export function useOmnidapterConnect(options?: OmnidapterConnectOptions): {
     open: (options: OpenOptions) => void;
     close: () => void;

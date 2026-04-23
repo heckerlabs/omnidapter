@@ -4,8 +4,8 @@ import pytest
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
 from omnidapter_sdk.models import CreateCalendarRequest, CreateEventRequest
-from omnidapter_sdk.models.start import Start
 from omnidapter_sdk.models.end import End
+from omnidapter_sdk.models.start import Start
 
 FAKE_CONNECTION = "00000000-0000-0000-0000-000000000000"
 FAKE_CALENDAR = "cal_fake"
@@ -48,6 +48,7 @@ def test_get_event_unknown_connection_raises_404(sdk_client: OmnidapterClient):
 def test_create_event_unknown_connection_raises_404(sdk_client: OmnidapterClient):
     with pytest.raises(ApiException) as exc_info:
         from datetime import datetime, timezone
+
         sdk_client.calendar.create_event(
             FAKE_CONNECTION,
             FAKE_CALENDAR,
