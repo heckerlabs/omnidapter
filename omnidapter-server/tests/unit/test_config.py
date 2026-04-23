@@ -78,7 +78,7 @@ def test_settings_warn_local_without_encryption_key(caplog: pytest.LogCaptureFix
         settings = Settings(omnidapter_env="LOCAL", omnidapter_encryption_key="")
 
     assert settings.omnidapter_env == "LOCAL"
-    assert "SECURITY WARNING" in caplog.text
+    assert "OMNIDAPTER_ENCRYPTION_KEY" in caplog.text
     assert "plaintext" in caplog.text.lower()
 
     config_module._warned_local_plaintext_mode = False
