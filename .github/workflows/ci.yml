@@ -10,5 +10,5 @@ jobs:
     uses: ./.github/workflows/_test-python.yml
 
   test-sdk:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'push'
     uses: ./.github/workflows/_test-sdk.yml
