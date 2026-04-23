@@ -1125,7 +1125,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "omnidapter-server", marker = "extra == 'test'", editable = "omnidapter-server" },
-    { name = "pydantic", specifier = ">=1.9.2" },
+    { name = "pydantic", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'test'", specifier = ">=4.0" },
