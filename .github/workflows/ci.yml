@@ -1,0 +1,14 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-python:
+    uses: ./.github/workflows/_test-python.yml
+
+  test-sdk:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/_test-sdk.yml
