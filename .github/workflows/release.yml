@@ -76,7 +76,7 @@ jobs:
 
       - name: Bump Python package versions
         run: |
-          for FILE in omnidapter-server/pyproject.toml omnidapter-sdk/pyproject.toml; do
+          for FILE in omnidapter-core/pyproject.toml omnidapter-server/pyproject.toml omnidapter-sdk/pyproject.toml; do
             CURRENT=$(grep '^version = ' "$FILE" | sed 's/version = "\(.*\)"/\1/')
             if [[ "$CURRENT" == "$VERSION" ]]; then
               echo "❌ $FILE is already at v$VERSION"
@@ -108,6 +108,7 @@ jobs:
             Bump all packages to v${{ env.VERSION }} and regenerate SDKs.
 
             **Packages:**
+            - `omnidapter` → v${{ env.VERSION }} (PyPI)
             - `omnidapter-server` → v${{ env.VERSION }} (Docker/PyPI)
             - `omnidapter-sdk` → v${{ env.VERSION }} (PyPI)
             - `@omnidapter/connect` → v${{ env.VERSION }} (npm)
@@ -126,6 +127,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add \
+            omnidapter-core/pyproject.toml \
             omnidapter-server/pyproject.toml \
             omnidapter-sdk/pyproject.toml \
             client/packages/connect/package.json \
