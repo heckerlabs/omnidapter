@@ -12,6 +12,7 @@ concurrency:
 permissions:
   packages: write
   contents: write
+  id-token: write
 
 jobs:
   check:
@@ -27,10 +28,10 @@ jobs:
           HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
         run: |
           if [[ "$IS_MERGED" == "true" && "$IS_INTERNAL" == "true" && "$HEAD_REF" =~ ^release/ && "$HAS_LABEL" == "true" ]]; then
-            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
             echo "✓ Release PR detected: $HEAD_REF"
           else
-            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
             echo "Not a release PR — skipping publish."
           fi
 
@@ -48,7 +49,7 @@ jobs:
         run: |
           if [[ $BRANCH =~ ^release/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}"
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "✓ Releasing v$VERSION"
           else
             echo "❌ Could not parse version from branch: $BRANCH"
