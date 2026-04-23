@@ -12,7 +12,7 @@ from pathlib import Path
 
 os.environ.setdefault("OMNIDAPTER_ENV", "LOCAL")
 
-from omnidapter_server.main import create_app
+from omnidapter_server.main import create_app  # noqa: E402
 
 OUTFILE = Path(__file__).parent.parent / "openapi" / "openapi.json"
 
