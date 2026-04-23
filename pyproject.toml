@@ -89,7 +89,7 @@ filterwarnings = [
     # testcontainers uses @wait_container_is_ready internally — their issue, not ours
     "ignore::DeprecationWarning:testcontainers",
 ]
-testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests"]
+testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests", "omnidapter-sdk/tests"]
 markers = ["integration: integration tests requiring Docker or real providers"]
 
 [tool.ruff]
