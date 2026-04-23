@@ -106,9 +106,10 @@ ignore = ["E501", "B008"]
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-extraPaths = [
+pythonVersion = "3.12"
+include = [
     "omnidapter-server/src",
     "omnidapter-hosted/src",
-    "omnidapter-core/src"
+    "omnidapter-core/src",
 ]
 exclude = ["omnidapter-sdk"]

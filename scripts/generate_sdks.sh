@@ -42,7 +42,7 @@ docker run --rm $USER_ARG \
 
 # Sync generated source into place, preserving handwritten files.
 mkdir -p "$TS_OUT"
-rsync -a --delete --exclude=OmnidapterClient.ts --exclude=index.ts "$TS_TMP/src/" "$TS_OUT/"
+rsync -a --delete --exclude=/OmnidapterClient.ts --exclude=/index.ts "$TS_TMP/src/" "$TS_OUT/"
 rm -rf "$TS_TMP"
 
 echo "✓ SDKs generated."
