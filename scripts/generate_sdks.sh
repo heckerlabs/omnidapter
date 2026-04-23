@@ -26,7 +26,7 @@ docker run --rm $USER_ARG \
   --additional-properties=packageName=omnidapter_sdk,projectName=omnidapter-sdk,library=urllib3
 
 # Sync generated source into place, preserving handwritten client.py.
-rsync -a --delete --exclude=client.py "$PY_TMP/omnidapter_sdk/" "$PY_OUT/"
+rsync -a --delete --exclude=client.py --exclude=api_client.py "$PY_TMP/omnidapter_sdk/" "$PY_OUT/"
 rm -rf "$PY_TMP"
 
 echo "→ Generating TypeScript SDK..."
