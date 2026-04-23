@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "node -e \"const f=require('fs');if(f.existsSync('src/apis/index.ts')){require('child_process').execSync('tsc',{stdio:'inherit'})}else{console.log('Skipping @omnidapter/sdk build: run scripts/generate_sdks.sh first')}\""
   },
   "devDependencies": {
     "typescript": "^5.0.0"

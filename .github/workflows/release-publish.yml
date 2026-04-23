@@ -15,12 +15,29 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.check.outputs.is_release }}
+    steps:
+      - id: check
+        env:
+          IS_MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          IS_INTERNAL: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'release') }}
+        run: |
+          if [[ "$IS_MERGED" == "true" && "$IS_INTERNAL" == "true" && "$HEAD_REF" =~ ^release/ && "$HAS_LABEL" == "true" ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "✓ Release PR detected: $HEAD_REF"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "Not a release PR — skipping publish."
+          fi
+
   parse:
-    if: |
-      github.event.pull_request.merged &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.event.pull_request.head.ref, 'release/') &&
-      contains(github.event.pull_request.labels.*.name, 'release')
+    needs: check
+    if: needs.check.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.parse.outputs.version }}
