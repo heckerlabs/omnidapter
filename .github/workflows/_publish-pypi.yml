@@ -32,9 +32,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
-      - name: Generate SDKs
+      - name: Generate Python SDK
         if: inputs.generate_sdk
-        run: bash scripts/generate_sdks.sh
+        run: bash scripts/generate_sdks.sh python
 
       - name: Check version not already published
         env:
