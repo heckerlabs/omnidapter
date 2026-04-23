@@ -61,6 +61,14 @@ jobs:
     with:
       version: ${{ needs.parse.outputs.version }}
 
+  publish-omnidapter-core:
+    needs: parse
+    uses: ./.github/workflows/_publish-pypi.yml
+    with:
+      version: ${{ needs.parse.outputs.version }}
+      package_dir: omnidapter-core
+      package_name: omnidapter
+
   publish-omnidapter-sdk:
     needs: parse
     uses: ./.github/workflows/_publish-pypi.yml
@@ -86,7 +94,7 @@ jobs:
       generate_sdk: true
 
   tag:
-    needs: [parse, publish-docker, publish-omnidapter-sdk, publish-connect, publish-sdk]
+    needs: [parse, publish-docker, publish-omnidapter-core, publish-omnidapter-sdk, publish-connect, publish-sdk]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -106,6 +114,7 @@ jobs:
             **Docker:** `ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ needs.parse.outputs.version }}`
 
             **PyPI:**
+            - `pip install omnidapter==${{ needs.parse.outputs.version }}`
             - `pip install omnidapter-sdk==${{ needs.parse.outputs.version }}`
 
             **npm:**
