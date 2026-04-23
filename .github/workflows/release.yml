@@ -68,12 +68,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Export OpenAPI spec from server
-        run: uv run python scripts/export_openapi.py
-
-      - name: Regenerate SDKs from OpenAPI spec
-        run: bash scripts/generate_sdks.sh
-
       - name: Bump Python package versions
         run: |
           for FILE in omnidapter-core/pyproject.toml omnidapter-server/pyproject.toml omnidapter-sdk/pyproject.toml; do
@@ -100,6 +94,12 @@ jobs:
               fs.writeFileSync('$FILE', JSON.stringify(pkg, null, 2) + '\n');
             "
           done
+
+      - name: Export OpenAPI spec from server
+        run: uv run python scripts/export_openapi.py
+
+      - name: Regenerate SDKs from OpenAPI spec
+        run: bash scripts/generate_sdks.sh
 
       - name: Push branch and open PR
         env:
