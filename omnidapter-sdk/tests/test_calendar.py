@@ -2,12 +2,13 @@
 
 import pytest
 
-pytestmark = pytest.mark.integration
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
 from omnidapter_sdk.models import CreateCalendarRequest, CreateEventRequest
 from omnidapter_sdk.models.end import End
 from omnidapter_sdk.models.start import Start
+
+pytestmark = pytest.mark.integration
 
 FAKE_CONNECTION = "00000000-0000-0000-0000-000000000000"
 FAKE_CALENDAR = "cal_fake"

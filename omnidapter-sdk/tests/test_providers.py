@@ -2,9 +2,10 @@
 
 import pytest
 
-pytestmark = pytest.mark.integration
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
+
+pytestmark = pytest.mark.integration
 
 
 def test_list_providers_returns_envelope(sdk_client: OmnidapterClient):
