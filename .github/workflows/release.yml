@@ -123,19 +123,23 @@ jobs:
           git commit -m "Release v$VERSION"
           git push origin "$BRANCH"
 
+          {
+            echo "Bump all packages to v${VERSION} and regenerate SDKs."
+            echo ""
+            echo "**Packages:**"
+            echo "- \`omnidapter-server\` → v${VERSION} (Docker/PyPI)"
+            echo "- \`omnidapter-sdk\` → v${VERSION} (PyPI)"
+            echo "- \`@omnidapter/connect\` → v${VERSION} (npm)"
+            echo "- \`@omnidapter/sdk\` → v${VERSION} (npm)"
+            echo ""
+            echo "Merging this PR will trigger \`release-publish\` to publish all packages and create a GitHub release."
+          } > /tmp/pr_body.md
+
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "Release v$VERSION" \
-            --body "Bump all packages to v${VERSION} and regenerate SDKs.
-
-**Packages:**
-- \`omnidapter-server\` → v${VERSION} (Docker/PyPI)
-- \`omnidapter-sdk\` → v${VERSION} (PyPI)
-- \`@omnidapter/connect\` → v${VERSION} (npm)
-- \`@omnidapter/sdk\` → v${VERSION} (npm)
-
-Merging this PR will trigger \`release-publish\` to publish all packages and create a GitHub release." \
+            --body-file /tmp/pr_body.md \
             --label release
 
           echo "✓ Opened release PR for v$VERSION"

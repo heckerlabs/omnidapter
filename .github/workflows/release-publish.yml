@@ -114,18 +114,22 @@ jobs:
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
 
+          {
+            echo "## Packages"
+            echo ""
+            echo "**Docker:** \`ghcr.io/$REPO_OWNER/omnidapter-server:$VERSION\`"
+            echo ""
+            echo "**PyPI:**"
+            echo "- \`pip install omnidapter-sdk==$VERSION\`"
+            echo ""
+            echo "**npm:**"
+            echo "- \`npm install @omnidapter/connect@$VERSION\`"
+            echo "- \`npm install @omnidapter/sdk@$VERSION\`"
+          } > /tmp/release_notes.md
+
           gh release create "v$VERSION" \
             --title "v$VERSION" \
-            --notes "## Packages
-
-**Docker:** \`ghcr.io/$REPO_OWNER/omnidapter-server:$VERSION\`
-
-**PyPI:**
-- \`pip install omnidapter-sdk==$VERSION\`
-
-**npm:**
-- \`npm install @omnidapter/connect@$VERSION\`
-- \`npm install @omnidapter/sdk@$VERSION\`" \
+            --notes-file /tmp/release_notes.md \
             --target "$MERGE_SHA"
 
           echo "✓ Released v$VERSION"
