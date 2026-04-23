@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from omnidapter import Omnidapter
+from omnidapter import Omnidapter, ProviderMetadata
 
 from omnidapter_server.config import Settings, get_settings
 from omnidapter_server.dependencies import AuthContext, get_auth_context, get_request_id
 from omnidapter_server.provider_registry import build_provider_registry
+from omnidapter_server.schemas.common import ApiResponse
 from omnidapter_server.services.provider_metadata_flows import (
     get_provider_flow,
     list_providers_flow,
@@ -22,7 +23,7 @@ def _build_omni(settings: Settings) -> Omnidapter:
     return Omnidapter(registry=build_provider_registry(settings))
 
 
-@router.get("")
+@router.get("", operation_id="list_providers", response_model=ApiResponse[list[ProviderMetadata]])
 async def list_providers(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_auth_context)],
@@ -34,7 +35,9 @@ async def list_providers(
     return {"data": providers, "meta": {"request_id": request_id}}
 
 
-@router.get("/{provider_key}")
+@router.get(
+    "/{provider_key}", operation_id="get_provider", response_model=ApiResponse[ProviderMetadata]
+)
 async def get_provider(
     provider_key: str,
     request: Request,

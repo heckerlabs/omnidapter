@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -103,7 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
         title="Omnidapter Server",
         description="Self-hosted REST API wrapping the Omnidapter calendar integration library",
-        version="0.3.0",
+        version=version("omnidapter-server"),
         docs_url="/docs",
         redoc_url="/redoc",
     )

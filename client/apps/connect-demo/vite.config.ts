@@ -8,10 +8,7 @@ export default defineConfig({
     resolve: {
         alias: {
             // Import SDK TypeScript source directly — no pre-build required
-            "@heckerlabs/omnidapter-connect": path.resolve(
-                __dirname,
-                "../../packages/connect-sdk/src/index.ts"
-            ),
+            "@omnidapter/connect": path.resolve(__dirname, "../../packages/connect/src/index.ts"),
         },
     },
 });

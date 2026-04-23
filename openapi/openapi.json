@@ -1,0 +1,3339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Omnidapter Server",
+    "description": "Self-hosted REST API wrapping the Omnidapter calendar integration library",
+    "version": "0.3.1"
+  },
+  "paths": {
+    "/v1/providers": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "List Providers",
+        "operationId": "list_providers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_ProviderMetadata__"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/v1/providers/{provider_key}": {
+      "get": {
+        "tags": [
+          "providers"
+        ],
+        "summary": "Get Provider",
+        "operationId": "get_provider",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ProviderMetadata_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections": {
+      "post": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Create Connection",
+        "description": "Create a new connection and begin the OAuth flow.",
+        "operationId": "create_connection",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CreateConnectionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "List Connections",
+        "operationId": "list_connections",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "external_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "External Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse_ConnectionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}": {
+      "get": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Get Connection Endpoint",
+        "operationId": "get_connection",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ConnectionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Delete Connection",
+        "operationId": "delete_connection",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/reauthorize": {
+      "post": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Reauthorize Connection",
+        "operationId": "reauthorize_connection",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReauthorizeConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_ReauthorizeConnectionResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List Calendars",
+        "operationId": "list_calendars",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_Calendar__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create Calendar",
+        "operationId": "create_calendar",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Calendar_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Calendar",
+        "operationId": "get_calendar",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Calendar_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Update Calendar",
+        "operationId": "update_calendar",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCalendarRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_Calendar_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Delete Calendar",
+        "operationId": "delete_calendar",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/events": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "List Events",
+        "operationId": "list_events",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)",
+              "title": "Start"
+            },
+            "description": "Filter events starting after this time (ISO 8601, e.g., 2026-04-06T10:00:00Z)"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)",
+              "title": "End"
+            },
+            "description": "Filter events ending before this time (ISO 8601, e.g., 2026-04-06T18:00:00Z)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of events to return per page",
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of events to return per page"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of events to skip before returning results",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of events to skip before returning results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventListResponse_CalendarEvent_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Create Event",
+        "operationId": "create_event",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CalendarEvent_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/events/{event_id}": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Event",
+        "operationId": "get_event",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CalendarEvent_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Update Event",
+        "operationId": "update_event",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CalendarEvent_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Delete Event",
+        "operationId": "delete_event",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connections/{connection_id}/calendars/{calendar_id}/availability": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Availability",
+        "operationId": "get_availability",
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "connection_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "calendar_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Calendar Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_AvailabilityResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/link-tokens": {
+      "post": {
+        "tags": [
+          "link-tokens"
+        ],
+        "summary": "Create Link Token Endpoint",
+        "description": "Create a short-lived link token for the Connect UI.\n\nPass the returned token to the embedded or redirect Connect UI as a\nBearer token. The token grants permission to list providers and initiate\na connection, optionally scoped to ``end_user_id``.\n\nSet ``connection_id`` to create a *reconnect* token \u2014 the connect UI will\nskip provider selection and go directly to the authorization flow for the\nexisting connection.",
+        "operationId": "create_link_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_LinkTokenData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponse_AvailabilityResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AvailabilityResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[AvailabilityResponse]"
+      },
+      "ApiResponse_CalendarEvent_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CalendarEvent"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[CalendarEvent]"
+      },
+      "ApiResponse_Calendar_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Calendar"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[Calendar]"
+      },
+      "ApiResponse_ConnectionResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ConnectionResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[ConnectionResponse]"
+      },
+      "ApiResponse_CreateConnectionResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreateConnectionResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[CreateConnectionResponse]"
+      },
+      "ApiResponse_LinkTokenData_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/LinkTokenData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[LinkTokenData]"
+      },
+      "ApiResponse_ProviderMetadata_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProviderMetadata"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[ProviderMetadata]"
+      },
+      "ApiResponse_ReauthorizeConnectionResponse_": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReauthorizeConnectionResponse"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[ReauthorizeConnectionResponse]"
+      },
+      "ApiResponse_list_Calendar__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/Calendar"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[Calendar]]"
+      },
+      "ApiResponse_list_ProviderMetadata__": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderMetadata"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ApiResponse[list[ProviderMetadata]]"
+      },
+      "Attendee": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttendeeStatus",
+            "default": "needs_action"
+          },
+          "is_organizer": {
+            "type": "boolean",
+            "title": "Is Organizer",
+            "default": false
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self",
+            "default": false
+          },
+          "is_resource": {
+            "type": "boolean",
+            "title": "Is Resource",
+            "default": false
+          },
+          "optional": {
+            "type": "boolean",
+            "title": "Optional",
+            "default": false
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "Attendee",
+        "description": "An event attendee."
+      },
+      "AttendeeStatus": {
+        "type": "string",
+        "enum": [
+          "accepted",
+          "declined",
+          "tentative",
+          "needs_action",
+          "unknown"
+        ],
+        "title": "AttendeeStatus"
+      },
+      "AuthKind": {
+        "type": "string",
+        "enum": [
+          "oauth2",
+          "api_key",
+          "basic"
+        ],
+        "title": "AuthKind",
+        "description": "Supported authentication kinds."
+      },
+      "AvailabilityResponse": {
+        "properties": {
+          "queried_calendars": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Queried Calendars"
+          },
+          "time_min": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Min"
+          },
+          "time_max": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Time Max"
+          },
+          "busy_intervals": {
+            "items": {
+              "$ref": "#/components/schemas/FreeBusyInterval"
+            },
+            "type": "array",
+            "title": "Busy Intervals",
+            "default": []
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queried_calendars",
+          "time_min",
+          "time_max"
+        ],
+        "title": "AvailabilityResponse",
+        "description": "Result of a free/busy availability query."
+      },
+      "Calendar": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "is_primary": {
+            "type": "boolean",
+            "title": "Is Primary",
+            "default": false
+          },
+          "is_read_only": {
+            "type": "boolean",
+            "title": "Is Read Only",
+            "default": false
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Color"
+          },
+          "foreground_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreground Color"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calendar_id",
+          "summary"
+        ],
+        "title": "Calendar",
+        "description": "A normalized calendar."
+      },
+      "CalendarEvent": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "title": "Event Id"
+          },
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EventStatus",
+            "default": "confirmed"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/EventVisibility",
+            "default": "default"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "End"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day",
+            "default": false
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "organizer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Organizer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attendees": {
+            "items": {
+              "$ref": "#/components/schemas/Attendee"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "default": []
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conference_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConferenceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reminder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "html_link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Link"
+          },
+          "ical_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ical Uid"
+          },
+          "etag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Etag"
+          },
+          "sequence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sequence"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "calendar_id",
+          "start",
+          "end"
+        ],
+        "title": "CalendarEvent",
+        "description": "A normalized calendar event."
+      },
+      "ConferenceData": {
+        "properties": {
+          "conference_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conference Id"
+          },
+          "conference_solution_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conference Solution Name"
+          },
+          "entry_points": {
+            "items": {
+              "$ref": "#/components/schemas/ConferenceEntryPoint"
+            },
+            "type": "array",
+            "title": "Entry Points",
+            "default": []
+          },
+          "join_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Join Url"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "title": "ConferenceData",
+        "description": "Conference/video call information attached to an event."
+      },
+      "ConferenceEntryPoint": {
+        "properties": {
+          "entry_point_type": {
+            "type": "string",
+            "title": "Entry Point Type"
+          },
+          "uri": {
+            "type": "string",
+            "title": "Uri"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "pin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pin"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entry_point_type",
+          "uri"
+        ],
+        "title": "ConferenceEntryPoint",
+        "description": "A single entry point for a conference (e.g., video URL, phone dial-in)."
+      },
+      "ConnectCreateConnectionRequest": {
+        "properties": {
+          "provider_key": {
+            "type": "string",
+            "title": "Provider Key"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "redirect_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Uri"
+          },
+          "credentials": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credentials"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_key"
+        ],
+        "title": "ConnectCreateConnectionRequest",
+        "description": "Request body for POST /connect/connections."
+      },
+      "ConnectSessionRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "ConnectSessionRequest",
+        "description": "Bootstrap token submitted in the request body \u2014 never in the URL."
+      },
+      "ConnectionConfigField": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "default": "text"
+          },
+          "required": {
+            "type": "boolean",
+            "title": "Required",
+            "default": true
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder"
+          },
+          "example": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ConnectionConfigField",
+        "description": "Describes a required/optional field for provider-specific connection config."
+      },
+      "ConnectionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "granted_scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Scopes"
+          },
+          "provider_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Account Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Used At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "external_id",
+          "status",
+          "status_reason",
+          "granted_scopes",
+          "provider_account_id",
+          "created_at",
+          "last_used_at"
+        ],
+        "title": "ConnectionResponse"
+      },
+      "CreateCalendarRequest": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Color"
+          },
+          "foreground_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreground Color"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary"
+        ],
+        "title": "CreateCalendarRequest",
+        "description": "Request model for creating a calendar."
+      },
+      "CreateConnectionRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "redirect_url": {
+            "type": "string",
+            "title": "Redirect Url"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "redirect_url"
+        ],
+        "title": "CreateConnectionRequest"
+      },
+      "CreateConnectionResponse": {
+        "properties": {
+          "connection_id": {
+            "type": "string",
+            "title": "Connection Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "authorization_url": {
+            "type": "string",
+            "title": "Authorization Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id",
+          "status",
+          "authorization_url"
+        ],
+        "title": "CreateConnectionResponse"
+      },
+      "CreateEventRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              }
+            ],
+            "title": "End"
+          },
+          "all_day": {
+            "type": "boolean",
+            "title": "All Day",
+            "default": false
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "attendees": {
+            "items": {
+              "$ref": "#/components/schemas/Attendee"
+            },
+            "type": "array",
+            "title": "Attendees",
+            "default": []
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conference_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConferenceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reminder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "start",
+          "end"
+        ],
+        "title": "CreateEventRequest",
+        "description": "Request model for creating a calendar event.\n\nWhen used via the REST API, ``calendar_id`` is injected from the URL path\nparameter and must not be set in the request body.  When using the Python\nlibrary directly, callers must supply a non-empty ``calendar_id``."
+      },
+      "CreateLinkTokenRequest": {
+        "properties": {
+          "end_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End User Id"
+          },
+          "allowed_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed Providers"
+          },
+          "redirect_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Uri"
+          },
+          "ttl_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 86400.0,
+                "minimum": 60.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ttl Seconds"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          }
+        },
+        "type": "object",
+        "title": "CreateLinkTokenRequest"
+      },
+      "EventListMeta": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EventPaginationMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "pagination"
+        ],
+        "title": "EventListMeta"
+      },
+      "EventListResponse_CalendarEvent_": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarEvent"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/EventListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "EventListResponse[CalendarEvent]"
+      },
+      "EventPaginationMeta": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limit",
+          "offset",
+          "count",
+          "has_more"
+        ],
+        "title": "EventPaginationMeta"
+      },
+      "EventStatus": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "tentative",
+          "cancelled",
+          "unknown"
+        ],
+        "title": "EventStatus"
+      },
+      "EventVisibility": {
+        "type": "string",
+        "enum": [
+          "public",
+          "private",
+          "confidential",
+          "default"
+        ],
+        "title": "EventVisibility"
+      },
+      "FreeBusyInterval": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "End"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "FreeBusyInterval",
+        "description": "A busy time interval."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LinkTokenData": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "connect_url": {
+            "type": "string",
+            "title": "Connect Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "expires_at",
+          "connect_url"
+        ],
+        "title": "LinkTokenData"
+      },
+      "ListMeta": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "pagination"
+        ],
+        "title": "ListMeta"
+      },
+      "ListResponse_ConnectionResponse_": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionResponse"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ListMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "title": "ListResponse[ConnectionResponse]"
+      },
+      "OAuthMetadata": {
+        "properties": {
+          "authorization_endpoint": {
+            "type": "string",
+            "title": "Authorization Endpoint"
+          },
+          "token_endpoint": {
+            "type": "string",
+            "title": "Token Endpoint"
+          },
+          "supports_pkce": {
+            "type": "boolean",
+            "title": "Supports Pkce",
+            "default": false
+          },
+          "scope_groups": {
+            "items": {
+              "$ref": "#/components/schemas/OAuthScopeGroup"
+            },
+            "type": "array",
+            "title": "Scope Groups",
+            "default": []
+          },
+          "default_scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Default Scopes",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorization_endpoint",
+          "token_endpoint"
+        ],
+        "title": "OAuthMetadata",
+        "description": "OAuth-specific metadata for a provider."
+      },
+      "OAuthScopeGroup": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scopes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "scopes"
+        ],
+        "title": "OAuthScopeGroup",
+        "description": "A named group of OAuth scopes."
+      },
+      "Organizer": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "is_self": {
+            "type": "boolean",
+            "title": "Is Self",
+            "default": false
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "Organizer",
+        "description": "Event organizer."
+      },
+      "PaginationMeta": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "PaginationMeta"
+      },
+      "ProviderMetadata": {
+        "properties": {
+          "provider_key": {
+            "type": "string",
+            "title": "Provider Key"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "services": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceKind"
+            },
+            "type": "array",
+            "title": "Services"
+          },
+          "auth_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/AuthKind"
+            },
+            "type": "array",
+            "title": "Auth Kinds"
+          },
+          "oauth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OAuthMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Capabilities",
+            "default": {}
+          },
+          "connection_config_fields": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionConfigField"
+            },
+            "type": "array",
+            "title": "Connection Config Fields",
+            "default": []
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider_key",
+          "display_name",
+          "services",
+          "auth_kinds"
+        ],
+        "title": "ProviderMetadata",
+        "description": "Full provider metadata for introspection."
+      },
+      "ReauthorizeConnectionRequest": {
+        "properties": {
+          "redirect_url": {
+            "type": "string",
+            "title": "Redirect Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "redirect_url"
+        ],
+        "title": "ReauthorizeConnectionRequest"
+      },
+      "ReauthorizeConnectionResponse": {
+        "properties": {
+          "connection_id": {
+            "type": "string",
+            "title": "Connection Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "authorization_url": {
+            "type": "string",
+            "title": "Authorization Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection_id",
+          "status",
+          "authorization_url"
+        ],
+        "title": "ReauthorizeConnectionResponse"
+      },
+      "Recurrence": {
+        "properties": {
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rules",
+            "default": []
+          },
+          "recurring_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recurring Event Id"
+          },
+          "original_start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Start Time"
+          },
+          "provider_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Data"
+          }
+        },
+        "type": "object",
+        "title": "Recurrence",
+        "description": "Recurrence information for recurring events.\n\n`rules` contains RRULE/EXRULE/RDATE/EXDATE strings (RFC 5545 format)."
+      },
+      "Reminder": {
+        "properties": {
+          "use_default": {
+            "type": "boolean",
+            "title": "Use Default",
+            "default": false
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/ReminderOverride"
+            },
+            "type": "array",
+            "title": "Overrides",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "Reminder",
+        "description": "Reminder configuration for an event."
+      },
+      "ReminderOverride": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "minutes_before": {
+            "type": "integer",
+            "title": "Minutes Before"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "minutes_before"
+        ],
+        "title": "ReminderOverride",
+        "description": "A single reminder override for an event."
+      },
+      "RequestMeta": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "title": "RequestMeta"
+      },
+      "ServiceKind": {
+        "type": "string",
+        "enum": [
+          "calendar",
+          "crm"
+        ],
+        "title": "ServiceKind",
+        "description": "Top-level service categories."
+      },
+      "UpdateCalendarRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Background Color"
+          },
+          "foreground_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Foreground Color"
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "UpdateCalendarRequest",
+        "description": "Request model for updating a calendar.\n\nWhen used via the REST API, ``calendar_id`` is injected from the URL path\nparameter.  When using the Python library directly, callers must supply a\nnon-empty ``calendar_id``."
+      },
+      "UpdateEventRequest": {
+        "properties": {
+          "calendar_id": {
+            "type": "string",
+            "title": "Calendar Id",
+            "default": ""
+          },
+          "event_id": {
+            "type": "string",
+            "title": "Event Id",
+            "default": ""
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "all_day": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "All Day"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "attendees": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Attendee"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attendees"
+          },
+          "recurrence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Recurrence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "conference_data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConferenceData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Reminder"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visibility"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EventStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extra": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "UpdateEventRequest",
+        "description": "Request model for updating a calendar event.\n\nWhen used via the REST API, ``calendar_id`` and ``event_id`` are injected\nfrom URL path parameters.  When using the Python library directly, callers\nmust supply non-empty values for both fields."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyAuth": {
+        "type": "http",
+        "description": "Main Server API Key (omni_*)",
+        "scheme": "bearer"
+      },
+      "LinkTokenAuth": {
+        "type": "http",
+        "description": "Connect UI session token (cs_*). The one-time lt_* bootstrap token is only accepted by POST /connect/init.",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

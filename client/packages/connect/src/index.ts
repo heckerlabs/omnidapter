@@ -1,12 +1,12 @@
 /**
- * @heckerlabs/omnidapter-connect — Omnidapter Connect JavaScript snippet.
+ * @omnidapter/connect — Omnidapter Connect JavaScript snippet.
  *
  * Opens the Connect page in a popup and fires callbacks when the user
  * completes, errors out, or closes the popup.
  *
  * @example
  * ```ts
- * import { OmnidapterConnect } from '@heckerlabs/omnidapter-connect';
+ * import { OmnidapterConnect } from '@omnidapter/connect';
  *
  * const connect = new OmnidapterConnect({
  *   baseUrl: 'https://omnidapter.heckerlabs.ai',

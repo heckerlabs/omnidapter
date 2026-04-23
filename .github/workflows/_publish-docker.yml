@@ -7,10 +7,15 @@ on:
         required: true
         type: string
         description: Image version tag
+      environment:
+        required: true
+        type: string
+        description: GitHub Actions environment
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
 

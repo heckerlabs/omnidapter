@@ -15,6 +15,8 @@ export default defineConfig(
             "**/coverage/**",
             "apps/connect-ui/dist",
             "packages/connect-sdk/dist",
+            // Fern-generated SDK — do not lint
+            "packages/sdk/**",
         ],
     },
     js.configs.recommended,

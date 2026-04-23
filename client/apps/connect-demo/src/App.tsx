@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { OmnidapterConnect } from "@heckerlabs/omnidapter-connect";
+import { OmnidapterConnect } from "@omnidapter/connect";
 import { DEFAULT_CONFIG, STORAGE_KEY } from "./constants";
 import { Config, Mode } from "./types";
 import { inIframe } from "./utils/helpers";

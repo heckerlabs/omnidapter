@@ -99,9 +99,8 @@ class Settings(BaseSettings):
             and not _warned_local_plaintext_mode
         ):
             logger.warning(
-                "!!! SECURITY WARNING !!! OMNIDAPTER_ENCRYPTION_KEY is not set and "
-                "OMNIDAPTER_ENV=LOCAL. Sensitive credentials will be stored in plaintext. "
-                "Use LOCAL only for local development."
+                "OMNIDAPTER_ENCRYPTION_KEY is not set — credentials will be stored in "
+                "plaintext. Set OMNIDAPTER_ENV=LOCAL for local development only."
             )
             _warned_local_plaintext_mode = True
 

@@ -1,0 +1,81 @@
+name: Publish npm Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: Package version to publish
+      workspace:
+        required: true
+        type: string
+        description: npm workspace name (e.g. @omnidapter/connect)
+      generate_sdk:
+        required: false
+        type: boolean
+        default: false
+        description: Run generate_sdks.sh before building
+      environment:
+        required: true
+        type: string
+        description: GitHub Actions environment for OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Generate TypeScript SDK
+        if: inputs.generate_sdk
+        run: bash scripts/generate_sdks.sh typescript
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: client
+
+      - name: Build package
+        env:
+          WORKSPACE: ${{ inputs.workspace }}
+        run: npm run build -w "$WORKSPACE"
+        working-directory: client
+
+      - name: Check version not already published
+        env:
+          VERSION: ${{ inputs.version }}
+          WORKSPACE: ${{ inputs.workspace }}
+        run: |
+          EXISTING=$(npm view "$WORKSPACE@$VERSION" version 2>/dev/null || echo "")
+          if [[ -n "$EXISTING" ]]; then
+            echo "❌ $WORKSPACE@$VERSION already published to npm"
+            exit 1
+          fi
+          echo "✓ $WORKSPACE@$VERSION not yet published"
+
+      - name: Verify package.json version matches input
+        env:
+          VERSION: ${{ inputs.version }}
+          WORKSPACE: ${{ inputs.workspace }}
+        run: |
+          PKG_VER=$(npm pkg get version -w "$WORKSPACE" --json | jq -r 'to_entries[0].value')
+          if [[ "$PKG_VER" != "$VERSION" ]]; then
+            echo "❌ package.json version ($PKG_VER) does not match input version ($VERSION)"
+            exit 1
+          fi
+          echo "✓ package.json version matches: $VERSION"
+        working-directory: client
+
+      - name: Publish to npm
+        env:
+          WORKSPACE: ${{ inputs.workspace }}
+        run: npm publish -w "$WORKSPACE" --access public --provenance
+        working-directory: client
