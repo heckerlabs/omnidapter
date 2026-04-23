@@ -16,19 +16,18 @@ on:
         type: boolean
         default: false
         description: Run generate_sdks.sh before building
-    secrets:
-      NPM_TOKEN:
-        required: true
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
       - name: Generate TypeScript SDK
@@ -72,7 +71,6 @@ jobs:
 
       - name: Publish to npm
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           WORKSPACE: ${{ inputs.workspace }}
-        run: npm publish -w "$WORKSPACE" --access public
+        run: npm publish -w "$WORKSPACE" --access public --provenance
         working-directory: client
