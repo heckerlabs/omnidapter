@@ -20,13 +20,12 @@ on:
         type: boolean
         default: false
         description: Run generate_sdks.sh before building
-    secrets:
-      PYPI_TOKEN:
-        required: true
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -49,14 +48,9 @@ jobs:
           echo "✓ $PACKAGE_NAME==$VERSION not yet published"
 
       - name: Build package
-        env:
-          PACKAGE_DIR: ${{ inputs.package_dir }}
         run: uv build
         working-directory: ${{ inputs.package_dir }}
 
       - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-          PACKAGE_DIR: ${{ inputs.package_dir }}
         run: uv publish
         working-directory: ${{ inputs.package_dir }}

@@ -11,7 +11,6 @@ concurrency:
 
 permissions:
   packages: write
-  id-token: write
   contents: write
 
 jobs:
@@ -70,8 +69,6 @@ jobs:
       package_dir: omnidapter-sdk
       package_name: omnidapter-sdk
       generate_sdk: true
-    secrets:
-      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
   publish-connect:
     needs: parse
@@ -79,8 +76,6 @@ jobs:
     with:
       version: ${{ needs.parse.outputs.version }}
       workspace: "@omnidapter/connect"
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-sdk:
     needs: parse
@@ -89,8 +84,6 @@ jobs:
       version: ${{ needs.parse.outputs.version }}
       workspace: "@omnidapter/sdk"
       generate_sdk: true
-    secrets:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   tag:
     needs: [parse, publish-docker, publish-omnidapter-sdk, publish-connect, publish-sdk]
