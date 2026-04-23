@@ -1,6 +1,6 @@
 {
   "name": "@omnidapter/connect",
-  "version": "0.1.0",
+  "version": "0.3.2",
   "type": "module",
   "description": "Omnidapter Connect — embed a calendar authorization flow in your app",
   "exports": {
