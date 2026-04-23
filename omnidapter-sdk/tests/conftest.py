@@ -18,7 +18,8 @@ os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://placehold
 
 import pytest
 import uvicorn
-from omnidapter_sdk.client import OmnidapterClient
+
+
 from omnidapter_server.config import Settings
 from omnidapter_server.database import Base
 
@@ -100,5 +101,9 @@ def server_url() -> Generator[str, None, None]:
 
 
 @pytest.fixture(scope="session")
-def sdk_client(server_url: str) -> OmnidapterClient:
+def sdk_client(server_url: str):
+    try:
+        from omnidapter_sdk.client import OmnidapterClient
+    except ImportError:
+        pytest.skip("SDK not generated — run scripts/generate_sdks.sh first")
     return OmnidapterClient(base_url=server_url, api_key=TEST_API_KEY)
