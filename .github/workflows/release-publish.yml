@@ -60,6 +60,7 @@ jobs:
     uses: ./.github/workflows/_publish-docker.yml
     with:
       version: ${{ needs.parse.outputs.version }}
+      environment: core
 
   publish-omnidapter-core:
     needs: parse
@@ -68,6 +69,7 @@ jobs:
       version: ${{ needs.parse.outputs.version }}
       package_dir: omnidapter-core
       package_name: omnidapter
+      environment: core
 
   publish-omnidapter-sdk:
     needs: parse
@@ -77,6 +79,7 @@ jobs:
       package_dir: omnidapter-sdk
       package_name: omnidapter-sdk
       generate_sdk: true
+      environment: sdk
 
   publish-connect:
     needs: parse
@@ -84,6 +87,7 @@ jobs:
     with:
       version: ${{ needs.parse.outputs.version }}
       workspace: "@omnidapter/connect"
+      environment: core
 
   publish-sdk:
     needs: parse
@@ -92,6 +96,7 @@ jobs:
       version: ${{ needs.parse.outputs.version }}
       workspace: "@omnidapter/sdk"
       generate_sdk: true
+      environment: sdk
 
   tag:
     needs: [parse, publish-docker, publish-omnidapter-core, publish-omnidapter-sdk, publish-connect, publish-sdk]
