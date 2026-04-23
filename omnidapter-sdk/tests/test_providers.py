@@ -1,6 +1,8 @@
 """Integration tests for ProvidersApi."""
 
 import pytest
+
+pytestmark = pytest.mark.integration
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
 
