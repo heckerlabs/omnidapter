@@ -20,10 +20,15 @@ on:
         type: boolean
         default: false
         description: Run generate_sdks.sh before building
+      environment:
+        required: true
+        type: string
+        description: GitHub Actions environment for OIDC trusted publishing
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     permissions:
       id-token: write
     steps:
