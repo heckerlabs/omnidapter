@@ -95,6 +95,13 @@ jobs:
             "
           done
 
+      - name: Update uv lock file
+        run: uv lock
+
+      - name: Update npm lock file
+        run: npm install --package-lock-only
+        working-directory: client
+
       - name: Export OpenAPI spec from server
         run: uv run python scripts/export_openapi.py
 
@@ -130,8 +137,10 @@ jobs:
             omnidapter-core/pyproject.toml \
             omnidapter-server/pyproject.toml \
             omnidapter-sdk/pyproject.toml \
+            uv.lock \
             client/packages/connect/package.json \
             client/packages/sdk/package.json \
+            client/package-lock.json \
             client/packages/sdk/ \
             omnidapter-sdk/omnidapter_sdk/ \
             openapi/openapi.json
