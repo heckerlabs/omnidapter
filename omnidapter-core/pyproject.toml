@@ -2,6 +2,7 @@
 name = "omnidapter"
 version = "0.3.2"
 description = "Provider-agnostic async integration library"
+readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
