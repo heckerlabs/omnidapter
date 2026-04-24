@@ -45,7 +45,7 @@ jobs:
             exit 1
           }
           if printf '%s\n' "$TAGS" | grep -qx "$VERSION"; then
-            echo "⚠ omnidapter-server:$VERSION already exists in GHCR — skipping"
+            echo "::warning::omnidapter-server:$VERSION already exists in GHCR — skipping"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "✓ omnidapter-server:$VERSION not yet in GHCR"
