@@ -1,6 +1,6 @@
 [project]
 name = "omnidapter-server"
-version = "0.3.2"
+version = "0.3.3"
 description = "Omnidapter Server — self-hosted REST API wrapping the Omnidapter library"
 license = { text = "MIT" }
 requires-python = ">=3.10"
