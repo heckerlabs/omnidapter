@@ -1,4 +1,4 @@
-name: Release (Click to cut)
+name: Cut Release from main
 
 on:
   workflow_dispatch:
