@@ -24,5 +24,11 @@
     "sdk",
     "api"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "homepage": "https://github.com/heckerlabs/omnidapter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heckerlabs/omnidapter.git",
+    "directory": "client/packages/sdk"
+  }
 }

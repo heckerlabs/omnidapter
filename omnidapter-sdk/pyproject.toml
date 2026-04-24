@@ -11,6 +11,10 @@ dependencies = [
     "pydantic>=2.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/heckerlabs/omnidapter"
+Repository = "https://github.com/heckerlabs/omnidapter/tree/main/omnidapter-sdk"
+
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",

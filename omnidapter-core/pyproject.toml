@@ -11,6 +11,10 @@ dependencies = [
     "anyio>=4.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/heckerlabs/omnidapter"
+Repository = "https://github.com/heckerlabs/omnidapter/tree/main/omnidapter-core"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

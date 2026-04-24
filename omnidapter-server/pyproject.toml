@@ -19,6 +19,10 @@ dependencies = [
     "redis>=5.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/heckerlabs/omnidapter"
+Repository = "https://github.com/heckerlabs/omnidapter/tree/main/omnidapter-server"
+
 [project.scripts]
 omnidapter-server = "omnidapter_server.main:run"
 
