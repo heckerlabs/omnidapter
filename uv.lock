@@ -1047,7 +1047,7 @@ wheels = [
 
 [[package]]
 name = "omnidapter"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "omnidapter-core" }
 dependencies = [
     { name = "anyio" },
@@ -1064,7 +1064,7 @@ requires-dist = [
 
 [[package]]
 name = "omnidapter-sdk"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "omnidapter-sdk" }
 dependencies = [
     { name = "pydantic" },
@@ -1094,7 +1094,7 @@ provides-extras = ["test"]
 
 [[package]]
 name = "omnidapter-server"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "omnidapter-server" }
 dependencies = [
     { name = "alembic" },
