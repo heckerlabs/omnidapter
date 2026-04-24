@@ -32,7 +32,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${{ inputs.version }}"
-          TAGS=$(gh api --paginate "/orgs/${{ github.repository_owner }}/packages/container/omnidapter-server/versions" \
+          OWNER="${{ github.repository_owner }}"
+          TAGS=$(gh api --paginate "/user/packages/container/omnidapter-server/versions" \
+              --jq '.[].metadata.container.tags[]' 2>&1) || \
+          TAGS=$(gh api --paginate "/orgs/$OWNER/packages/container/omnidapter-server/versions" \
               --jq '.[].metadata.container.tags[]' 2>&1) || {
             if echo "$TAGS" | grep -q "404"; then
               echo "✓ Package not yet in GHCR (first release)"
