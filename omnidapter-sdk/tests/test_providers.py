@@ -1,7 +1,6 @@
 """Integration tests for ProvidersApi."""
 
 import pytest
-
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
 

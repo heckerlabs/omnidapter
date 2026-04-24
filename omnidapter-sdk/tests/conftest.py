@@ -18,8 +18,6 @@ os.environ.setdefault("OMNIDAPTER_DATABASE_URL", "postgresql+asyncpg://placehold
 
 import pytest
 import uvicorn
-
-
 from omnidapter_server.config import Settings
 from omnidapter_server.database import Base
 
