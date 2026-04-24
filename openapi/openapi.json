@@ -3,7 +3,7 @@
   "info": {
     "title": "Omnidapter Server",
     "description": "Self-hosted REST API wrapping the Omnidapter calendar integration library",
-    "version": "0.3.3"
+    "version": "0.4.0"
   },
   "paths": {
     "/v1/providers": {
