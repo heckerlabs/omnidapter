@@ -129,15 +129,15 @@ jobs:
           RELEASE_NOTES: |
             ## Packages
 
-            **Docker:** `ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ needs.parse.outputs.version }}`
+            **[Docker](https://github.com/${{ github.repository_owner }}/omnidapter/pkgs/container/omnidapter-server):** `ghcr.io/${{ github.repository_owner }}/omnidapter-server:${{ needs.parse.outputs.version }}`
 
             **PyPI:**
-            - `pip install omnidapter==${{ needs.parse.outputs.version }}`
-            - `pip install omnidapter-sdk==${{ needs.parse.outputs.version }}`
+            - [`omnidapter`](https://pypi.org/project/omnidapter/${{ needs.parse.outputs.version }}) — `pip install omnidapter==${{ needs.parse.outputs.version }}`
+            - [`omnidapter-sdk`](https://pypi.org/project/omnidapter-sdk/${{ needs.parse.outputs.version }}) — `pip install omnidapter-sdk==${{ needs.parse.outputs.version }}`
 
             **npm:**
-            - `npm install @omnidapter/connect@${{ needs.parse.outputs.version }}`
-            - `npm install @omnidapter/sdk@${{ needs.parse.outputs.version }}`
+            - [`@omnidapter/connect`](https://www.npmjs.com/package/@omnidapter/connect/v/${{ needs.parse.outputs.version }}) — `npm install @omnidapter/connect@${{ needs.parse.outputs.version }}`
+            - [`@omnidapter/sdk`](https://www.npmjs.com/package/@omnidapter/sdk/v/${{ needs.parse.outputs.version }}) — `npm install @omnidapter/sdk@${{ needs.parse.outputs.version }}`
         run: |
           if git ls-remote --tags origin "refs/tags/v$VERSION" | grep -q .; then
             echo "::warning::Tag v$VERSION already exists — skipping tag and release"
