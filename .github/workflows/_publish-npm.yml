@@ -34,6 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Generate TypeScript SDK
         if: inputs.generate_sdk
@@ -77,5 +78,6 @@ jobs:
       - name: Publish to npm
         env:
           WORKSPACE: ${{ inputs.workspace }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish -w "$WORKSPACE" --access public --provenance
         working-directory: client
