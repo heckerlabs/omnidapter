@@ -79,5 +79,5 @@ jobs:
         env:
           WORKSPACE: ${{ inputs.workspace }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish -w "$WORKSPACE" --access public --provenance
+        run: npm publish -w "$WORKSPACE" --access public
         working-directory: client
