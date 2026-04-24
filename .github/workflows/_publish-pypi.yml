@@ -29,7 +29,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: astral-sh/setup-uv@v5
 
@@ -38,21 +38,25 @@ jobs:
         run: bash scripts/generate_sdks.sh python
 
       - name: Check version not already published
+        id: check
         env:
           VERSION: ${{ inputs.version }}
           PACKAGE_NAME: ${{ inputs.package_name }}
         run: |
           EXISTING=$(uv pip index versions "$PACKAGE_NAME" 2>/dev/null | grep -w "$VERSION" || echo "")
           if [[ -n "$EXISTING" ]]; then
-            echo "❌ $PACKAGE_NAME==$VERSION already published to PyPI"
-            exit 1
+            echo "::warning::$PACKAGE_NAME==$VERSION already published to PyPI — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✓ $PACKAGE_NAME==$VERSION not yet published"
           fi
-          echo "✓ $PACKAGE_NAME==$VERSION not yet published"
 
       - name: Build package
+        if: steps.check.outputs.skip != 'true'
         env:
           PACKAGE_NAME: ${{ inputs.package_name }}
         run: uv build --package "$PACKAGE_NAME"
 
       - name: Publish to PyPI
+        if: steps.check.outputs.skip != 'true'
         run: uv publish

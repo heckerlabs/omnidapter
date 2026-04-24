@@ -29,7 +29,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:
@@ -51,18 +51,21 @@ jobs:
         working-directory: client
 
       - name: Check version not already published
+        id: check
         env:
           VERSION: ${{ inputs.version }}
           WORKSPACE: ${{ inputs.workspace }}
         run: |
           EXISTING=$(npm view "$WORKSPACE@$VERSION" version 2>/dev/null || echo "")
           if [[ -n "$EXISTING" ]]; then
-            echo "❌ $WORKSPACE@$VERSION already published to npm"
-            exit 1
+            echo "::warning::$WORKSPACE@$VERSION already published to npm — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "✓ $WORKSPACE@$VERSION not yet published"
           fi
-          echo "✓ $WORKSPACE@$VERSION not yet published"
 
       - name: Verify package.json version matches input
+        if: steps.check.outputs.skip != 'true'
         env:
           VERSION: ${{ inputs.version }}
           WORKSPACE: ${{ inputs.workspace }}
@@ -76,6 +79,7 @@ jobs:
         working-directory: client
 
       - name: Publish to npm
+        if: steps.check.outputs.skip != 'true'
         env:
           WORKSPACE: ${{ inputs.workspace }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
