@@ -1,4 +1,5 @@
 name: Cut Release from main
+run-name: Cut release v${{ inputs.version }} from main
 
 on:
   workflow_dispatch:
