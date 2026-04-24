@@ -1,7 +1,6 @@
 """Integration smoke tests for CalendarApi — verifies routing and error parsing."""
 
 import pytest
-
 from omnidapter_sdk.client import OmnidapterClient
 from omnidapter_sdk.exceptions import ApiException
 from omnidapter_sdk.models import CreateCalendarRequest, CreateEventRequest
