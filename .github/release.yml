@@ -1,0 +1,12 @@
+changelog:
+  exclude:
+    labels: [release]
+  categories:
+    - title: What's New
+      labels: [enhancement, feature]
+    - title: Bug Fixes
+      labels: [bug, fix]
+    - title: Internal
+      labels: [ci, documentation, docs]
+    - title: Other Changes
+      labels: ["*"]
