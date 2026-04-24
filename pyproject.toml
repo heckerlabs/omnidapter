@@ -5,7 +5,6 @@ requires-python = ">=3.10"
 dependencies = [
     "omnidapter",
     "omnidapter-server",
-    "omnidapter-hosted",
     "omnidapter-sdk",
 ]
 
@@ -15,7 +14,6 @@ members = ["omnidapter-*"]
 [tool.uv.sources]
 omnidapter = { workspace = true }
 omnidapter-server = { workspace = true }
-omnidapter-hosted = { workspace = true }
 omnidapter-sdk = { workspace = true }
 
 [dependency-groups]
@@ -74,14 +72,6 @@ cmd = "docker-compose -f omnidapter-server/docker-compose.yml up --build"
 help = "Start Omnidapter Server"
 cmd = "uv run --env-file omnidapter-server/.env omnidapter-server"
 
-[tool.poe.tasks.hosted-infra]
-help = "Start hosted infra: db, redis, migration"
-cmd = "docker-compose -f omnidapter-hosted/docker-compose.yml up --build"
-
-[tool.poe.tasks.hosted-dev]
-help = "Start Omnidapter Hosted"
-cmd = "uv run --env-file omnidapter-hosted/.env omnidapter-hosted"
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib -m 'not integration'"
@@ -89,7 +79,7 @@ filterwarnings = [
     # testcontainers uses @wait_container_is_ready internally — their issue, not ours
     "ignore::DeprecationWarning:testcontainers",
 ]
-testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-hosted/tests", "omnidapter-sdk/tests"]
+testpaths = ["omnidapter-core/tests", "omnidapter-server/tests", "omnidapter-sdk/tests"]
 markers = ["integration: integration tests requiring Docker or real providers"]
 
 [tool.ruff]
@@ -109,7 +99,6 @@ venv = ".venv"
 pythonVersion = "3.12"
 include = [
     "omnidapter-server/src",
-    "omnidapter-hosted/src",
     "omnidapter-core/src",
 ]
 exclude = ["omnidapter-sdk"]
