@@ -25,6 +25,7 @@ from omnidapter.auth.models import (
 from omnidapter.core.errors import (
     AuthError,
     ConnectionNotFoundError,
+    CustomerResolutionError,
     InvalidCredentialFormatError,
     OAuthStateError,
     OmnidapterError,
@@ -32,6 +33,7 @@ from omnidapter.core.errors import (
     ProviderNotConfiguredError,
     RateLimitError,
     ScopeInsufficientError,
+    SlotUnavailableError,
     TokenRefreshError,
     TransportError,
     UnsupportedCapabilityError,
@@ -39,6 +41,24 @@ from omnidapter.core.errors import (
 from omnidapter.core.metadata import AuthKind, ProviderMetadata, ServiceKind
 from omnidapter.core.omnidapter import Omnidapter
 from omnidapter.core.registry import ProviderRegistry
+from omnidapter.services.booking.capabilities import BookingCapability
+from omnidapter.services.booking.models import (
+    AvailabilitySlot,
+    Booking,
+    BookingCustomer,
+    BookingCustomerCreate,
+    BookingLocation,
+    BookingStatus,
+    ServiceType,
+    StaffMember,
+)
+from omnidapter.services.booking.requests import (
+    CreateBookingRequest,
+    FindCustomerRequest,
+    ListBookingsRequest,
+    RescheduleBookingRequest,
+    UpdateBookingRequest,
+)
 from omnidapter.services.calendar.capabilities import CalendarCapability
 from omnidapter.services.calendar.models import (
     Attendee,
@@ -76,6 +96,8 @@ __all__ = [
     "ConnectionNotFoundError",
     "InvalidCredentialFormatError",
     "ScopeInsufficientError",
+    "SlotUnavailableError",
+    "CustomerResolutionError",
     "TransportError",
     "ProviderAPIError",
     "RateLimitError",
@@ -98,6 +120,21 @@ __all__ = [
     "AuthKind",
     "ServiceKind",
     "ProviderMetadata",
+    # Booking
+    "BookingCapability",
+    "BookingStatus",
+    "BookingCustomer",
+    "BookingCustomerCreate",
+    "StaffMember",
+    "ServiceType",
+    "BookingLocation",
+    "AvailabilitySlot",
+    "Booking",
+    "CreateBookingRequest",
+    "UpdateBookingRequest",
+    "RescheduleBookingRequest",
+    "ListBookingsRequest",
+    "FindCustomerRequest",
     # Calendar
     "CalendarCapability",
     "CalendarEvent",

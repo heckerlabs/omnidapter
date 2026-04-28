@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 import pytest
 from omnidapter.auth.models import BasicCredentials, OAuth2Credentials
 from omnidapter.core.errors import ProviderAPIError, TokenRefreshError
-from omnidapter.core.metadata import AuthKind
+from omnidapter.core.metadata import AuthKind, ServiceKind
 from omnidapter.stores.credentials import StoredCredential
 
 # Prefix added to every test-created event summary so tests can filter their
@@ -157,7 +157,7 @@ def google_provider():
 
 @pytest.fixture(scope="module")
 def google_service(google_provider, google_stored):
-    return google_provider.get_calendar_service("integration-google", google_stored)
+    return google_provider.get_service(ServiceKind.CALENDAR, "integration-google", google_stored)
 
 
 @pytest.fixture(scope="module")
@@ -211,7 +211,9 @@ def microsoft_provider():
 
 @pytest.fixture(scope="module")
 def microsoft_service(microsoft_provider, microsoft_stored):
-    return microsoft_provider.get_calendar_service("integration-microsoft", microsoft_stored)
+    return microsoft_provider.get_service(
+        ServiceKind.CALENDAR, "integration-microsoft", microsoft_stored
+    )
 
 
 @pytest.fixture(scope="module")
@@ -264,7 +266,7 @@ def zoho_provider():
 
 @pytest.fixture(scope="module")
 def zoho_service(zoho_provider, zoho_stored):
-    return zoho_provider.get_calendar_service("integration-zoho", zoho_stored)
+    return zoho_provider.get_service(ServiceKind.CALENDAR, "integration-zoho", zoho_stored)
 
 
 @pytest.fixture(scope="module")
@@ -306,7 +308,7 @@ def caldav_stored():
 def caldav_service(caldav_stored):
     from omnidapter.providers.caldav.provider import CalDAVProvider
 
-    return CalDAVProvider().get_calendar_service("integration-caldav", caldav_stored)
+    return CalDAVProvider().get_service(ServiceKind.CALENDAR, "integration-caldav", caldav_stored)
 
 
 @pytest.fixture(scope="module")
@@ -346,7 +348,7 @@ def apple_stored():
 def apple_service(apple_stored):
     from omnidapter.providers.apple.provider import AppleProvider
 
-    return AppleProvider().get_calendar_service("integration-apple", apple_stored)
+    return AppleProvider().get_service(ServiceKind.CALENDAR, "integration-apple", apple_stored)
 
 
 @pytest.fixture(scope="module")

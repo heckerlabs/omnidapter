@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel
 
 from omnidapter.core.logging import auth_logger
+from omnidapter.core.metadata import ServiceKind
 
 if TYPE_CHECKING:
     import httpx
@@ -41,6 +42,7 @@ class OAuthPendingState(BaseModel):
     redirect_uri: str
     code_verifier: str | None = None
     expires_at: datetime  # UTC
+    requested_services: list[ServiceKind] | None = None
 
 
 def _generate_pkce_pair() -> tuple[str, str]:
@@ -89,6 +91,7 @@ class OAuthHelper:
         redirect_uri: str,
         scopes: list[str] | None = None,
         extra_params: dict[str, str] | None = None,
+        requested_services: list[ServiceKind] | None = None,
     ) -> OAuthBeginResult:
         """Begin an OAuth flow.
 
@@ -109,8 +112,21 @@ class OAuthHelper:
             "state": state_id,
         }
 
-        # Scopes
-        effective_scopes = scopes or oauth_config.default_scopes
+        # Scopes: explicit > service-scoped scope groups > default_scopes
+        if scopes:
+            effective_scopes: list[str] = scopes
+        elif requested_services is not None:
+            meta_oauth = provider_impl.metadata.oauth
+            if meta_oauth and meta_oauth.scope_groups:
+                effective_scopes = []
+                for sg in meta_oauth.scope_groups:
+                    if sg.service_kind is None or sg.service_kind in requested_services:
+                        effective_scopes.extend(sg.scopes)
+                effective_scopes = effective_scopes or oauth_config.default_scopes
+            else:
+                effective_scopes = oauth_config.default_scopes
+        else:
+            effective_scopes = oauth_config.default_scopes
         if effective_scopes:
             params["scope"] = oauth_config.scope_separator.join(effective_scopes)
 
@@ -138,6 +154,7 @@ class OAuthHelper:
             redirect_uri=redirect_uri,
             code_verifier=code_verifier,
             expires_at=datetime.now(tz=timezone.utc) + timedelta(minutes=15),
+            requested_services=requested_services,
         )
 
         await self._oauth_state_store.save_state(
@@ -199,6 +216,9 @@ class OAuthHelper:
             redirect_uri=redirect_uri,
             code_verifier=pending.code_verifier,
         )
+
+        if pending.requested_services is not None:
+            stored_credential.granted_services = pending.requested_services
 
         # Persist credentials
         await self._credential_store.save_credentials(connection_id, stored_credential)

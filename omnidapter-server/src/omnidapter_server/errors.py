@@ -10,10 +10,12 @@ from fastapi.responses import JSONResponse
 from omnidapter import (
     AuthError,
     ConnectionNotFoundError,
+    CustomerResolutionError,
     InvalidCredentialFormatError,
     ProviderAPIError,
     RateLimitError,
     ScopeInsufficientError,
+    SlotUnavailableError,
     TransportError,
     UnsupportedCapabilityError,
 )
@@ -67,6 +69,12 @@ def map_library_exception(
     """Map Omnidapter library exceptions to HTTP responses."""
     # Read environment from app state; default to PROD for safety
     env = getattr(request.app.state, "omnidapter_env", "PROD")
+
+    if isinstance(exc, SlotUnavailableError):
+        return _error_response(request, 409, "slot_unavailable", str(exc), env=env)
+
+    if isinstance(exc, CustomerResolutionError):
+        return _error_response(request, 422, "customer_resolution_failed", str(exc), env=env)
 
     if isinstance(exc, RateLimitError):
         details = {"provider_key": exc.provider_key}

@@ -72,6 +72,7 @@ class ConnectCreateConnectionRequest(BaseModel):
     provider_key: str
     external_id: str | None = None
     scopes: list[str] | None = None
+    services: list[str] | None = None  # service kinds to authorize (e.g. ["calendar", "booking"])
     redirect_uri: str | None = None  # overrides token's redirect_uri if provided
     credentials: dict[str, str] | None = None  # for non-OAuth providers
 
@@ -447,11 +448,13 @@ async def create_connection(
             detail={"code": "redirect_uri_required", "message": "redirect_uri is required"},
         )
 
+    effective_services = body.services or link_token.services
     server_body = CreateConnectionRequest(
         provider=body.provider_key,
         external_id=external_id,
         redirect_url=redirect_uri,
         metadata=None,
+        services=effective_services,
     )
 
     flow_result = await create_connection_flow(

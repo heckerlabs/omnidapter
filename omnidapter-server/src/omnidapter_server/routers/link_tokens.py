@@ -29,6 +29,8 @@ class CreateLinkTokenRequest(BaseModel):
     ttl_seconds: int | None = Field(default=None, ge=60, le=86400)
     # Reconnect: lock this token to an existing connection
     connection_id: uuid.UUID | None = None
+    # Service kinds to authorize when creating a connection (e.g. ["calendar", "booking"])
+    services: list[str] | None = None
 
 
 async def _resolve_reconnect_provider(
@@ -86,6 +88,7 @@ async def create_link_token_endpoint(
         session=session,
         connection_id=body.connection_id,
         locked_provider_key=locked_provider_key,
+        services=body.services,
     )
 
     return {

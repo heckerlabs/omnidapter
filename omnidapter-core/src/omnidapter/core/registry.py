@@ -90,10 +90,16 @@ class ProviderRegistry:
         """
         from omnidapter.core.errors import ProviderNotConfiguredError
         from omnidapter.core.metadata import AuthKind
+        from omnidapter.providers.acuity.provider import AcuityProvider
         from omnidapter.providers.apple.provider import AppleProvider
+        from omnidapter.providers.calcom.provider import CalcomProvider
         from omnidapter.providers.caldav.provider import CalDAVProvider
+        from omnidapter.providers.calendly.provider import CalendlyProvider
         from omnidapter.providers.google.provider import GoogleProvider
+        from omnidapter.providers.housecallpro.provider import HousecallProProvider
+        from omnidapter.providers.jobber.provider import JobberProvider
         from omnidapter.providers.microsoft.provider import MicrosoftProvider
+        from omnidapter.providers.square.provider import SquareProvider
         from omnidapter.providers.zoho.provider import ZohoProvider
 
         registered_count = 0
@@ -105,6 +111,12 @@ class ProviderRegistry:
             ZohoProvider,
             CalDAVProvider,
             AppleProvider,
+            AcuityProvider,
+            CalcomProvider,
+            SquareProvider,
+            CalendlyProvider,
+            JobberProvider,
+            HousecallProProvider,
         ]:
             try:
                 provider = provider_cls()
@@ -146,6 +158,15 @@ class ProviderRegistry:
                     ):
                         registry_logger.info(
                             "Skipping built-in provider %r: set OMNIDAPTER_CALDAV_ENABLED=1 "
+                            "to enable auto-registration",
+                            provider_key,
+                        )
+                        continue
+                    elif provider_key == "housecallpro" and not os.environ.get(
+                        "HOUSECALLPRO_API_KEY"
+                    ):
+                        registry_logger.info(
+                            "Skipping built-in provider %r: set HOUSECALLPRO_API_KEY "
                             "to enable auto-registration",
                             provider_key,
                         )

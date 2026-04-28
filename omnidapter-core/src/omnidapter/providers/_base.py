@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from omnidapter.core.metadata import ProviderMetadata
+    from omnidapter.core.metadata import ProviderMetadata, ServiceKind
     from omnidapter.stores.credentials import StoredCredential
 
 
@@ -53,7 +53,7 @@ class BaseProvider(ABC):
     - ``get_oauth_config()``: :class:`OAuthConfig` or ``None``
     - ``exchange_code_for_tokens()``: returns :class:`~omnidapter.stores.credentials.StoredCredential`
     - ``refresh_token()``: returns :class:`~omnidapter.stores.credentials.StoredCredential`
-    - ``get_calendar_service()``: returns a CalendarService
+    - ``get_service()``: returns the service implementation for the given ``ServiceKind``
     """
 
     @property
@@ -108,21 +108,25 @@ class BaseProvider(ABC):
         )
 
     @abstractmethod
-    def get_calendar_service(
+    def get_service(
         self,
+        kind: ServiceKind,
         connection_id: str,
         stored_credential: StoredCredential,
         retry_policy: Any = None,
         hooks: Any = None,
     ) -> Any:
-        """Instantiate and return a CalendarService for this provider.
+        """Instantiate and return the service implementation for *kind*.
 
         Args:
+            kind: The service type to instantiate (e.g. ``ServiceKind.CALENDAR``).
             connection_id: Caller-managed opaque key identifying the connected
-                account.  Passed through to the service for use in error
-                context and correlation.
+                account.  Passed through to the service for error context.
             stored_credential: The live credential envelope for this connection.
             retry_policy: Optional retry policy.
             hooks: Optional transport hooks.
+
+        Raises:
+            UnsupportedCapabilityError: if *kind* is not supported by this provider.
         """
         ...

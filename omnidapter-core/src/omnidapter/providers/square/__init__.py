@@ -1,0 +1,1 @@
+"""Square Appointments provider."""

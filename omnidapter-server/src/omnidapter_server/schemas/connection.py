@@ -13,6 +13,7 @@ class CreateConnectionRequest(BaseModel):
     external_id: str | None = None
     redirect_url: str
     metadata: dict[str, Any] | None = None
+    services: list[str] | None = None
 
 
 class ReauthorizeConnectionRequest(BaseModel):

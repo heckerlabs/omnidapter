@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 from omnidapter.auth.models import BasicCredentials
 from omnidapter.core.errors import InvalidCredentialFormatError
-from omnidapter.core.metadata import AuthKind
+from omnidapter.core.metadata import AuthKind, ServiceKind
 from omnidapter.providers.apple.calendar import ICLOUD_CALDAV_URL, AppleCalendarService
 from omnidapter.providers.apple.metadata import APPLE_METADATA
 from omnidapter.providers.apple.provider import AppleProvider
@@ -70,22 +70,22 @@ class TestAppleProvider:
     def test_no_oauth(self):
         assert AppleProvider().get_oauth_config() is None
 
-    def test_get_calendar_service_returns_apple_service(self):
+    def test_get_service_returns_apple_service(self):
         provider = AppleProvider()
         stored = _apple_stored()
-        svc = provider.get_calendar_service("conn-1", stored)
+        svc = provider.get_service(ServiceKind.CALENDAR, "conn-1", stored)
         assert isinstance(svc, AppleCalendarService)
 
-    def test_get_calendar_service_passes_connection_id(self):
+    def test_get_service_passes_connection_id(self):
         provider = AppleProvider()
         stored = _apple_stored()
-        svc = provider.get_calendar_service("my-conn", stored)
+        svc = provider.get_service(ServiceKind.CALENDAR, "my-conn", stored)
         assert svc._connection_id == "my-conn"
 
-    def test_get_calendar_service_passes_stored_credential(self):
+    def test_get_service_passes_stored_credential(self):
         provider = AppleProvider()
         stored = _apple_stored()
-        svc = provider.get_calendar_service("conn-1", stored)
+        svc = provider.get_service(ServiceKind.CALENDAR, "conn-1", stored)
         assert svc._stored is stored
 
 

@@ -143,6 +143,18 @@ class ProviderAPIError(OmnidapterError):
         return " | ".join(parts)
 
 
+class SlotUnavailableError(ProviderAPIError):
+    """The requested booking slot is no longer available.
+
+    Raised when a slot was available at ``get_availability()`` time but was
+    taken by the time ``create_booking()`` attempted to confirm it.
+    """
+
+
+class CustomerResolutionError(ProviderAPIError):
+    """Find-or-create customer failed during booking creation."""
+
+
 class RateLimitError(ProviderAPIError):
     """Provider rate-limited the request.
 

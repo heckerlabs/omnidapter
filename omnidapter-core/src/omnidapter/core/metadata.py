@@ -14,6 +14,7 @@ class ServiceKind(str, Enum):
     """Top-level service categories."""
 
     CALENDAR = "calendar"
+    BOOKING = "booking"
     CRM = "crm"  # reserved for future
 
 
@@ -31,6 +32,7 @@ class OAuthScopeGroup(BaseModel):
     name: str
     description: str
     scopes: list[str]
+    service_kind: ServiceKind | None = None  # None = always included; non-None = service-scoped
 
 
 class OAuthMetadata(BaseModel):

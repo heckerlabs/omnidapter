@@ -127,12 +127,21 @@ async def create_connection_flow(
     omni = await build_omni(session, body.provider, provider_config)
     callback_url = f"{settings.omnidapter_base_url}/oauth/{body.provider}/callback"
 
+    requested_services = None
+    if body.services:
+        from omnidapter.core.metadata import ServiceKind
+
+        requested_services = [
+            ServiceKind(s) for s in body.services if s in ServiceKind._value2member_map_
+        ]
+
     try:
         result = await omni.oauth.begin(
             provider=body.provider,
             connection_id=str(conn.id),
             redirect_uri=callback_url,
             scopes=getattr(provider_config, "scopes", None),
+            requested_services=requested_services,
         )
     except Exception as exc:
         await session.delete(conn)

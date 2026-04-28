@@ -42,6 +42,7 @@ async def create_link_token(
     *,
     connection_id: uuid.UUID | None = None,
     locked_provider_key: str | None = None,
+    services: list[str] | None = None,
     persist_post_create: LinkTokenPostCreate | None = None,
 ) -> tuple[str, LinkToken]:
     """Create and persist a link token. Returns (raw_token, model).
@@ -70,6 +71,7 @@ async def create_link_token(
         is_active=True,
         connection_id=connection_id,
         locked_provider_key=locked_provider_key,
+        services=services,
     )
     session.add(link_token)
     await session.flush()
