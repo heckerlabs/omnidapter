@@ -100,12 +100,13 @@ class TestCreateBooking:
                 "appointment_segments": [{"service_variation_id": "var-1"}],
             }
         }
+        # create_booking order: _resolve_customer first, then get_service_type, then POST /bookings
         mock_req.side_effect = [
-            svc_resp,
-            parent_resp,
-            search_resp,
-            create_cust_resp,
-            booking_resp,
+            search_resp,      # find_customer → POST /customers/search
+            create_cust_resp,  # create_customer → POST /customers
+            svc_resp,          # get_service_type → GET /catalog/object/var-1
+            parent_resp,       # get_service_type parent → GET /catalog/object/item-1
+            booking_resp,      # POST /bookings
         ]
         req = CreateBookingRequest(
             service_id="var-1",

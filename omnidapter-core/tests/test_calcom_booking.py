@@ -73,7 +73,7 @@ class TestCreateBooking:
         body = call.kwargs["json"]
         assert body["eventTypeId"] == 42
         assert body["attendee"]["email"] == "alice@test.com"
-        assert booking.id == "bk-1"
+        assert booking.id == "uid-1"  # Cal.com uses uid as the canonical booking identifier
 
 
 class TestListBookings:
