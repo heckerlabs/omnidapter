@@ -103,7 +103,7 @@ def _respond(data: object, request_id: str):
 
 @router.get(
     "/connections/{connection_id}/booking/services",
-    operation_id="list_booking_services",
+    operation_id="booking_list_services",
     response_model=ApiResponse[list[ServiceType]],
 )
 async def list_booking_services(
@@ -130,7 +130,7 @@ async def list_booking_services(
 
 @router.get(
     "/connections/{connection_id}/booking/services/{service_id}",
-    operation_id="get_booking_service",
+    operation_id="booking_get_service",
     response_model=ApiResponse[ServiceType],
 )
 async def get_booking_service(
@@ -160,7 +160,7 @@ async def get_booking_service(
 
 @router.get(
     "/connections/{connection_id}/booking/staff",
-    operation_id="list_booking_staff",
+    operation_id="booking_list_staff",
     response_model=ApiResponse[list[StaffMember]],
 )
 async def list_booking_staff(
@@ -188,7 +188,7 @@ async def list_booking_staff(
 
 @router.get(
     "/connections/{connection_id}/booking/staff/{staff_id}",
-    operation_id="get_booking_staff_member",
+    operation_id="booking_get_staff_member",
     response_model=ApiResponse[StaffMember],
 )
 async def get_booking_staff_member(
@@ -218,7 +218,7 @@ async def get_booking_staff_member(
 
 @router.get(
     "/connections/{connection_id}/booking/locations",
-    operation_id="list_booking_locations",
+    operation_id="booking_list_locations",
     response_model=ApiResponse[list[BookingLocation]],
 )
 async def list_booking_locations(
@@ -247,7 +247,7 @@ async def list_booking_locations(
 
 @router.get(
     "/connections/{connection_id}/booking/availability",
-    operation_id="get_booking_availability",
+    operation_id="booking_availability",
     response_model=ApiResponse[list[AvailabilitySlot]],
 )
 async def get_booking_availability(
@@ -290,7 +290,7 @@ async def get_booking_availability(
 @router.post(
     "/connections/{connection_id}/booking/appointments",
     status_code=201,
-    operation_id="create_booking",
+    operation_id="booking_create_booking",
     response_model=ApiResponse[Booking],
 )
 async def create_booking(
@@ -317,7 +317,7 @@ async def create_booking(
 
 @router.get(
     "/connections/{connection_id}/booking/appointments",
-    operation_id="list_bookings",
+    operation_id="booking_list_bookings",
     response_model=ApiResponse[list[Booking]],
 )
 async def list_bookings(
@@ -366,7 +366,7 @@ async def list_bookings(
 
 @router.get(
     "/connections/{connection_id}/booking/appointments/{appointment_id}",
-    operation_id="get_booking",
+    operation_id="booking_get_booking",
     response_model=ApiResponse[Booking],
 )
 async def get_booking(
@@ -393,7 +393,7 @@ async def get_booking(
 
 @router.patch(
     "/connections/{connection_id}/booking/appointments/{appointment_id}",
-    operation_id="update_booking",
+    operation_id="booking_update_booking",
     response_model=ApiResponse[Booking],
 )
 async def update_booking(
@@ -424,7 +424,7 @@ async def update_booking(
 @router.delete(
     "/connections/{connection_id}/booking/appointments/{appointment_id}",
     status_code=204,
-    operation_id="cancel_booking",
+    operation_id="booking_cancel_booking",
 )
 async def cancel_booking(
     connection_id: str,
@@ -449,7 +449,7 @@ async def cancel_booking(
 
 @router.post(
     "/connections/{connection_id}/booking/appointments/{appointment_id}/reschedule",
-    operation_id="reschedule_booking",
+    operation_id="booking_reschedule_booking",
     response_model=ApiResponse[Booking],
 )
 async def reschedule_booking(
@@ -482,7 +482,7 @@ async def reschedule_booking(
 
 @router.get(
     "/connections/{connection_id}/booking/customers/search",
-    operation_id="find_booking_customer",
+    operation_id="booking_find_customer",
     response_model=ApiResponse[BookingCustomer | None],
 )
 async def find_booking_customer(
@@ -512,7 +512,7 @@ async def find_booking_customer(
 
 @router.get(
     "/connections/{connection_id}/booking/customers/{customer_id}",
-    operation_id="get_booking_customer",
+    operation_id="booking_get_customer",
     response_model=ApiResponse[BookingCustomer],
 )
 async def get_booking_customer(
@@ -540,7 +540,7 @@ async def get_booking_customer(
 @router.post(
     "/connections/{connection_id}/booking/customers",
     status_code=201,
-    operation_id="create_booking_customer",
+    operation_id="booking_create_customer",
     response_model=ApiResponse[BookingCustomer],
 )
 async def create_booking_customer(

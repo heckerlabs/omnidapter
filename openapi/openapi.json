@@ -381,7 +381,7 @@
           "calendar"
         ],
         "summary": "List Calendars",
-        "operationId": "list_calendars",
+        "operationId": "calendar_list_calendars",
         "security": [
           {
             "APIKeyAuth": []
@@ -426,7 +426,7 @@
           "calendar"
         ],
         "summary": "Create Calendar",
-        "operationId": "create_calendar",
+        "operationId": "calendar_create_calendar",
         "security": [
           {
             "APIKeyAuth": []
@@ -483,7 +483,7 @@
           "calendar"
         ],
         "summary": "Get Calendar",
-        "operationId": "get_calendar",
+        "operationId": "calendar_get_calendar",
         "security": [
           {
             "APIKeyAuth": []
@@ -537,7 +537,7 @@
           "calendar"
         ],
         "summary": "Update Calendar",
-        "operationId": "update_calendar",
+        "operationId": "calendar_update_calendar",
         "security": [
           {
             "APIKeyAuth": []
@@ -601,7 +601,7 @@
           "calendar"
         ],
         "summary": "Delete Calendar",
-        "operationId": "delete_calendar",
+        "operationId": "calendar_delete_calendar",
         "security": [
           {
             "APIKeyAuth": []
@@ -650,7 +650,7 @@
           "calendar"
         ],
         "summary": "List Events",
-        "operationId": "list_events",
+        "operationId": "calendar_list_events",
         "security": [
           {
             "APIKeyAuth": []
@@ -769,7 +769,7 @@
           "calendar"
         ],
         "summary": "Create Event",
-        "operationId": "create_event",
+        "operationId": "calendar_create_event",
         "security": [
           {
             "APIKeyAuth": []
@@ -835,7 +835,7 @@
           "calendar"
         ],
         "summary": "Get Event",
-        "operationId": "get_event",
+        "operationId": "calendar_get_event",
         "security": [
           {
             "APIKeyAuth": []
@@ -898,7 +898,7 @@
           "calendar"
         ],
         "summary": "Update Event",
-        "operationId": "update_event",
+        "operationId": "calendar_update_event",
         "security": [
           {
             "APIKeyAuth": []
@@ -971,7 +971,7 @@
           "calendar"
         ],
         "summary": "Delete Event",
-        "operationId": "delete_event",
+        "operationId": "calendar_delete_event",
         "security": [
           {
             "APIKeyAuth": []
@@ -1029,7 +1029,7 @@
           "calendar"
         ],
         "summary": "Get Availability",
-        "operationId": "get_availability",
+        "operationId": "calendar_get_availability",
         "security": [
           {
             "APIKeyAuth": []
@@ -1105,7 +1105,7 @@
           "booking"
         ],
         "summary": "List Booking Services",
-        "operationId": "list_booking_services",
+        "operationId": "booking_list_services",
         "security": [
           {
             "APIKeyAuth": []
@@ -1168,7 +1168,7 @@
           "booking"
         ],
         "summary": "Get Booking Service",
-        "operationId": "get_booking_service",
+        "operationId": "booking_get_service",
         "security": [
           {
             "APIKeyAuth": []
@@ -1224,7 +1224,7 @@
           "booking"
         ],
         "summary": "List Booking Staff",
-        "operationId": "list_booking_staff",
+        "operationId": "booking_list_staff",
         "security": [
           {
             "APIKeyAuth": []
@@ -1303,7 +1303,7 @@
           "booking"
         ],
         "summary": "Get Booking Staff Member",
-        "operationId": "get_booking_staff_member",
+        "operationId": "booking_get_staff_member",
         "security": [
           {
             "APIKeyAuth": []
@@ -1359,7 +1359,7 @@
           "booking"
         ],
         "summary": "List Booking Locations",
-        "operationId": "list_booking_locations",
+        "operationId": "booking_list_locations",
         "security": [
           {
             "APIKeyAuth": []
@@ -1406,7 +1406,7 @@
           "booking"
         ],
         "summary": "Get Booking Availability",
-        "operationId": "get_booking_availability",
+        "operationId": "booking_availability",
         "security": [
           {
             "APIKeyAuth": []
@@ -1530,7 +1530,7 @@
           "booking"
         ],
         "summary": "Create Booking",
-        "operationId": "create_booking",
+        "operationId": "booking_create_booking",
         "security": [
           {
             "APIKeyAuth": []
@@ -1585,7 +1585,7 @@
           "booking"
         ],
         "summary": "List Bookings",
-        "operationId": "list_bookings",
+        "operationId": "booking_list_bookings",
         "security": [
           {
             "APIKeyAuth": []
@@ -1726,7 +1726,7 @@
           "booking"
         ],
         "summary": "Get Booking",
-        "operationId": "get_booking",
+        "operationId": "booking_get_booking",
         "security": [
           {
             "APIKeyAuth": []
@@ -1780,7 +1780,7 @@
           "booking"
         ],
         "summary": "Update Booking",
-        "operationId": "update_booking",
+        "operationId": "booking_update_booking",
         "security": [
           {
             "APIKeyAuth": []
@@ -1844,7 +1844,7 @@
           "booking"
         ],
         "summary": "Cancel Booking",
-        "operationId": "cancel_booking",
+        "operationId": "booking_cancel_booking",
         "security": [
           {
             "APIKeyAuth": []
@@ -1909,7 +1909,7 @@
           "booking"
         ],
         "summary": "Reschedule Booking",
-        "operationId": "reschedule_booking",
+        "operationId": "booking_reschedule_booking",
         "security": [
           {
             "APIKeyAuth": []
@@ -1975,7 +1975,7 @@
           "booking"
         ],
         "summary": "Find Booking Customer",
-        "operationId": "find_booking_customer",
+        "operationId": "booking_find_customer",
         "security": [
           {
             "APIKeyAuth": []
@@ -2070,7 +2070,7 @@
           "booking"
         ],
         "summary": "Get Booking Customer",
-        "operationId": "get_booking_customer",
+        "operationId": "booking_get_customer",
         "security": [
           {
             "APIKeyAuth": []
@@ -2126,7 +2126,7 @@
           "booking"
         ],
         "summary": "Create Booking Customer",
-        "operationId": "create_booking_customer",
+        "operationId": "booking_create_customer",
         "security": [
           {
             "APIKeyAuth": []
