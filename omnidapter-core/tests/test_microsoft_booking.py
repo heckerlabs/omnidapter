@@ -96,7 +96,9 @@ class TestCreateBooking:
             _resp(
                 {"id": "cust-ms-1", "displayName": "Eva", "emailAddress": "eva@test.com"}
             ),  # POST /customers (create)
-            _resp({"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}),  # GET /services/svc-1
+            _resp(
+                {"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}
+            ),  # GET /services/svc-1
             _resp(
                 {
                     "id": "appt-1",
@@ -126,8 +128,12 @@ class TestCreateBooking:
             return m
 
         mock_req.side_effect = [
-            _resp({"value": [{"id": "c-1", "displayName": "Eva", "emailAddress": "eva@test.com"}]}),  # GET /customers (find — found)
-            _resp({"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}),  # GET /services/svc-1
+            _resp(
+                {"value": [{"id": "c-1", "displayName": "Eva", "emailAddress": "eva@test.com"}]}
+            ),  # GET /customers (find — found)
+            _resp(
+                {"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}
+            ),  # GET /services/svc-1
             _resp(
                 {
                     "id": "appt-1",
