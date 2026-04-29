@@ -448,7 +448,7 @@ async def create_connection(
             detail={"code": "redirect_uri_required", "message": "redirect_uri is required"},
         )
 
-    effective_services = body.services or link_token.services
+    effective_services = body.services if body.services is not None else link_token.services
     server_body = CreateConnectionRequest(
         provider=body.provider_key,
         external_id=external_id,

@@ -162,11 +162,11 @@ class ProviderRegistry:
                             provider_key,
                         )
                         continue
-                    elif provider_key == "housecallpro" and not os.environ.get(
-                        "HOUSECALLPRO_API_KEY"
+                    elif provider_key == "housecallpro" and not _env_flag_enabled(
+                        "OMNIDAPTER_HOUSECALLPRO_ENABLED"
                     ):
                         registry_logger.info(
-                            "Skipping built-in provider %r: set HOUSECALLPRO_API_KEY "
+                            "Skipping built-in provider %r: set OMNIDAPTER_HOUSECALLPRO_ENABLED=1 "
                             "to enable auto-registration",
                             provider_key,
                         )

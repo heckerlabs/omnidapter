@@ -84,7 +84,7 @@ class InvalidCredentialFormatError(OmnidapterError):
 
 
 class ScopeInsufficientError(AuthError):
-    """The connection lacks required scopes for the requested operation."""
+    """The connection lacks required OAuth scopes for the requested operation."""
 
     def __init__(
         self,
@@ -96,6 +96,27 @@ class ScopeInsufficientError(AuthError):
         super().__init__(message)
         self.required_scopes = required_scopes
         self.granted_scopes = granted_scopes
+
+
+class ServiceAuthorizationError(AuthError):
+    """The connection was not authorized for the requested service kind.
+
+    Raised when ``granted_services`` on the stored credential does not include
+    the service being requested. This is distinct from OAuth scope failures
+    (``ScopeInsufficientError``) — the connection exists but was authorized for
+    a different set of services.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        required_services: list[str],
+        granted_services: list[str],
+    ) -> None:
+        super().__init__(message)
+        self.required_services = required_services
+        self.granted_services = granted_services
 
 
 class TransportError(OmnidapterError):

@@ -94,10 +94,7 @@ class HousecallProBookingService(BookingService):
         config = (await self._resolve_stored_credential()).provider_config or {}
         services = config.get("services")
         if services:
-            return [
-                ServiceType(id=str(i), name=s, provider_data={"index": i})
-                for i, s in enumerate(services)
-            ]
+            return [ServiceType(id=s, name=s) for s in services]
         return [ServiceType(id="job", name="Job", description="Housecall Pro job")]
 
     async def get_service_type(self, service_id: str) -> ServiceType:

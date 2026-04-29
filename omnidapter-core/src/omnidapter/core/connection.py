@@ -111,13 +111,13 @@ class Connection:
             )
         granted = self._stored.granted_services
         if granted is not None and kind not in granted:
-            from omnidapter.core.errors import ScopeInsufficientError
+            from omnidapter.core.errors import ServiceAuthorizationError
 
-            raise ScopeInsufficientError(
+            raise ServiceAuthorizationError(
                 f"Connection was not authorized for service {kind.value!r}. "
                 "Re-authorize the connection and request the required service.",
-                required_scopes=[kind.value],
-                granted_scopes=[s.value for s in granted],
+                required_services=[kind.value],
+                granted_services=[s.value for s in granted],
             )
         provider = self._registry.get(self._stored.provider_key)
         svc = provider.get_service(
