@@ -56,6 +56,20 @@ Apple only:
 uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_apple.py
 ```
 
+All booking providers:
+
+```bash
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration -m integration -k "booking"
+```
+
+Acuity booking only:
+
+```bash
+uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/tests/integration/test_acuity_booking.py
+```
+
+### Calendar env vars
+
 - Common:
   - `OMNIDAPTER_TEST_ATTENDEE_EMAIL` (Optional comma-separated list for attendee invite tests)
 - Google:
@@ -83,11 +97,42 @@ uv run --env-file omnidapter-core/tests/integration/.env pytest omnidapter-core/
   - `OMNIDAPTER_TEST_APPLE_PASSWORD`
   - Optional: `OMNIDAPTER_TEST_APPLE_CALENDAR_ID`
 
+### Booking env vars
+
+- Acuity:
+  - `OMNIDAPTER_TEST_ACUITY_CLIENT_ID`
+  - `OMNIDAPTER_TEST_ACUITY_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_ACUITY_REFRESH_TOKEN`
+- Cal.com:
+  - `OMNIDAPTER_TEST_CALCOM_CLIENT_ID`
+  - `OMNIDAPTER_TEST_CALCOM_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_CALCOM_REFRESH_TOKEN`
+- Square:
+  - `OMNIDAPTER_TEST_SQUARE_CLIENT_ID`
+  - `OMNIDAPTER_TEST_SQUARE_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_SQUARE_REFRESH_TOKEN`
+- Calendly:
+  - `OMNIDAPTER_TEST_CALENDLY_CLIENT_ID`
+  - `OMNIDAPTER_TEST_CALENDLY_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_CALENDLY_REFRESH_TOKEN`
+- Microsoft Bookings:
+  - `OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_ID`
+  - `OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_MSBOOKINGS_REFRESH_TOKEN`
+  - `OMNIDAPTER_TEST_MSBOOKINGS_BUSINESS_ID` (booking business email address)
+- Jobber:
+  - `OMNIDAPTER_TEST_JOBBER_CLIENT_ID`
+  - `OMNIDAPTER_TEST_JOBBER_CLIENT_SECRET`
+  - `OMNIDAPTER_TEST_JOBBER_REFRESH_TOKEN`
+- Housecall Pro:
+  - `OMNIDAPTER_TEST_HOUSECALLPRO_API_KEY`
+
 ## Notes
 
-- Use dedicated test accounts/calendars where possible.
-- Tests create/update/delete events and clean up after themselves.
-- If a provider's required env vars are missing, that provider's integration tests are skipped.
+- Use dedicated test accounts where possible.
+- Tests create/update/delete records and clean up after themselves.
+- Created bookings are tagged with `[omnidapter-test]` in the notes field for identification.
+- If a provider's required env vars are missing, that provider's integration tests are skipped automatically.
 - CalDAV `test_calendar_crud_round_trip` may skip when the configured CalDAV server blocks `MKCALENDAR` (for example, Zoho CalDAV sync endpoints). Use iCloud or a self-hosted CalDAV server that allows calendar collection creation for full CalDAV calendar CRUD coverage.
 
 ## Getting a Google refresh token
