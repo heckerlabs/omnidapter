@@ -131,9 +131,13 @@ async def create_connection_flow(
     if body.services:
         from omnidapter.core.metadata import ServiceKind
 
-        requested_services = [
-            ServiceKind(s) for s in body.services if s in ServiceKind._value2member_map_
-        ]
+        try:
+            requested_services = [ServiceKind(s) for s in body.services]
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_service_kind", "message": str(exc)},
+            ) from exc
 
     try:
         result = await omni.oauth.begin(

@@ -71,7 +71,7 @@ def to_booking(data: dict) -> Booking:
 
     # Location / organizer info
     organizer = data.get("event_memberships") or [{}]
-    organizer_email = organizer[0].get("user_email") if organizer else None
+    organizer_uri = organizer[0].get("user") if organizer else None
 
     urls: dict[str, str] = {}
     if data.get("calendar_event", {}).get("join_url"):
@@ -84,7 +84,7 @@ def to_booking(data: dict) -> Booking:
         end=end,
         status=_status(data.get("status", "active")),
         customer=BookingCustomer(),
-        staff_id=_event_type_id(organizer_email) if organizer_email else None,
+        staff_id=_event_type_id(organizer_uri) if organizer_uri else None,
         location_id=None,
         notes=data.get("description") or None,
         management_urls=urls or None,

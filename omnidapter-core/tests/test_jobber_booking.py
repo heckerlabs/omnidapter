@@ -139,14 +139,9 @@ class TestCreateBooking:
             m.json.return_value = {"data": data}
             return m
 
+        # customer.id is already set → _resolve_customer returns without any HTTP call.
+        # Only one call: the jobCreate mutation.
         mock_req.side_effect = [
-            _resp(
-                {
-                    "clients": {
-                        "nodes": [{"id": "cl-1", "name": "Alice", "emails": [], "phones": []}]
-                    }
-                }
-            ),
             _resp(
                 {
                     "jobCreate": {

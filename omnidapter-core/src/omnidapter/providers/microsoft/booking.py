@@ -211,6 +211,8 @@ class MicrosoftBookingService(BookingService):
     def _business_base(self, stored: StoredCredential) -> str:
         config = stored.provider_config or {}
         business_id = config.get("business_id", "")
+        if not business_id:
+            raise ValueError("provider_config must include 'business_id' for Microsoft Bookings")
         return f"{GRAPH_BASE}/solutions/bookingBusinesses/{business_id}"
 
     async def _base(self) -> str:

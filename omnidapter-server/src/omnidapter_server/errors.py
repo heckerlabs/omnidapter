@@ -15,6 +15,7 @@ from omnidapter import (
     ProviderAPIError,
     RateLimitError,
     ScopeInsufficientError,
+    ServiceAuthorizationError,
     SlotUnavailableError,
     TransportError,
     UnsupportedCapabilityError,
@@ -94,6 +95,19 @@ def map_library_exception(
 
     if isinstance(exc, ConnectionNotFoundError):
         return _error_response(request, 404, "connection_not_found", str(exc), env=env)
+
+    if isinstance(exc, ServiceAuthorizationError):
+        return _error_response(
+            request,
+            403,
+            "service_not_authorized",
+            str(exc),
+            {
+                "required_services": exc.required_services,
+                "granted_services": exc.granted_services,
+            },
+            env=env,
+        )
 
     if isinstance(exc, ScopeInsufficientError):
         return _error_response(

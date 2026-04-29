@@ -142,7 +142,14 @@ class TestListBookings:
             }
             for i in range(5)
         ]
-        mock_req.return_value.json.return_value = page1
+
+        def _resp(data):
+            r = MagicMock()
+            r.json.return_value = data
+            return r
+
+        # First call returns a full page; second call returns empty → terminates.
+        mock_req.side_effect = [_resp(page1), _resp([])]
         req = ListBookingsRequest(page_size=5)
         items = []
         async for b in svc.list_bookings(req):

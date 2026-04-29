@@ -90,12 +90,15 @@ class TestCreateBooking:
             m.json.return_value = data
             return m
 
-        # find_customer → not found
+        # find_customer → not found → create_customer → get_service_type → POST /appointments
         mock_req.side_effect = [
-            _resp({"value": []}),  # GET /customers
+            _resp({"value": []}),  # GET /customers (find — not found)
             _resp(
                 {"id": "cust-ms-1", "displayName": "Eva", "emailAddress": "eva@test.com"}
-            ),  # POST /customers
+            ),  # POST /customers (create)
+            _resp(
+                {"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}
+            ),  # GET /services/svc-1
             _resp(
                 {
                     "id": "appt-1",
@@ -105,7 +108,7 @@ class TestCreateBooking:
                     "status": "booked",
                     "customers": [],
                 }
-            ),
+            ),  # POST /appointments
         ]
         req = CreateBookingRequest(
             service_id="svc-1",
@@ -114,7 +117,7 @@ class TestCreateBooking:
         )
         booking = await svc.create_booking(req)
         assert booking.id == "appt-1"
-        assert mock_req.await_count == 3
+        assert mock_req.await_count == 4
 
     async def test_appointment_post_body(self):
         svc, mock_req = _make_service()
@@ -125,7 +128,12 @@ class TestCreateBooking:
             return m
 
         mock_req.side_effect = [
-            _resp({"value": [{"id": "c-1", "displayName": "Eva", "emailAddress": "eva@test.com"}]}),
+            _resp(
+                {"value": [{"id": "c-1", "displayName": "Eva", "emailAddress": "eva@test.com"}]}
+            ),  # GET /customers (find — found)
+            _resp(
+                {"id": "svc-1", "displayName": "Consult", "defaultDuration": "PT30M"}
+            ),  # GET /services/svc-1
             _resp(
                 {
                     "id": "appt-1",
@@ -135,7 +143,7 @@ class TestCreateBooking:
                     "status": "booked",
                     "customers": [],
                 }
-            ),
+            ),  # POST /appointments
         ]
         req = CreateBookingRequest(
             service_id="svc-1",
