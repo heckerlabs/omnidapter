@@ -359,3 +359,331 @@ async def apple_calendar_id(apple_service):
     calendars = await apple_service.list_calendars()
     assert calendars, "No Apple calendars found on this iCloud account"
     return calendars[0].calendar_id
+
+
+# --------------------------------------------------------------------------- #
+# Booking shared constants                                                     #
+# --------------------------------------------------------------------------- #
+
+# Added to notes/title of every test booking for easy cleanup.
+BOOKING_NOTE_PREFIX = "[omnidapter-test]"
+
+# Default customer used in booking creation tests.
+BOOKING_TEST_CUSTOMER_NAME = "Omnidapter Test"
+BOOKING_TEST_CUSTOMER_EMAIL = "omnidapter-test@example.com"
+
+
+# --------------------------------------------------------------------------- #
+# Acuity fixtures                                                              #
+# --------------------------------------------------------------------------- #
+
+_ACUITY_VARS = (
+    "OMNIDAPTER_TEST_ACUITY_CLIENT_ID",
+    "OMNIDAPTER_TEST_ACUITY_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_ACUITY_REFRESH_TOKEN",
+)
+
+
+@pytest.fixture(scope="module")
+async def acuity_stored():
+    _require_env(*_ACUITY_VARS)
+    from omnidapter.providers.acuity.provider import AcuityProvider
+
+    stale = _stale_oauth2_stored("acuity", os.environ["OMNIDAPTER_TEST_ACUITY_REFRESH_TOKEN"])
+    provider = AcuityProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_ACUITY_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_ACUITY_CLIENT_SECRET"],
+    )
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Acuity integration credentials unusable: {exc}")
+
+
+@pytest.fixture(scope="module")
+def acuity_provider():
+    _require_env(*_ACUITY_VARS)
+    from omnidapter.providers.acuity.provider import AcuityProvider
+
+    return AcuityProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_ACUITY_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_ACUITY_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def acuity_booking_service(acuity_provider, acuity_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return acuity_provider.get_service(ServiceKind.BOOKING, "integration-acuity", acuity_stored)
+
+
+# --------------------------------------------------------------------------- #
+# Cal.com fixtures                                                             #
+# --------------------------------------------------------------------------- #
+
+_CALCOM_VARS = (
+    "OMNIDAPTER_TEST_CALCOM_CLIENT_ID",
+    "OMNIDAPTER_TEST_CALCOM_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_CALCOM_REFRESH_TOKEN",
+)
+
+
+@pytest.fixture(scope="module")
+async def calcom_stored():
+    _require_env(*_CALCOM_VARS)
+    from omnidapter.providers.calcom.provider import CalcomProvider
+
+    stale = _stale_oauth2_stored("calcom", os.environ["OMNIDAPTER_TEST_CALCOM_REFRESH_TOKEN"])
+    provider = CalcomProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_CALCOM_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_CALCOM_CLIENT_SECRET"],
+    )
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Cal.com integration credentials unusable: {exc}")
+
+
+@pytest.fixture(scope="module")
+def calcom_provider():
+    _require_env(*_CALCOM_VARS)
+    from omnidapter.providers.calcom.provider import CalcomProvider
+
+    return CalcomProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_CALCOM_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_CALCOM_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def calcom_booking_service(calcom_provider, calcom_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return calcom_provider.get_service(ServiceKind.BOOKING, "integration-calcom", calcom_stored)
+
+
+# --------------------------------------------------------------------------- #
+# Square fixtures                                                              #
+# --------------------------------------------------------------------------- #
+
+_SQUARE_VARS = (
+    "OMNIDAPTER_TEST_SQUARE_CLIENT_ID",
+    "OMNIDAPTER_TEST_SQUARE_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_SQUARE_REFRESH_TOKEN",
+)
+
+
+@pytest.fixture(scope="module")
+async def square_stored():
+    _require_env(*_SQUARE_VARS)
+    from omnidapter.providers.square.provider import SquareProvider
+
+    stale = _stale_oauth2_stored("square", os.environ["OMNIDAPTER_TEST_SQUARE_REFRESH_TOKEN"])
+    provider = SquareProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_SQUARE_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_SQUARE_CLIENT_SECRET"],
+    )
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Square integration credentials unusable: {exc}")
+
+
+@pytest.fixture(scope="module")
+def square_provider():
+    _require_env(*_SQUARE_VARS)
+    from omnidapter.providers.square.provider import SquareProvider
+
+    return SquareProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_SQUARE_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_SQUARE_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def square_booking_service(square_provider, square_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return square_provider.get_service(ServiceKind.BOOKING, "integration-square", square_stored)
+
+
+# --------------------------------------------------------------------------- #
+# Calendly fixtures                                                            #
+# --------------------------------------------------------------------------- #
+
+_CALENDLY_VARS = (
+    "OMNIDAPTER_TEST_CALENDLY_CLIENT_ID",
+    "OMNIDAPTER_TEST_CALENDLY_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_CALENDLY_REFRESH_TOKEN",
+)
+
+
+@pytest.fixture(scope="module")
+async def calendly_stored():
+    _require_env(*_CALENDLY_VARS)
+    from omnidapter.providers.calendly.provider import CalendlyProvider
+
+    stale = _stale_oauth2_stored("calendly", os.environ["OMNIDAPTER_TEST_CALENDLY_REFRESH_TOKEN"])
+    provider = CalendlyProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_CALENDLY_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_CALENDLY_CLIENT_SECRET"],
+    )
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Calendly integration credentials unusable: {exc}")
+
+
+@pytest.fixture(scope="module")
+def calendly_provider():
+    _require_env(*_CALENDLY_VARS)
+    from omnidapter.providers.calendly.provider import CalendlyProvider
+
+    return CalendlyProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_CALENDLY_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_CALENDLY_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def calendly_booking_service(calendly_provider, calendly_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return calendly_provider.get_service(
+        ServiceKind.BOOKING, "integration-calendly", calendly_stored
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Microsoft Bookings fixtures                                                  #
+# --------------------------------------------------------------------------- #
+
+_MSBOOKINGS_VARS = (
+    "OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_ID",
+    "OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_MSBOOKINGS_REFRESH_TOKEN",
+    "OMNIDAPTER_TEST_MSBOOKINGS_BUSINESS_ID",
+)
+
+
+@pytest.fixture(scope="module")
+async def msbookings_stored():
+    _require_env(*_MSBOOKINGS_VARS)
+    from omnidapter.providers.microsoft.provider import MicrosoftProvider
+
+    stale = _stale_oauth2_stored(
+        "microsoft", os.environ["OMNIDAPTER_TEST_MSBOOKINGS_REFRESH_TOKEN"]
+    )
+    provider = MicrosoftProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_SECRET"],
+    )
+    try:
+        refreshed = await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Microsoft Bookings integration credentials unusable: {exc}")
+    # Attach the business_id required by MicrosoftBookingService._base()
+    from omnidapter.stores.credentials import StoredCredential
+
+    return StoredCredential(
+        provider_key=refreshed.provider_key,
+        auth_kind=refreshed.auth_kind,
+        credentials=refreshed.credentials,
+        provider_config={"business_id": os.environ["OMNIDAPTER_TEST_MSBOOKINGS_BUSINESS_ID"]},
+    )
+
+
+@pytest.fixture(scope="module")
+def msbookings_provider():
+    _require_env(*_MSBOOKINGS_VARS)
+    from omnidapter.providers.microsoft.provider import MicrosoftProvider
+
+    return MicrosoftProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_MSBOOKINGS_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def msbookings_booking_service(msbookings_provider, msbookings_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return msbookings_provider.get_service(
+        ServiceKind.BOOKING, "integration-msbookings", msbookings_stored
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Jobber fixtures                                                              #
+# --------------------------------------------------------------------------- #
+
+_JOBBER_VARS = (
+    "OMNIDAPTER_TEST_JOBBER_CLIENT_ID",
+    "OMNIDAPTER_TEST_JOBBER_CLIENT_SECRET",
+    "OMNIDAPTER_TEST_JOBBER_REFRESH_TOKEN",
+)
+
+
+@pytest.fixture(scope="module")
+async def jobber_stored():
+    _require_env(*_JOBBER_VARS)
+    from omnidapter.providers.jobber.provider import JobberProvider
+
+    stale = _stale_oauth2_stored("jobber", os.environ["OMNIDAPTER_TEST_JOBBER_REFRESH_TOKEN"])
+    provider = JobberProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_JOBBER_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_JOBBER_CLIENT_SECRET"],
+    )
+    try:
+        return await provider.refresh_token(stale)
+    except (TokenRefreshError, ProviderAPIError) as exc:
+        pytest.skip(f"Jobber integration credentials unusable: {exc}")
+
+
+@pytest.fixture(scope="module")
+def jobber_provider():
+    _require_env(*_JOBBER_VARS)
+    from omnidapter.providers.jobber.provider import JobberProvider
+
+    return JobberProvider(
+        client_id=os.environ["OMNIDAPTER_TEST_JOBBER_CLIENT_ID"],
+        client_secret=os.environ["OMNIDAPTER_TEST_JOBBER_CLIENT_SECRET"],
+    )
+
+
+@pytest.fixture(scope="module")
+def jobber_booking_service(jobber_provider, jobber_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    return jobber_provider.get_service(ServiceKind.BOOKING, "integration-jobber", jobber_stored)
+
+
+# --------------------------------------------------------------------------- #
+# Housecall Pro fixtures                                                       #
+# --------------------------------------------------------------------------- #
+
+_HOUSECALLPRO_VARS = ("OMNIDAPTER_TEST_HOUSECALLPRO_API_KEY",)
+
+
+@pytest.fixture(scope="module")
+def housecallpro_stored():
+    _require_env(*_HOUSECALLPRO_VARS)
+    from omnidapter.auth.models import ApiKeyCredentials
+    from omnidapter.core.metadata import AuthKind
+
+    return StoredCredential(
+        provider_key="housecallpro",
+        auth_kind=AuthKind.API_KEY,
+        credentials=ApiKeyCredentials(api_key=os.environ["OMNIDAPTER_TEST_HOUSECALLPRO_API_KEY"]),
+    )
+
+
+@pytest.fixture(scope="module")
+def housecallpro_booking_service(housecallpro_stored):
+    from omnidapter.core.metadata import ServiceKind
+    from omnidapter.providers.housecallpro.provider import HousecallProProvider
+
+    return HousecallProProvider().get_service(
+        ServiceKind.BOOKING, "integration-housecallpro", housecallpro_stored
+    )
