@@ -37,9 +37,12 @@ CALENDLY_METADATA = ProviderMetadata(
             c.value
             for c in [
                 BookingCapability.LIST_SERVICES,
+                BookingCapability.GET_SERVICE,
                 BookingCapability.LIST_STAFF,
+                BookingCapability.GET_STAFF,
                 BookingCapability.GET_AVAILABILITY,
                 BookingCapability.LIST_BOOKINGS,
+                BookingCapability.GET_BOOKING,
                 BookingCapability.CANCEL_BOOKING,
             ]
         ],

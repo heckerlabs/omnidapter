@@ -35,13 +35,16 @@ HCP_API_BASE = "https://api.housecallpro.com"
 _HCP_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
         BookingCapability.CANCEL_BOOKING,
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.CUSTOMER_LOOKUP,
         BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_STAFF,
@@ -98,6 +101,7 @@ class HousecallProBookingService(BookingService):
         return [ServiceType(id="job", name="Job", description="Housecall Pro job")]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         services = await self.list_services()
         for svc in services:
             if svc.id == service_id:
@@ -123,6 +127,7 @@ class HousecallProBookingService(BookingService):
         return [mappers.to_staff_member(e) for e in employees]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         resp = await self._http.request(
             "GET",
             f"{HCP_API_BASE}/api/v1/employees/{staff_id}",
@@ -228,6 +233,7 @@ class HousecallProBookingService(BookingService):
         return mappers.to_booking(resp.json())
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         resp = await self._http.request(
             "GET",
             f"{HCP_API_BASE}/api/v1/jobs/{booking_id}",

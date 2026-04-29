@@ -74,7 +74,9 @@ MICROSOFT_METADATA = ProviderMetadata(
             c.value
             for c in [
                 BookingCapability.LIST_SERVICES,
+                BookingCapability.GET_SERVICE,
                 BookingCapability.LIST_STAFF,
+                BookingCapability.GET_STAFF,
                 BookingCapability.LIST_LOCATIONS,
                 BookingCapability.GET_AVAILABILITY,
                 BookingCapability.CREATE_BOOKING,
@@ -82,6 +84,7 @@ MICROSOFT_METADATA = ProviderMetadata(
                 BookingCapability.RESCHEDULE_BOOKING,
                 BookingCapability.UPDATE_BOOKING,
                 BookingCapability.LIST_BOOKINGS,
+                BookingCapability.GET_BOOKING,
                 BookingCapability.CUSTOMER_LOOKUP,
                 BookingCapability.CUSTOMER_MANAGEMENT,
                 BookingCapability.MULTI_STAFF,

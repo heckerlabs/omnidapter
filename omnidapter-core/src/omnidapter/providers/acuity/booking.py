@@ -34,13 +34,16 @@ ACUITY_API_BASE = "https://acuityscheduling.com/api/v1"
 _ACUITY_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
         BookingCapability.CANCEL_BOOKING,
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.CUSTOMER_LOOKUP,
         BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_STAFF,
@@ -96,6 +99,7 @@ class AcuityBookingService(BookingService):
         return [mappers.to_service_type(item) for item in resp.json()]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         resp = await self._http.request(
             "GET",
             f"{ACUITY_API_BASE}/appointment-types/{service_id}",
@@ -116,6 +120,7 @@ class AcuityBookingService(BookingService):
         return [mappers.to_staff_member(item) for item in resp.json()]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         all_staff = await self.list_staff()
         for member in all_staff:
             if member.id == staff_id:
@@ -220,6 +225,7 @@ class AcuityBookingService(BookingService):
         return mappers.to_booking(resp.json())
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         resp = await self._http.request(
             "GET",
             f"{ACUITY_API_BASE}/appointments/{booking_id}",

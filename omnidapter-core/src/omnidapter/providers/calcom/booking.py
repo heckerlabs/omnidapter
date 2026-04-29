@@ -35,13 +35,16 @@ _CAL_VERSION_HEADER = "2024-08-13"
 _CALCOM_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
         BookingCapability.CANCEL_BOOKING,
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.MULTI_LOCATION,
         BookingCapability.MULTI_STAFF,
         BookingCapability.MULTI_SERVICE,
@@ -109,6 +112,7 @@ class CalcomBookingService(BookingService):
         return [mappers.to_service_type(item) for item in (items or [])]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         resp = await self._http.request(
             "GET",
             f"{CALCOM_API_BASE}/event-types/{service_id}",
@@ -130,6 +134,7 @@ class CalcomBookingService(BookingService):
         return [mappers.to_staff_member(item) for item in (items or [])]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         resp = await self._http.request(
             "GET",
             f"{CALCOM_API_BASE}/users/{staff_id}",
@@ -204,6 +209,7 @@ class CalcomBookingService(BookingService):
         return mappers.to_booking(self._data(resp))
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         resp = await self._http.request(
             "GET",
             f"{CALCOM_API_BASE}/bookings/{booking_id}",

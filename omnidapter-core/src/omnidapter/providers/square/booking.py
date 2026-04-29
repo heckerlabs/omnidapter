@@ -36,7 +36,9 @@ _SQUARE_VERSION = "2024-01-17"
 _SQUARE_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.LIST_LOCATIONS,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
@@ -44,6 +46,7 @@ _SQUARE_CAPABILITIES = frozenset(
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.CUSTOMER_LOOKUP,
         BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_LOCATION,
@@ -113,6 +116,7 @@ class SquareBookingService(BookingService):
         return services
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         resp = await self._http.request(
             "GET",
             f"{SQUARE_API_BASE}/catalog/object/{service_id}",
@@ -152,6 +156,7 @@ class SquareBookingService(BookingService):
         return [mappers.to_staff_member(p) for p in profiles if p.get("is_bookable")]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         resp = await self._http.request(
             "GET",
             f"{SQUARE_API_BASE}/bookings/team-member-booking-profiles/{staff_id}",
@@ -251,6 +256,7 @@ class SquareBookingService(BookingService):
         return mappers.to_booking(resp.json().get("booking") or resp.json())
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         resp = await self._http.request(
             "GET",
             f"{SQUARE_API_BASE}/bookings/{booking_id}",

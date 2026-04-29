@@ -39,11 +39,9 @@ from omnidapter_server.models.connection import Connection
 from omnidapter_server.provider_registry import build_provider_registry
 from omnidapter_server.schemas.common import ApiResponse
 from omnidapter_server.services.booking_flows import execute_booking_operation
-from omnidapter_server.services.calendar_flows import (
-    get_connection_ready_or_404,
-    wrap_response,
-)
+from omnidapter_server.services.calendar_flows import get_connection_ready_or_404
 from omnidapter_server.services.connection_health import update_last_used
+from omnidapter_server.services.response_utils import wrap_response
 from omnidapter_server.stores.credential_store import DatabaseCredentialStore
 from omnidapter_server.stores.factory import build_oauth_state_store
 

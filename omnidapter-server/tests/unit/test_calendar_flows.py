@@ -14,8 +14,8 @@ from omnidapter_server.models.connection import Connection, ConnectionStatus
 from omnidapter_server.services.calendar_flows import (
     execute_calendar_operation,
     get_connection_ready_or_404,
-    wrap_response,
 )
+from omnidapter_server.services.response_utils import wrap_response
 from starlette.requests import Request
 
 

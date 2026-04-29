@@ -34,7 +34,9 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _MS_BOOKING_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.LIST_LOCATIONS,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
@@ -42,6 +44,7 @@ _MS_BOOKING_CAPABILITIES = frozenset(
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.CUSTOMER_LOOKUP,
         BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_STAFF,
@@ -228,6 +231,7 @@ class MicrosoftBookingService(BookingService):
         return [_to_service_type(s) for s in resp.json().get("value") or []]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         base = await self._base()
         resp = await self._http.request(
             "GET",
@@ -250,6 +254,7 @@ class MicrosoftBookingService(BookingService):
         return [_to_staff_member(s) for s in resp.json().get("value") or []]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         base = await self._base()
         resp = await self._http.request(
             "GET",
@@ -396,6 +401,7 @@ class MicrosoftBookingService(BookingService):
         return _to_booking(resp.json())
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         base = await self._base()
         resp = await self._http.request(
             "GET",

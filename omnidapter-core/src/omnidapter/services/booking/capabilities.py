@@ -11,10 +11,13 @@ class BookingCapability(str, Enum):
     """Capabilities that a booking provider may or may not support."""
 
     LIST_SERVICES = "list_services"
+    GET_SERVICE = "get_service"
     LIST_STAFF = "list_staff"
+    GET_STAFF = "get_staff"
     LIST_LOCATIONS = "list_locations"
     GET_AVAILABILITY = "get_availability"
     CREATE_BOOKING = "create_booking"
+    GET_BOOKING = "get_booking"
     CANCEL_BOOKING = "cancel_booking"
     RESCHEDULE_BOOKING = "reschedule_booking"
     UPDATE_BOOKING = "update_booking"

@@ -37,13 +37,16 @@ _JOBBER_VERSION = "2024-01-01"
 _JOBBER_CAPABILITIES = frozenset(
     {
         BookingCapability.LIST_SERVICES,
+        BookingCapability.GET_SERVICE,
         BookingCapability.LIST_STAFF,
+        BookingCapability.GET_STAFF,
         BookingCapability.GET_AVAILABILITY,
         BookingCapability.CREATE_BOOKING,
         BookingCapability.CANCEL_BOOKING,
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
+        BookingCapability.GET_BOOKING,
         BookingCapability.CUSTOMER_LOOKUP,
         BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_STAFF,
@@ -129,6 +132,7 @@ class JobberBookingService(BookingService):
         return [mappers.to_service_type(n) for n in nodes]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
+        self._require_capability(BookingCapability.GET_SERVICE)
         query = """
         query GetService($id: ID!) {
           product(id: $id) {
@@ -163,6 +167,7 @@ class JobberBookingService(BookingService):
         return [mappers.to_staff_member(n) for n in nodes]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
+        self._require_capability(BookingCapability.GET_STAFF)
         query = """
         query GetUser($id: ID!) {
           user(id: $id) {
@@ -312,6 +317,7 @@ class JobberBookingService(BookingService):
         return mappers.to_booking(result.get("job") or {})
 
     async def get_booking(self, booking_id: str) -> Booking:
+        self._require_capability(BookingCapability.GET_BOOKING)
         query = """
         query GetJob($id: ID!) {
           job(id: $id) {
