@@ -50,8 +50,6 @@ CALCOM_METADATA = ProviderMetadata(
                 BookingCapability.RESCHEDULE_BOOKING,
                 BookingCapability.UPDATE_BOOKING,
                 BookingCapability.LIST_BOOKINGS,
-                BookingCapability.CUSTOMER_LOOKUP,
-                BookingCapability.CUSTOMER_MANAGEMENT,
                 BookingCapability.MULTI_LOCATION,
                 BookingCapability.MULTI_STAFF,
                 BookingCapability.MULTI_SERVICE,

@@ -97,7 +97,7 @@ class Connection:
 
         Raises:
             UnsupportedCapabilityError: If the provider does not support *kind*.
-            ScopeInsufficientError: If the connection was not authorized for *kind*.
+            ServiceAuthorizationError: If the connection was not authorized for *kind*.
             Use ``conn.supports(kind)`` to check provider support first.
         """
         if not self.supports(kind):

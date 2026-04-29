@@ -42,8 +42,6 @@ _CALCOM_CAPABILITIES = frozenset(
         BookingCapability.RESCHEDULE_BOOKING,
         BookingCapability.UPDATE_BOOKING,
         BookingCapability.LIST_BOOKINGS,
-        BookingCapability.CUSTOMER_LOOKUP,
-        BookingCapability.CUSTOMER_MANAGEMENT,
         BookingCapability.MULTI_LOCATION,
         BookingCapability.MULTI_STAFF,
         BookingCapability.MULTI_SERVICE,
@@ -287,20 +285,13 @@ class CalcomBookingService(BookingService):
         return mappers.to_booking(self._data(resp))
 
     async def find_customer(self, request: FindCustomerRequest) -> BookingCustomer | None:
-        # Cal.com manages attendees per booking; no standalone customer lookup endpoint
-        return None
+        self._require_capability(BookingCapability.CUSTOMER_LOOKUP)
+        return None  # unreachable
 
     async def get_customer(self, customer_id: str) -> BookingCustomer:
-        from omnidapter.core.errors import ProviderAPIError
-        from omnidapter.transport.correlation import new_correlation_id
-
-        raise ProviderAPIError(
-            "Cal.com does not support standalone customer records",
-            provider_key="calcom",
-            status_code=501,
-            correlation_id=new_correlation_id(),
-        )
+        self._require_capability(BookingCapability.CUSTOMER_MANAGEMENT)
+        raise Exception("unreachable")
 
     async def create_customer(self, customer: BookingCustomer) -> BookingCustomer:
-        # Attendees are created inline with bookings
-        return customer
+        self._require_capability(BookingCapability.CUSTOMER_MANAGEMENT)
+        raise Exception("unreachable")

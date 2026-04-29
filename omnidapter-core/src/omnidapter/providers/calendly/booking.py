@@ -277,4 +277,5 @@ class CalendlyBookingService(BookingService):
         raise Exception("unreachable")  # unreachable
 
     async def create_customer(self, customer: BookingCustomer) -> BookingCustomer:
-        return customer
+        self._require_capability(BookingCapability.CUSTOMER_MANAGEMENT)
+        raise Exception("unreachable")
