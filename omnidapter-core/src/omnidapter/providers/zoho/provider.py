@@ -49,6 +49,15 @@ class ZohoProvider(ZohoOAuthMixin, BaseProvider):
                 retry_policy=retry_policy,
                 hooks=hooks,
             )
+        if kind == ServiceKind.BOOKING:
+            from omnidapter.providers.zoho.booking import ZohoBookingService
+
+            return ZohoBookingService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
         from omnidapter.core.errors import UnsupportedCapabilityError
 
         raise UnsupportedCapabilityError(
