@@ -18,6 +18,7 @@ from omnidapter.services.booking.requests import (
     UpdateBookingRequest,
 )
 from omnidapter.stores.credentials import StoredCredential
+from omnidapter.testing.contracts.booking import BookingProviderContract
 
 
 def _stored(access_token: str = "zoho-tok", workspace_id: str | None = "ws-1") -> StoredCredential:
@@ -424,3 +425,10 @@ class TestUnsupportedCustomerMethods:
         svc, _ = _make_service()
         with pytest.raises(UnsupportedCapabilityError):
             await svc.create_customer(BookingCustomer(name="Alice"))
+
+
+class TestZohoBookingProviderContract(BookingProviderContract):
+    @pytest.fixture
+    def booking_service(self):
+        svc, _ = _make_service()
+        return svc

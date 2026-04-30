@@ -279,6 +279,18 @@ async def zoho_calendar_id(zoho_service):
     return calendars[0].calendar_id
 
 
+@pytest.fixture(scope="module")
+def zoho_booking_service(zoho_provider, zoho_stored):
+    from omnidapter.core.metadata import ServiceKind
+
+    workspace_id = os.getenv("OMNIDAPTER_TEST_ZOHO_BOOKING_WORKSPACE_ID")
+    svc = zoho_provider.get_service(ServiceKind.BOOKING, "integration-zoho-booking", zoho_stored)
+    if workspace_id:
+        svc._stored.provider_config = svc._stored.provider_config or {}
+        svc._stored.provider_config["workspace_id"] = workspace_id
+    return svc
+
+
 # --------------------------------------------------------------------------- #
 # CalDAV fixtures                                                              #
 # --------------------------------------------------------------------------- #
