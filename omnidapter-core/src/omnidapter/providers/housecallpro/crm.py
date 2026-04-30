@@ -262,7 +262,7 @@ class HousecallProCrmService(CrmService):
             headers=await self._auth_headers(),
         )
         data = resp.json()
-        items = data.get("notes") or (data if isinstance(data, list) else [])
+        items = data if isinstance(data, list) else data.get("notes", [])
         for item in items:
             yield mappers.to_crm_activity(item, contact_id=request.contact_id)
 
