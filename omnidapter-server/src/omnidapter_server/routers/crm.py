@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -68,7 +69,9 @@ async def _build_omni(
     )
 
 
-async def _load_connection_by_uuid(conn_uuid, session: AsyncSession) -> Connection | None:
+async def _load_connection_by_uuid(
+    conn_uuid: uuid.UUID, session: AsyncSession
+) -> Connection | None:
     result = await session.execute(select(Connection).where(Connection.id == conn_uuid))
     return result.scalar_one_or_none()
 
