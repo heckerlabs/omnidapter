@@ -143,7 +143,7 @@ class Connection:
 
         Raises:
             UnsupportedCapabilityError: If the provider does not support bookings.
-            ScopeInsufficientError: If the connection was not authorized for booking.
+            ServiceAuthorizationError: If the connection was not authorized for booking.
             Use ``conn.supports(ServiceKind.BOOKING)`` to check first.
         """
         return self.service(ServiceKind.BOOKING)

@@ -35,11 +35,12 @@ async def test_execute_booking_operation_success() -> None:
     lib_conn = SimpleNamespace(booking=lambda: booking_svc)
     omni = SimpleNamespace(connection=AsyncMock(return_value=lib_conn))
     update_last_used = AsyncMock()
+    session = AsyncMock()
 
     result = await execute_booking_operation(
         connection_id=str(conn.id),
         request=_request(),
-        session=AsyncMock(),
+        session=session,
         load_connection=AsyncMock(return_value=conn),
         build_omni=AsyncMock(return_value=omni),
         operation=lambda bk: bk.list_services(),
@@ -47,7 +48,7 @@ async def test_execute_booking_operation_success() -> None:
     )
 
     assert result == [{"id": "svc-1"}]
-    update_last_used.assert_awaited_once_with(conn.id, update_last_used.call_args[0][1])
+    update_last_used.assert_awaited_once_with(conn.id, session)
 
 
 @pytest.mark.asyncio
