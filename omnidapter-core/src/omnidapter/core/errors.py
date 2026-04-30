@@ -84,7 +84,7 @@ class InvalidCredentialFormatError(OmnidapterError):
 
 
 class ScopeInsufficientError(AuthError):
-    """The connection lacks required scopes for the requested operation."""
+    """The connection lacks required OAuth scopes for the requested operation."""
 
     def __init__(
         self,
@@ -96,6 +96,27 @@ class ScopeInsufficientError(AuthError):
         super().__init__(message)
         self.required_scopes = required_scopes
         self.granted_scopes = granted_scopes
+
+
+class ServiceAuthorizationError(AuthError):
+    """The connection was not authorized for the requested service kind.
+
+    Raised when ``granted_services`` on the stored credential does not include
+    the service being requested. This is distinct from OAuth scope failures
+    (``ScopeInsufficientError``) — the connection exists but was authorized for
+    a different set of services.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        required_services: list[str],
+        granted_services: list[str],
+    ) -> None:
+        super().__init__(message)
+        self.required_services = required_services
+        self.granted_services = granted_services
 
 
 class TransportError(OmnidapterError):
@@ -141,6 +162,18 @@ class ProviderAPIError(OmnidapterError):
             parts.append(f"provider_request_id={self.provider_request_id!r}")
         parts.append(f"correlation_id={self.correlation_id!r}")
         return " | ".join(parts)
+
+
+class SlotUnavailableError(ProviderAPIError):
+    """The requested booking slot is no longer available.
+
+    Raised when a slot was available at ``get_availability()`` time but was
+    taken by the time ``create_booking()`` attempted to confirm it.
+    """
+
+
+class CustomerResolutionError(ProviderAPIError):
+    """Find-or-create customer failed during booking creation."""
 
 
 class RateLimitError(ProviderAPIError):

@@ -17,7 +17,7 @@ The consuming app is responsible for:
   * Creating a ``connection_id`` when a user first connects a provider.
   * Storing the mapping of ``connection_id`` → user / account in its own DB.
   * Supplying the ``connection_id`` to ``Omnidapter.connection()``,
-    ``provider.get_calendar_service()``, and
+    ``provider.get_service()``, and
     ``provider.exchange_code_for_tokens()``.
 """
 
@@ -29,7 +29,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from omnidapter.auth.models import ApiKeyCredentials, BasicCredentials, OAuth2Credentials
-from omnidapter.core.metadata import AuthKind
+from omnidapter.core.metadata import AuthKind, ServiceKind
 
 
 class StoredCredential(BaseModel):
@@ -44,6 +44,7 @@ class StoredCredential(BaseModel):
     auth_kind: AuthKind
     credentials: OAuth2Credentials | ApiKeyCredentials | BasicCredentials
     granted_scopes: list[str] | None = None
+    granted_services: list[ServiceKind] | None = None
     provider_account_id: str | None = None
     provider_config: dict[str, Any] | None = None
 

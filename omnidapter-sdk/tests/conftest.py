@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import os
 import socket
 import threading
 import time
+import warnings
 from collections.abc import Generator
 
 # Must be set before omnidapter_server is imported, because main.py creates a
@@ -25,6 +27,14 @@ from omnidapter_server.database import Base
 from omnidapter_server.main import create_app
 from sqlalchemy.ext.asyncio import create_async_engine
 from testcontainers.postgres import PostgresContainer
+
+# Pre-import uvicorn's websockets backend to consume its DeprecationWarning at
+# module-load time (before pytest starts capturing per-test warnings). The warning
+# fires once on first import of websockets.legacy; after that the module is cached.
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    importlib.import_module("websockets.legacy")
+    importlib.import_module("uvicorn.protocols.websockets.websockets_impl")
 
 TEST_API_KEY = "omni_sdk_test_key_0123456789ab"
 TEST_ENCRYPTION_KEY = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="

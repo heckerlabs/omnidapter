@@ -102,12 +102,14 @@ class LinkTokenContext:
         redirect_uri: str | None,
         connection_id: uuid.UUID | None = None,
         locked_provider_key: str | None = None,
+        services: list[str] | None = None,
     ) -> None:
         self.end_user_id = end_user_id
         self.allowed_providers = allowed_providers
         self.redirect_uri = redirect_uri
         self.connection_id = connection_id
         self.locked_provider_key = locked_provider_key
+        self.services = services
 
     @property
     def is_reconnect(self) -> bool:
@@ -155,6 +157,7 @@ async def get_link_token_context(
         redirect_uri=link_token.redirect_uri,
         connection_id=link_token.connection_id,
         locked_provider_key=link_token.locked_provider_key,
+        services=link_token.services,
     )
 
 

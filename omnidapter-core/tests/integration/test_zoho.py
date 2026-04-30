@@ -95,7 +95,9 @@ async def test_token_refresh():
     assert new_creds.access_token != "stale-will-be-refreshed"
     assert not new_creds.is_expired()
 
-    svc = provider.get_calendar_service("test-token-refresh", refreshed)
+    from omnidapter.core.metadata import ServiceKind
+
+    svc = provider.get_service(ServiceKind.CALENDAR, "test-token-refresh", refreshed)
     calendars = await svc.list_calendars()
     assert len(calendars) >= 1
 

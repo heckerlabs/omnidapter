@@ -41,6 +41,8 @@ class LinkToken(Base):
     connection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # Provider key locked to the connection (derived at token creation for reconnect)
     locked_provider_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Service kinds to authorize when creating a connection via this token
+    services: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
     # One-time exchange: set when the bootstrap lt_ token is consumed via POST /connect/session.
     # Once set the bootstrap token is permanently unusable — only the cs_ session token works.
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -16,6 +16,7 @@ from omnidapter_server.errors import make_unhandled_exception_handler
 from omnidapter_server.middleware.request_id import RequestIdMiddleware
 from omnidapter_server.origin_policy import build_cors_settings, parse_allowed_origin_domains
 from omnidapter_server.routers import (
+    booking,
     calendar,
     connect,
     connections,
@@ -136,6 +137,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(connections.router, prefix="/v1")
 
     app.include_router(calendar.router, prefix="/v1")
+    app.include_router(booking.router, prefix="/v1")
     app.include_router(link_tokens.router, prefix="/v1")
     app.include_router(connect.router)  # /connect is not under /v1
     app.include_router(oauth.router)  # /oauth is not under /v1

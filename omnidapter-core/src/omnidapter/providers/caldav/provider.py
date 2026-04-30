@@ -22,18 +22,29 @@ class CalDAVProvider(BaseProvider):
     def get_oauth_config(self) -> OAuthConfig | None:
         return None  # CalDAV uses Basic auth, not OAuth
 
-    def get_calendar_service(
+    def get_service(
         self,
+        kind: Any,
         connection_id: str,
         stored_credential: StoredCredential,
         retry_policy: Any = None,
         hooks: Any = None,
     ) -> Any:
-        from omnidapter.providers.caldav.calendar import CalDAVCalendarService
+        from omnidapter.core.metadata import ServiceKind
 
-        return CalDAVCalendarService(
-            connection_id=connection_id,
-            stored_credential=stored_credential,
-            retry_policy=retry_policy,
-            hooks=hooks,
+        if kind == ServiceKind.CALENDAR:
+            from omnidapter.providers.caldav.calendar import CalDAVCalendarService
+
+            return CalDAVCalendarService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
+        from omnidapter.core.errors import UnsupportedCapabilityError
+
+        raise UnsupportedCapabilityError(
+            f"Provider {self.metadata.provider_key!r} does not support {kind.value!r}.",
+            provider_key=self.metadata.provider_key,
+            capability=kind,
         )

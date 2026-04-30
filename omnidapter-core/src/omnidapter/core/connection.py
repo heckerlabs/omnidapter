@@ -7,7 +7,7 @@ Services are accessed from a connection.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, overload
 
 from omnidapter.core.metadata import ServiceKind
 
@@ -15,10 +15,13 @@ if TYPE_CHECKING:
     import httpx
 
     from omnidapter.core.registry import ProviderRegistry
+    from omnidapter.services.booking.interface import BookingService
     from omnidapter.services.calendar.interface import CalendarService
     from omnidapter.stores.credentials import StoredCredential
     from omnidapter.transport.hooks import TransportHooks
     from omnidapter.transport.retry import RetryPolicy
+
+_S = TypeVar("_S")
 
 
 class Connection:
@@ -66,7 +69,7 @@ class Connection:
         provider = self._registry.get(self._stored.provider_key)
         return service in provider.metadata.services
 
-    def _configure_service_runtime(self, service: CalendarService) -> CalendarService:
+    def _configure_service_runtime(self, service: _S) -> _S:
         service_runtime: Any = service
 
         if self._credential_resolver is not None:
@@ -80,6 +83,52 @@ class Connection:
 
         return service
 
+    @overload
+    def service(self, kind: Literal[ServiceKind.CALENDAR]) -> CalendarService: ...
+
+    @overload
+    def service(self, kind: Literal[ServiceKind.BOOKING]) -> BookingService: ...
+
+    @overload
+    def service(self, kind: ServiceKind) -> Any: ...
+
+    def service(self, kind: ServiceKind) -> Any:
+        """Return the service for this connection.
+
+        Raises:
+            UnsupportedCapabilityError: If the provider does not support *kind*.
+            ServiceAuthorizationError: If the connection was not authorized for *kind*.
+            Use ``conn.supports(kind)`` to check provider support first.
+        """
+        if not self.supports(kind):
+            from omnidapter.core.errors import UnsupportedCapabilityError
+
+            raise UnsupportedCapabilityError(
+                f"Provider {self._stored.provider_key!r} does not support {kind.value!r}. "
+                f"Check conn.supports(ServiceKind.{kind.name}) before calling conn.service().",
+                provider_key=self._stored.provider_key,
+                capability=kind,
+            )
+        granted = self._stored.granted_services
+        if granted is not None and kind not in granted:
+            from omnidapter.core.errors import ServiceAuthorizationError
+
+            raise ServiceAuthorizationError(
+                f"Connection was not authorized for service {kind.value!r}. "
+                "Re-authorize the connection and request the required service.",
+                required_services=[kind.value],
+                granted_services=[s.value for s in granted],
+            )
+        provider = self._registry.get(self._stored.provider_key)
+        svc = provider.get_service(
+            kind,
+            connection_id=self._connection_id,
+            stored_credential=self._stored,
+            retry_policy=self._retry_policy,
+            hooks=self._hooks,
+        )
+        return self._configure_service_runtime(svc)
+
     def calendar(self) -> CalendarService:
         """Return the calendar service for this connection.
 
@@ -87,20 +136,14 @@ class Connection:
             UnsupportedCapabilityError: If the provider does not support calendars.
             Use ``conn.supports(ServiceKind.CALENDAR)`` to check first.
         """
-        if not self.supports(ServiceKind.CALENDAR):
-            from omnidapter.core.errors import UnsupportedCapabilityError
+        return self.service(ServiceKind.CALENDAR)
 
-            raise UnsupportedCapabilityError(
-                f"Provider {self._stored.provider_key!r} does not support calendars. "
-                "Check conn.supports(ServiceKind.CALENDAR) before calling conn.calendar().",
-                provider_key=self._stored.provider_key,
-                capability=ServiceKind.CALENDAR,
-            )
-        provider = self._registry.get(self._stored.provider_key)
-        service = provider.get_calendar_service(
-            connection_id=self._connection_id,
-            stored_credential=self._stored,
-            retry_policy=self._retry_policy,
-            hooks=self._hooks,
-        )
-        return self._configure_service_runtime(service)
+    def booking(self) -> BookingService:
+        """Return the booking service for this connection.
+
+        Raises:
+            UnsupportedCapabilityError: If the provider does not support bookings.
+            ServiceAuthorizationError: If the connection was not authorized for booking.
+            Use ``conn.supports(ServiceKind.BOOKING)`` to check first.
+        """
+        return self.service(ServiceKind.BOOKING)

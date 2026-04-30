@@ -32,3 +32,4 @@ packages = ["omnidapter_sdk"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["integration: integration tests requiring Docker or real providers"]

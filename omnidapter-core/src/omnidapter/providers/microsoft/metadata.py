@@ -11,6 +11,7 @@ from omnidapter.core.metadata import (
     ProviderMetadata,
     ServiceKind,
 )
+from omnidapter.services.booking.capabilities import BookingCapability
 from omnidapter.services.calendar.capabilities import CalendarCapability
 
 MICROSOFT_PROVIDER_KEY = "microsoft"
@@ -18,7 +19,7 @@ MICROSOFT_PROVIDER_KEY = "microsoft"
 MICROSOFT_METADATA = ProviderMetadata(
     provider_key=MICROSOFT_PROVIDER_KEY,
     display_name="Microsoft Calendar",
-    services=[ServiceKind.CALENDAR],
+    services=[ServiceKind.CALENDAR, ServiceKind.BOOKING],
     auth_kinds=[AuthKind.OAUTH2],
     oauth=OAuthMetadata(
         authorization_endpoint="https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
@@ -41,6 +42,12 @@ MICROSOFT_METADATA = ProviderMetadata(
                 description="Read-only access to Microsoft Calendar",
                 scopes=["Calendars.Read", "offline_access"],
             ),
+            OAuthScopeGroup(
+                name="bookings",
+                description="Read and write access to Microsoft Bookings",
+                scopes=["Bookings.ReadWrite.All", "offline_access"],
+                service_kind=ServiceKind.BOOKING,
+            ),
         ],
     ),
     capabilities={
@@ -61,6 +68,26 @@ MICROSOFT_METADATA = ProviderMetadata(
                 CalendarCapability.CONFERENCE_LINKS,
                 CalendarCapability.RECURRENCE,
                 CalendarCapability.ATTENDEES,
+            ]
+        ],
+        ServiceKind.BOOKING.value: [
+            c.value
+            for c in [
+                BookingCapability.LIST_SERVICES,
+                BookingCapability.GET_SERVICE,
+                BookingCapability.LIST_STAFF,
+                BookingCapability.GET_STAFF,
+                BookingCapability.LIST_LOCATIONS,
+                BookingCapability.GET_AVAILABILITY,
+                BookingCapability.CREATE_BOOKING,
+                BookingCapability.CANCEL_BOOKING,
+                BookingCapability.RESCHEDULE_BOOKING,
+                BookingCapability.UPDATE_BOOKING,
+                BookingCapability.LIST_BOOKINGS,
+                BookingCapability.GET_BOOKING,
+                BookingCapability.CUSTOMER_LOOKUP,
+                BookingCapability.CUSTOMER_MANAGEMENT,
+                BookingCapability.MULTI_STAFF,
             ]
         ],
     },

@@ -45,6 +45,35 @@ Provider configs store encrypted OAuth client credentials for each provider.
 - `DELETE /v1/connections/{connection_id}/calendar/events/{event_id}`
 - `GET /v1/connections/{connection_id}/calendar/availability`
 
+## Booking Proxy
+
+All booking endpoints are under `/v1/connections/{connection_id}/booking/`.
+The connection must have been authorized for `ServiceKind.BOOKING` — pass
+`"services": ["booking"]` in the connection creation request.
+
+### Services & Staff
+- `GET /v1/connections/{connection_id}/booking/services`
+- `GET /v1/connections/{connection_id}/booking/services/{service_id}`
+- `GET /v1/connections/{connection_id}/booking/staff`
+- `GET /v1/connections/{connection_id}/booking/staff/{staff_id}`
+- `GET /v1/connections/{connection_id}/booking/locations`
+
+### Availability
+- `GET /v1/connections/{connection_id}/booking/availability?service_id=&start=&end=`
+
+### Appointments
+- `GET /v1/connections/{connection_id}/booking/appointments`
+- `POST /v1/connections/{connection_id}/booking/appointments` → 201
+- `GET /v1/connections/{connection_id}/booking/appointments/{appointment_id}`
+- `PATCH /v1/connections/{connection_id}/booking/appointments/{appointment_id}`
+- `DELETE /v1/connections/{connection_id}/booking/appointments/{appointment_id}` → 204
+- `POST /v1/connections/{connection_id}/booking/appointments/{appointment_id}/reschedule`
+
+### Customers
+- `GET /v1/connections/{connection_id}/booking/customers/search?email=`
+- `GET /v1/connections/{connection_id}/booking/customers/{customer_id}`
+- `POST /v1/connections/{connection_id}/booking/customers` → 201
+
 ## OAuth Callback
 
 - `GET /oauth/{provider_key}/callback`

@@ -30,18 +30,38 @@ class ZohoProvider(ZohoOAuthMixin, BaseProvider):
     def metadata(self) -> ProviderMetadata:
         return ZOHO_METADATA
 
-    def get_calendar_service(
+    def get_service(
         self,
+        kind: Any,
         connection_id: str,
         stored_credential: Any,
         retry_policy: Any = None,
         hooks: Any = None,
     ) -> Any:
-        from omnidapter.providers.zoho.calendar import ZohoCalendarService
+        from omnidapter.core.metadata import ServiceKind
 
-        return ZohoCalendarService(
-            connection_id=connection_id,
-            stored_credential=stored_credential,
-            retry_policy=retry_policy,
-            hooks=hooks,
+        if kind == ServiceKind.CALENDAR:
+            from omnidapter.providers.zoho.calendar import ZohoCalendarService
+
+            return ZohoCalendarService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
+        if kind == ServiceKind.BOOKING:
+            from omnidapter.providers.zoho.booking import ZohoBookingService
+
+            return ZohoBookingService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
+        from omnidapter.core.errors import UnsupportedCapabilityError
+
+        raise UnsupportedCapabilityError(
+            f"Provider {self.metadata.provider_key!r} does not support {kind.value!r}.",
+            provider_key=self.metadata.provider_key,
+            capability=kind,
         )

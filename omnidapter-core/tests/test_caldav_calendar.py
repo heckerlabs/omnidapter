@@ -120,9 +120,9 @@ class TestCalDAVProvider:
     def test_get_oauth_config_returns_none(self) -> None:
         assert CalDAVProvider().get_oauth_config() is None
 
-    def test_get_calendar_service_returns_service(self) -> None:
+    def test_get_service_returns_calendar_service(self) -> None:
         from omnidapter.auth.models import BasicCredentials
-        from omnidapter.core.metadata import AuthKind
+        from omnidapter.core.metadata import AuthKind, ServiceKind
         from omnidapter.providers.caldav.calendar import CalDAVCalendarService
         from omnidapter.stores.credentials import StoredCredential
 
@@ -132,7 +132,7 @@ class TestCalDAVProvider:
             credentials=BasicCredentials(username="u", password="p"),
             provider_config={"server_url": "https://dav.example.com/"},
         )
-        svc = CalDAVProvider().get_calendar_service("conn-1", stored)
+        svc = CalDAVProvider().get_service(ServiceKind.CALENDAR, "conn-1", stored)
         assert isinstance(svc, CalDAVCalendarService)
 
 

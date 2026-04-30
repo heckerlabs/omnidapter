@@ -54,7 +54,7 @@ def _mock_registry(provider_key: str = "google") -> MagicMock:
 
     mock_service = MagicMock()
     mock_provider = MagicMock()
-    mock_provider.get_calendar_service.return_value = mock_service
+    mock_provider.get_service.return_value = mock_service
     mock_provider.metadata.services = {ServiceKind.CALENDAR}
 
     registry = MagicMock()
@@ -77,13 +77,16 @@ class TestConnection:
         assert conn.stored_credential is stored
 
     def test_calendar_calls_provider(self):
+        from omnidapter.core.metadata import ServiceKind
+
         stored = _stored_apikey("google")
         registry = _mock_registry()
         conn = Connection("conn-1", stored, registry)
         svc = conn.calendar()
         assert svc is not None
         registry.get.assert_called_with("google")
-        registry.get.return_value.get_calendar_service.assert_called_once_with(
+        registry.get.return_value.get_service.assert_called_once_with(
+            ServiceKind.CALENDAR,
             connection_id="conn-1",
             stored_credential=stored,
             retry_policy=None,
@@ -91,6 +94,7 @@ class TestConnection:
         )
 
     def test_calendar_passes_retry_policy(self):
+        from omnidapter.core.metadata import ServiceKind
         from omnidapter.transport.retry import RetryPolicy
 
         stored = _stored_apikey()
@@ -98,7 +102,8 @@ class TestConnection:
         policy = RetryPolicy.no_retry()
         conn = Connection("conn-1", stored, registry, retry_policy=policy)
         conn.calendar()
-        registry.get.return_value.get_calendar_service.assert_called_once_with(
+        registry.get.return_value.get_service.assert_called_once_with(
+            ServiceKind.CALENDAR,
             connection_id="conn-1",
             stored_credential=stored,
             retry_policy=policy,
@@ -123,7 +128,7 @@ class TestConnection:
     def test_calendar_attaches_shared_http_client(self):
         stored = _stored_apikey("google")
         registry = _mock_registry()
-        service = registry.get.return_value.get_calendar_service.return_value
+        service = registry.get.return_value.get_service.return_value
         service._http = MagicMock()
         shared_client = MagicMock()
 

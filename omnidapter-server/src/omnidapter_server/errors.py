@@ -10,10 +10,13 @@ from fastapi.responses import JSONResponse
 from omnidapter import (
     AuthError,
     ConnectionNotFoundError,
+    CustomerResolutionError,
     InvalidCredentialFormatError,
     ProviderAPIError,
     RateLimitError,
     ScopeInsufficientError,
+    ServiceAuthorizationError,
+    SlotUnavailableError,
     TransportError,
     UnsupportedCapabilityError,
 )
@@ -68,6 +71,12 @@ def map_library_exception(
     # Read environment from app state; default to PROD for safety
     env = getattr(request.app.state, "omnidapter_env", "PROD")
 
+    if isinstance(exc, SlotUnavailableError):
+        return _error_response(request, 409, "slot_unavailable", str(exc), env=env)
+
+    if isinstance(exc, CustomerResolutionError):
+        return _error_response(request, 422, "customer_resolution_failed", str(exc), env=env)
+
     if isinstance(exc, RateLimitError):
         details = {"provider_key": exc.provider_key}
         if exc.status_code:
@@ -86,6 +95,19 @@ def map_library_exception(
 
     if isinstance(exc, ConnectionNotFoundError):
         return _error_response(request, 404, "connection_not_found", str(exc), env=env)
+
+    if isinstance(exc, ServiceAuthorizationError):
+        return _error_response(
+            request,
+            403,
+            "service_not_authorized",
+            str(exc),
+            {
+                "required_services": exc.required_services,
+                "granted_services": exc.granted_services,
+            },
+            env=env,
+        )
 
     if isinstance(exc, ScopeInsufficientError):
         return _error_response(

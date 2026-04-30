@@ -1,18 +1,28 @@
 """
-Mappers between Zoho Calendar API format and canonical types.
+Mappers between Zoho API formats and canonical types.
 
-Public API:
+Calendar public API:
   to_calendar_event(raw, calendar_id) -> CalendarEvent
   from_calendar_event(event) -> dict
   to_calendar(raw) -> Calendar
   from_create_calendar_request(request) -> dict
   from_update_calendar_request(request) -> dict
+
+Bookings public API:
+  parse_booking_dt(value) -> datetime | None
+  fmt_booking_dt(dt) -> str
+  fmt_booking_date(dt) -> str
+  to_booking_status(raw) -> BookingStatus
+  to_service_type(data) -> ServiceType
+  to_staff_member(data) -> StaffMember
+  to_booking_customer(data) -> BookingCustomer
+  to_booking(data) -> Booking
 """
 
 from __future__ import annotations
 
 import contextlib
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from omnidapter.services.calendar.models import (
@@ -163,3 +173,104 @@ def from_update_calendar_request(request) -> dict[str, Any]:
         body["color"] = request.background_color
     body.update(request.extra)
     return body
+
+
+# --------------------------------------------------------------------------- #
+# Bookings helpers and mappers                                                 #
+# --------------------------------------------------------------------------- #
+
+from omnidapter.services.booking.models import (  # noqa: E402
+    Booking,
+    BookingCustomer,
+    BookingStatus,
+    ServiceType,
+    StaffMember,
+)
+
+# Zoho Bookings uses "30-Apr-2026 14:30:00" / "30-Apr-2026" formats.
+_BOOKING_DT_FMT = "%d-%b-%Y %H:%M:%S"
+_BOOKING_DATE_FMT = "%d-%b-%Y"
+
+
+def parse_booking_dt(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    for fmt in (_BOOKING_DT_FMT, _BOOKING_DATE_FMT, "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"):
+        with contextlib.suppress(ValueError, TypeError):
+            dt = datetime.strptime(value, fmt)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+    return None
+
+
+def fmt_booking_dt(dt: datetime) -> str:
+    return dt.strftime(_BOOKING_DT_FMT)
+
+
+def fmt_booking_date(dt: datetime) -> str:
+    return dt.strftime(_BOOKING_DATE_FMT)
+
+
+def to_booking_status(raw: str | None) -> BookingStatus:
+    mapping = {
+        "scheduled": BookingStatus.CONFIRMED,
+        "cancelled": BookingStatus.CANCELLED,
+        "noshow": BookingStatus.NO_SHOW,
+    }
+    return mapping.get((raw or "").lower(), BookingStatus.CONFIRMED)
+
+
+def to_service_type(data: dict) -> ServiceType:
+    return ServiceType(
+        id=str(data.get("id", "")),
+        name=data.get("name") or "",
+        description=data.get("description") or None,
+        duration_minutes=data.get("duration") or None,
+        price=str(data["cost"]) if data.get("cost") is not None else None,
+        provider_data=data,
+    )
+
+
+def to_staff_member(data: dict) -> StaffMember:
+    return StaffMember(
+        id=str(data.get("id", "")),
+        name=data.get("name") or "",
+        email=data.get("email") or None,
+        service_ids=[str(s) for s in (data.get("assigned_services") or [])],
+        provider_data=data,
+    )
+
+
+def to_booking_customer(data: dict) -> BookingCustomer:
+    return BookingCustomer(
+        id=data.get("customer_id") or data.get("customer_email") or None,
+        name=data.get("customer_name") or (data.get("customer_details") or {}).get("name"),
+        email=data.get("customer_email") or (data.get("customer_details") or {}).get("email"),
+        phone=data.get("customer_contact_no")
+        or (data.get("customer_details") or {}).get("phone_number"),
+        provider_data=data,
+    )
+
+
+def to_booking(data: dict) -> Booking:
+    start = parse_booking_dt(data.get("appointment_start_time")) or datetime.now(tz=timezone.utc)
+    duration = data.get("duration") or 60
+    end = parse_booking_dt(data.get("appointment_end_time")) or (
+        start + timedelta(minutes=duration)
+    )
+    customer_data = dict(data)
+    if "customer_details" in data and isinstance(data["customer_details"], dict):
+        customer_data.update(data["customer_details"])
+    return Booking(
+        id=str(data.get("booking_id", "")),
+        service_id=str(data.get("service_id") or data.get("service_name") or ""),
+        start=start,
+        end=end,
+        status=to_booking_status(data.get("status")),
+        customer=to_booking_customer(customer_data),
+        staff_id=str(data.get("staff_id") or data.get("staff_name") or "") or None,
+        notes=data.get("notes") or None,
+        management_urls={"manage": data["summary_url"]} if data.get("summary_url") else None,
+        provider_data=data,
+    )

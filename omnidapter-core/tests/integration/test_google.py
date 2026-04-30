@@ -92,7 +92,9 @@ async def test_token_refresh():
     assert not new_creds.is_expired()
 
     # Verify the new token is actually accepted by the API.
-    svc = provider.get_calendar_service("test-token-refresh", refreshed)
+    from omnidapter.core.metadata import ServiceKind
+
+    svc = provider.get_service(ServiceKind.CALENDAR, "test-token-refresh", refreshed)
     calendars = await svc.list_calendars()
     assert len(calendars) >= 1
 

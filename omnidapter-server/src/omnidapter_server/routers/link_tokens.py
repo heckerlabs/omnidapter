@@ -6,6 +6,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from omnidapter.core.metadata import ServiceKind
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +30,8 @@ class CreateLinkTokenRequest(BaseModel):
     ttl_seconds: int | None = Field(default=None, ge=60, le=86400)
     # Reconnect: lock this token to an existing connection
     connection_id: uuid.UUID | None = None
+    # Service kinds to authorize when creating a connection (e.g. ["calendar", "booking"])
+    services: list[ServiceKind] | None = None
 
 
 async def _resolve_reconnect_provider(
@@ -86,6 +89,7 @@ async def create_link_token_endpoint(
         session=session,
         connection_id=body.connection_id,
         locked_provider_key=locked_provider_key,
+        services=[s.value for s in body.services] if body.services is not None else None,
     )
 
     return {
