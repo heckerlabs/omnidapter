@@ -63,20 +63,21 @@ class CrmProviderContract:
                     f"supports({cap}) returned True but {cap} is not in capabilities"
                 )
 
-    def test_unsupported_capability_raises(self, crm_service):
+    def test_unsupported_capability_raises_typed_error(self, crm_service):
         """_require_capability() must raise UnsupportedCapabilityError for unsupported caps."""
         from omnidapter.core.errors import UnsupportedCapabilityError
 
-        for cap in CrmCapability:
-            if not crm_service.supports(cap):
-                with pytest.raises(UnsupportedCapabilityError):
-                    crm_service._require_capability(cap)
-                return  # one unsupported cap is enough to confirm the guard works
+        unsupported = [cap for cap in CrmCapability if not crm_service.supports(cap)]
+        if not unsupported:
+            pytest.skip("Provider supports all standard capabilities")
 
-    def test_provider_key_is_non_empty(self, crm_service):
-        """_provider_key must be a non-empty string."""
+        with pytest.raises(UnsupportedCapabilityError):
+            crm_service._require_capability(unsupported[0])
+
+    def test_provider_key_is_string(self, crm_service):
+        """_provider_key must return a non-empty string."""
         key = crm_service._provider_key
-        assert isinstance(key, str) and key, "_provider_key must be a non-empty string"
+        assert isinstance(key, str) and len(key) > 0
 
     def test_webhooks_not_in_capabilities(self, crm_service):
         """WEBHOOKS must not be claimed — reserved for a future release."""

@@ -37,6 +37,12 @@ JOBBER_METADATA = ProviderMetadata(
                 scopes=["read_clients", "write_clients"],
                 service_kind=ServiceKind.BOOKING,
             ),
+            OAuthScopeGroup(
+                name="crm",
+                description="Access to Jobber client records for CRM",
+                scopes=["read_clients", "write_clients"],
+                service_kind=ServiceKind.CRM,
+            ),
         ],
     ),
     capabilities={
