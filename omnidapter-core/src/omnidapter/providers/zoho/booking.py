@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import AsyncGenerator, AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any
 
 from omnidapter.auth.models import OAuth2Credentials
+from omnidapter.providers.zoho import mappers
 from omnidapter.services.booking.capabilities import BookingCapability
 from omnidapter.services.booking.interface import BookingService
 from omnidapter.services.booking.models import (
@@ -15,7 +16,6 @@ from omnidapter.services.booking.models import (
     Booking,
     BookingCustomer,
     BookingLocation,
-    BookingStatus,
     ServiceType,
     StaffMember,
 )
@@ -48,94 +48,6 @@ _ZOHO_BOOKING_CAPABILITIES = frozenset(
         BookingCapability.CUSTOMER_LOOKUP,
     }
 )
-
-# Zoho Bookings date format: "30-Apr-2026 14:30:00"
-_DT_FMT = "%d-%b-%Y %H:%M:%S"
-_DATE_FMT = "%d-%b-%Y"
-
-
-def _fmt_dt(dt: datetime) -> str:
-    return dt.strftime(_DT_FMT)
-
-
-def _fmt_date(dt: datetime) -> str:
-    return dt.strftime(_DATE_FMT)
-
-
-def _parse_dt(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    for fmt in (_DT_FMT, _DATE_FMT, "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ"):
-        with contextlib.suppress(ValueError, TypeError):
-            dt = datetime.strptime(value, fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-    return None
-
-
-def _status(raw: str | None) -> BookingStatus:
-    mapping = {
-        "scheduled": BookingStatus.CONFIRMED,
-        "cancelled": BookingStatus.CANCELLED,
-        "noshow": BookingStatus.NO_SHOW,
-    }
-    return mapping.get((raw or "").lower(), BookingStatus.CONFIRMED)
-
-
-def _to_service(data: dict) -> ServiceType:
-    return ServiceType(
-        id=str(data.get("id", "")),
-        name=data.get("name") or "",
-        description=data.get("description") or None,
-        duration_minutes=data.get("duration") or None,
-        price=str(data["cost"]) if data.get("cost") is not None else None,
-        provider_data=data,
-    )
-
-
-def _to_staff(data: dict) -> StaffMember:
-    return StaffMember(
-        id=str(data.get("id", "")),
-        name=data.get("name") or "",
-        email=data.get("email") or None,
-        service_ids=[str(s) for s in (data.get("assigned_services") or [])],
-        provider_data=data,
-    )
-
-
-def _to_customer(data: dict) -> BookingCustomer:
-    # customer info in appointment responses varies by endpoint
-    return BookingCustomer(
-        id=data.get("customer_id") or data.get("customer_email") or None,
-        name=data.get("customer_name") or (data.get("customer_details") or {}).get("name"),
-        email=data.get("customer_email") or (data.get("customer_details") or {}).get("email"),
-        phone=data.get("customer_contact_no")
-        or (data.get("customer_details") or {}).get("phone_number"),
-        provider_data=data,
-    )
-
-
-def _to_booking(data: dict) -> Booking:
-    start = _parse_dt(data.get("appointment_start_time")) or datetime.now(tz=timezone.utc)
-    duration = data.get("duration") or 60
-    end = _parse_dt(data.get("appointment_end_time")) or (start + timedelta(minutes=duration))
-    customer_data = dict(data)
-    # fetchappointment embeds customer_details sub-dict
-    if "customer_details" in data and isinstance(data["customer_details"], dict):
-        customer_data.update(data["customer_details"])
-    return Booking(
-        id=str(data.get("booking_id", "")),
-        service_id=str(data.get("service_id") or data.get("service_name") or ""),
-        start=start,
-        end=end,
-        status=_status(data.get("status")),
-        customer=_to_customer(customer_data),
-        staff_id=str(data.get("staff_id") or data.get("staff_name") or "") or None,
-        notes=data.get("notes") or None,
-        management_urls={"manage": data["summary_url"]} if data.get("summary_url") else None,
-        provider_data=data,
-    )
 
 
 class ZohoBookingService(BookingService):
@@ -208,7 +120,7 @@ class ZohoBookingService(BookingService):
             params["workspace_id"] = workspace_id
         data = await self._get("services", params)
         services = (data.get("response") or {}).get("services") or []
-        return [_to_service(s) for s in services]
+        return [mappers.to_service_type(s) for s in services]
 
     async def get_service_type(self, service_id: str) -> ServiceType:
         self._require_capability(BookingCapability.GET_SERVICE)
@@ -219,7 +131,7 @@ class ZohoBookingService(BookingService):
         data = await self._get("services", params)
         services = (data.get("response") or {}).get("services") or []
         if services:
-            return _to_service(services[0])
+            return mappers.to_service_type(services[0])
         return ServiceType(id=service_id, name=service_id)
 
     # ── Staff ─────────────────────────────────────────────────────────────────
@@ -238,7 +150,7 @@ class ZohoBookingService(BookingService):
             params["service_id"] = service_id
         data = await self._get("staffs", params)
         staffs = (data.get("response") or {}).get("staffs") or []
-        return [_to_staff(s) for s in staffs]
+        return [mappers.to_staff_member(s) for s in staffs]
 
     async def get_staff(self, staff_id: str) -> StaffMember:
         self._require_capability(BookingCapability.GET_STAFF)
@@ -249,7 +161,7 @@ class ZohoBookingService(BookingService):
         data = await self._get("staffs", params)
         staffs = (data.get("response") or {}).get("staffs") or []
         if staffs:
-            return _to_staff(staffs[0])
+            return mappers.to_staff_member(staffs[0])
         return StaffMember(id=staff_id, name=staff_id)
 
     async def list_locations(self) -> list[BookingLocation]:
@@ -274,7 +186,9 @@ class ZohoBookingService(BookingService):
         while current <= end_date:
             params: dict[str, Any] = {
                 "service_id": service_id,
-                "selected_date": current.strftime(_DATE_FMT),
+                "selected_date": mappers.fmt_booking_date(
+                    datetime(current.year, current.month, current.day)
+                ),
             }
             if staff_id:
                 params["staff_id"] = staff_id
@@ -290,7 +204,6 @@ class ZohoBookingService(BookingService):
                         current.year, current.month, current.day, hour, minute, tzinfo=tz
                     )
                     if start <= slot_start < end:
-                        # duration comes from service; default 60 min
                         slot_end = slot_start + timedelta(minutes=60)
                         slots.append(
                             AvailabilitySlot(
@@ -310,7 +223,7 @@ class ZohoBookingService(BookingService):
         customer = request.customer
         payload: dict[str, Any] = {
             "service_id": request.service_id,
-            "from_time": _fmt_dt(request.start),
+            "from_time": mappers.fmt_booking_dt(request.start),
             "customer_details": {
                 "name": customer.name or "",
                 "email": customer.email or "",
@@ -331,7 +244,7 @@ class ZohoBookingService(BookingService):
         self._require_capability(BookingCapability.GET_BOOKING)
         data = await self._get("getappointment", {"booking_id": booking_id})
         appt = data.get("response") or {}
-        return _to_booking(appt)
+        return mappers.to_booking(appt)
 
     def list_bookings(self, request: ListBookingsRequest) -> AsyncIterator[Booking]:
         self._require_capability(BookingCapability.LIST_BOOKINGS)
@@ -343,9 +256,9 @@ class ZohoBookingService(BookingService):
         while True:
             payload: dict[str, Any] = {"page": page, "per_page": per_page}
             if request.start:
-                payload["from_time"] = _fmt_dt(request.start)
+                payload["from_time"] = mappers.fmt_booking_dt(request.start)
             if request.end:
-                payload["to_time"] = _fmt_dt(request.end)
+                payload["to_time"] = mappers.fmt_booking_dt(request.end)
             if request.staff_id:
                 payload["staff_id"] = request.staff_id
             if request.service_id:
@@ -356,7 +269,7 @@ class ZohoBookingService(BookingService):
             response = data.get("response") or {}
             appointments = response.get("appointments") or []
             for appt in appointments:
-                yield _to_booking(appt)
+                yield mappers.to_booking(appt)
             if not response.get("next_page_available"):
                 break
             page += 1
@@ -378,7 +291,7 @@ class ZohoBookingService(BookingService):
         data = await self._post("updateappointment", payload)
         appt = data.get("response") or {}
         return (
-            _to_booking(appt)
+            mappers.to_booking(appt)
             if appt.get("booking_id")
             else await self.get_booking(request.booking_id)
         )
@@ -387,13 +300,13 @@ class ZohoBookingService(BookingService):
         self._require_capability(BookingCapability.RESCHEDULE_BOOKING)
         payload: dict[str, Any] = {"booking_id": request.booking_id}
         if request.new_start:
-            payload["start_time"] = _fmt_dt(request.new_start)
+            payload["start_time"] = mappers.fmt_booking_dt(request.new_start)
         if request.new_staff_id:
             payload["staff_id"] = request.new_staff_id
         data = await self._post("rescheduleappointment", payload)
         appt = data.get("response") or {}
         return (
-            _to_booking(appt)
+            mappers.to_booking(appt)
             if appt.get("booking_id")
             else await self.get_booking(request.booking_id)
         )
@@ -415,8 +328,7 @@ class ZohoBookingService(BookingService):
         appointments = (data.get("response") or {}).get("appointments") or []
         if not appointments:
             return None
-        appt = appointments[0]
-        return _to_customer(appt)
+        return mappers.to_booking_customer(appointments[0])
 
     async def get_customer(self, customer_id: str) -> BookingCustomer:
         from omnidapter.core.errors import UnsupportedCapabilityError
