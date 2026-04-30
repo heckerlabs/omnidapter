@@ -4133,7 +4133,7 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ServiceKind"
                 },
                 "type": "array"
               },
