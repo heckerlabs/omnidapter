@@ -154,6 +154,102 @@ class TestCreateBooking:
         assert job_call.args[1] == f"{HCP_API_BASE}/api/v1/jobs"
 
 
+class TestResolveCustomerByPhone:
+    async def test_finds_existing_customer_by_phone(self):
+        svc, mock_req = _make_service()
+
+        def _resp(data):
+            m = MagicMock()
+            m.json.return_value = data
+            return m
+
+        # find_customer by phone → found
+        mock_req.side_effect = [
+            _resp({"customers": [{"id": "c-9", "first_name": "Pat", "last_name": "Jones"}]}),
+            # create job
+            _resp(
+                {
+                    "id": "j-9",
+                    "customer_id": "c-9",
+                    "schedule": {"scheduled_start": "2026-05-01T10:00:00Z"},
+                    "assigned_employees": [],
+                    "line_items": [],
+                }
+            ),
+        ]
+        req = CreateBookingRequest(
+            service_id="job",
+            start=datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc),
+            customer=BookingCustomer(name="Pat Jones", phone="555-0199"),
+        )
+        booking = await svc.create_booking(req)
+        # two calls: find_customer + create_booking (no create_customer)
+        assert mock_req.await_count == 2
+        assert booking.id == "j-9"
+
+    async def test_phone_search_uses_q_param(self):
+        svc, mock_req = _make_service()
+
+        def _resp(data):
+            m = MagicMock()
+            m.json.return_value = data
+            return m
+
+        mock_req.side_effect = [
+            _resp({"customers": []}),
+            _resp({"id": "c-new", "first_name": "Pat"}),
+            _resp(
+                {
+                    "id": "j-new",
+                    "customer_id": "c-new",
+                    "schedule": {"scheduled_start": "2026-05-01T10:00:00Z"},
+                    "assigned_employees": [],
+                    "line_items": [],
+                }
+            ),
+        ]
+        await svc.create_booking(
+            CreateBookingRequest(
+                service_id="job",
+                start=datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc),
+                customer=BookingCustomer(name="Pat", phone="555-0199"),
+            )
+        )
+        find_call = mock_req.await_args_list[0]
+        assert find_call.kwargs["params"].get("q") == "555-0199"
+
+    async def test_creates_customer_when_phone_not_found(self):
+        svc, mock_req = _make_service()
+
+        def _resp(data):
+            m = MagicMock()
+            m.json.return_value = data
+            return m
+
+        mock_req.side_effect = [
+            _resp({"customers": []}),
+            _resp({"id": "c-new", "first_name": "Pat"}),
+            _resp(
+                {
+                    "id": "j-new",
+                    "customer_id": "c-new",
+                    "schedule": {"scheduled_start": "2026-05-01T10:00:00Z"},
+                    "assigned_employees": [],
+                    "line_items": [],
+                }
+            ),
+        ]
+        booking = await svc.create_booking(
+            CreateBookingRequest(
+                service_id="job",
+                start=datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc),
+                customer=BookingCustomer(name="Pat", phone="555-0199"),
+            )
+        )
+        assert mock_req.await_count == 3
+        assert booking.id == "j-new"
+
+
 class TestListBookings:
     async def test_page_based_pagination(self):
         svc, mock_req = _make_service()

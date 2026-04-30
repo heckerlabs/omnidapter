@@ -160,6 +160,111 @@ class TestCreateBooking:
             await svc.create_booking(req)
 
 
+class TestResolveCustomerByPhone:
+    async def test_finds_existing_customer_by_phone(self):
+        svc, mock_req = _make_service()
+
+        def _resp(data):
+            m = MagicMock()
+            m.json.return_value = {"data": data}
+            return m
+
+        client = {
+            "id": "cl-9",
+            "name": "Pat Jones",
+            "emails": [],
+            "phones": [{"number": "555-0199"}],
+        }
+        booking_resp = {
+            "jobCreate": {
+                "job": {
+                    "id": "job-9",
+                    "title": "",
+                    "jobStatus": "active",
+                    "client": {"id": "cl-9", "name": "Pat Jones"},
+                    "visits": {
+                        "nodes": [
+                            {
+                                "id": "v-1",
+                                "startAt": "2026-05-01T10:00:00Z",
+                                "endAt": "2026-05-01T11:00:00Z",
+                            }
+                        ]
+                    },
+                    "lineItems": {"nodes": []},
+                    "assignedTo": {"nodes": []},
+                },
+                "userErrors": [],
+            }
+        }
+        # find by phone → found; no create_customer; create_booking
+        mock_req.side_effect = [
+            _resp({"clients": {"nodes": [client]}}),
+            _resp(booking_resp),
+        ]
+        req = CreateBookingRequest(
+            service_id="svc-1",
+            start=datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc),
+            customer=BookingCustomer(name="Pat Jones", phone="555-0199"),
+        )
+        booking = await svc.create_booking(req)
+        assert mock_req.await_count == 2
+        assert booking.id == "job-9"
+
+    async def test_creates_customer_when_phone_not_found(self):
+        svc, mock_req = _make_service()
+
+        def _resp(data):
+            m = MagicMock()
+            m.json.return_value = {"data": data}
+            return m
+
+        mock_req.side_effect = [
+            _resp({"clients": {"nodes": []}}),  # find by phone → empty
+            _resp(
+                {
+                    "clientCreate": {
+                        "client": {"id": "cl-new", "name": "Pat", "emails": [], "phones": []},
+                        "userErrors": [],
+                    }
+                }
+            ),
+            _resp(
+                {
+                    "jobCreate": {
+                        "job": {
+                            "id": "job-new",
+                            "title": "",
+                            "jobStatus": "active",
+                            "client": {"id": "cl-new", "name": "Pat"},
+                            "visits": {
+                                "nodes": [
+                                    {
+                                        "id": "v-1",
+                                        "startAt": "2026-05-01T10:00:00Z",
+                                        "endAt": "2026-05-01T11:00:00Z",
+                                    }
+                                ]
+                            },
+                            "lineItems": {"nodes": []},
+                            "assignedTo": {"nodes": []},
+                        },
+                        "userErrors": [],
+                    }
+                }
+            ),
+        ]
+        booking = await svc.create_booking(
+            CreateBookingRequest(
+                service_id="svc-1",
+                start=datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc),
+                customer=BookingCustomer(name="Pat", phone="555-0199"),
+            )
+        )
+        assert mock_req.await_count == 3
+        assert booking.id == "job-new"
+
+
 class TestListBookings:
     async def test_cursor_pagination(self):
         svc, mock_req = _make_service()

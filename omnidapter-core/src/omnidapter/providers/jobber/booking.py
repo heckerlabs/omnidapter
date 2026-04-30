@@ -264,6 +264,10 @@ class JobberBookingService(BookingService):
             found = await self.find_customer(FindCustomerRequest(email=customer.email))
             if found:
                 return found
+        if customer.phone:
+            found = await self.find_customer(FindCustomerRequest(phone=customer.phone))
+            if found:
+                return found
         return await self.create_customer(customer)
 
     async def create_booking(self, request: CreateBookingRequest) -> Booking:
