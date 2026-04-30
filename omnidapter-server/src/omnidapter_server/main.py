@@ -20,6 +20,7 @@ from omnidapter_server.routers import (
     calendar,
     connect,
     connections,
+    crm,
     link_tokens,
     oauth,
     providers,
@@ -138,6 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(calendar.router, prefix="/v1")
     app.include_router(booking.router, prefix="/v1")
+    app.include_router(crm.router, prefix="/v1")
     app.include_router(link_tokens.router, prefix="/v1")
     app.include_router(connect.router)  # /connect is not under /v1
     app.include_router(oauth.router)  # /oauth is not under /v1
