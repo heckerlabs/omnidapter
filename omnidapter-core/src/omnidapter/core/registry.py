@@ -96,8 +96,6 @@ class ProviderRegistry:
         from omnidapter.providers.caldav.provider import CalDAVProvider
         from omnidapter.providers.calendly.provider import CalendlyProvider
         from omnidapter.providers.google.provider import GoogleProvider
-        from omnidapter.providers.housecallpro.provider import HousecallProProvider
-        from omnidapter.providers.jobber.provider import JobberProvider
         from omnidapter.providers.microsoft.provider import MicrosoftProvider
         from omnidapter.providers.square.provider import SquareProvider
         from omnidapter.providers.zoho.provider import ZohoProvider
@@ -115,8 +113,6 @@ class ProviderRegistry:
             CalcomProvider,
             SquareProvider,
             CalendlyProvider,
-            JobberProvider,
-            HousecallProProvider,
         ]:
             try:
                 provider = provider_cls()

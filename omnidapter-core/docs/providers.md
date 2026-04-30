@@ -80,23 +80,6 @@ This guide covers built-in provider setup for Omnidapter Core.
   ```
 - Availability via `POST .../getStaffAvailability` (Graph API)
 
-### Jobber
-
-- Auth: OAuth 2.0 (no PKCE)
-- Env vars: `JOBBER_CLIENT_ID`, `JOBBER_CLIENT_SECRET`
-- GraphQL transport: all requests POST to `https://api.getjobber.com/api/graphql`
-- `X-JOBBER-GRAPHQL-VERSION` header sent automatically
-- GraphQL errors raise `ProviderAPIError` immediately (GraphQL always returns HTTP 200)
-- Bookings map to Jobber `Job + Visit` objects
-
-### Housecall Pro
-
-- Auth: API Key (no OAuth)
-- Enable: `OMNIDAPTER_HOUSECALLPRO_ENABLED=1`
-- The API key is per-connection (end-user supplied), stored in `ApiKeyCredentials`
-- `list_services()` returns types from `provider_config["services"]` if configured, otherwise a generic `"Job"` service
-- Customer resolution creates both customer and address records if needed
-
 ---
 
 ## OAuth Flow Pattern
@@ -130,6 +113,5 @@ scope groups matching the requested services. This allows a single provider
 ## Auto Registration
 
 With `auto_register_by_env=True` (default), OAuth providers are registered only
-when the corresponding env vars are present. Housecall Pro requires
-`OMNIDAPTER_HOUSECALLPRO_ENABLED=1`; Apple and CalDAV require their respective
-enable flags.
+when the corresponding env vars are present. Apple and CalDAV require their
+respective enable flags.

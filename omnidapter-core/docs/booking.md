@@ -16,22 +16,22 @@ at authorization time).
 
 ## Capability Matrix
 
-| Capability | Acuity | Cal.com | Square | Calendly | MS Bookings | Jobber | HCP |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `LIST_SERVICES` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `LIST_STAFF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `LIST_LOCATIONS` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| `GET_AVAILABILITY` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `CREATE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| `CANCEL_BOOKING` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `RESCHEDULE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| `UPDATE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| `LIST_BOOKINGS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `CUSTOMER_LOOKUP` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| `CUSTOMER_MANAGEMENT` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| `MULTI_LOCATION` | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `MULTI_STAFF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `MULTI_SERVICE` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Capability | Acuity | Cal.com | Square | Calendly | MS Bookings | Zoho Bookings |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| `LIST_SERVICES` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `LIST_STAFF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `LIST_LOCATIONS` | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| `GET_AVAILABILITY` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `CREATE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `CANCEL_BOOKING` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `RESCHEDULE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `UPDATE_BOOKING` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `LIST_BOOKINGS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `CUSTOMER_LOOKUP` | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `CUSTOMER_MANAGEMENT` | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| `MULTI_LOCATION` | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| `MULTI_STAFF` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `MULTI_SERVICE` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 `WEBHOOKS` is reserved and not claimed by any v1 provider.
 
@@ -121,7 +121,7 @@ booking: Booking = await bk.create_booking(CreateBookingRequest(
 ```
 
 For providers that require a pre-existing customer record (Square, Microsoft
-Bookings, Jobber, Housecall Pro), `create_booking` calls `find_customer` then
+Bookings), `create_booking` calls `find_customer` then
 `create_customer` automatically if the customer is not found.
 
 Pass `customer=BookingCustomer(id="existing-id")` to bypass the find-or-create
@@ -234,12 +234,7 @@ address) in `provider_config` on the stored credential. Use the
 `OMNIDAPTER_TEST_MSBOOKINGS_BUSINESS_ID` env var in integration tests.
 Availability is queried via `POST .../getStaffAvailability`.
 
-**Jobber** — GraphQL transport: all requests POST to a single endpoint with
-query + variables. GraphQL-level errors raise `ProviderAPIError` immediately.
-The `X-JOBBER-GRAPHQL-VERSION` header is sent automatically.
-
-**Housecall Pro** — API key auth (no OAuth). The key is per-connection,
-supplied by the end user at connection creation time. `list_services` returns
-service types from `provider_config["services"]` if set, or a generic `"Job"`
-type. Customer resolution creates both the customer record and address record
-if needed.
+**Zoho Bookings** — `Zoho-oauthtoken` auth header. All list operations require
+a `workspace_id`; if not set in `provider_config`, the first available workspace
+is fetched automatically. Customer creation is implicit (via booking creation)
+— `CUSTOMER_MANAGEMENT` is not supported.

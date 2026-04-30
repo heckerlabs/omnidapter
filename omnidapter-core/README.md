@@ -80,9 +80,6 @@ await bk.cancel_booking(booking.id)
 - `square`
 - `calendly`
 - `microsoft` (also supports `ServiceKind.BOOKING` via Microsoft Bookings Graph API)
-- `jobber`
-- `housecallpro`
-
 ## Core Documentation
 
 - `docs/providers.md` — provider setup, OAuth wiring, custom providers
