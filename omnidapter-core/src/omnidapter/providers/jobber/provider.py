@@ -47,6 +47,15 @@ class JobberProvider(JobberOAuthMixin, BaseProvider):
                 retry_policy=retry_policy,
                 hooks=hooks,
             )
+        if kind == ServiceKind.CRM:
+            from omnidapter.providers.jobber.crm import JobberCrmService
+
+            return JobberCrmService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
         from omnidapter.core.errors import UnsupportedCapabilityError
 
         raise UnsupportedCapabilityError(

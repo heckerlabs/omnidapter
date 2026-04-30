@@ -97,8 +97,11 @@ class ProviderRegistry:
         from omnidapter.providers.calendly.provider import CalendlyProvider
         from omnidapter.providers.google.provider import GoogleProvider
         from omnidapter.providers.housecallpro.provider import HousecallProProvider
+        from omnidapter.providers.hubspot.provider import HubspotProvider
         from omnidapter.providers.jobber.provider import JobberProvider
         from omnidapter.providers.microsoft.provider import MicrosoftProvider
+        from omnidapter.providers.pipedrive.provider import PipedriveProvider
+        from omnidapter.providers.salesforce.provider import SalesforceProvider
         from omnidapter.providers.square.provider import SquareProvider
         from omnidapter.providers.zoho.provider import ZohoProvider
 
@@ -117,6 +120,9 @@ class ProviderRegistry:
             CalendlyProvider,
             JobberProvider,
             HousecallProProvider,
+            SalesforceProvider,
+            HubspotProvider,
+            PipedriveProvider,
         ]:
             try:
                 provider = provider_cls()

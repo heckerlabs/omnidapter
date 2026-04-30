@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from omnidapter.core.registry import ProviderRegistry
     from omnidapter.services.booking.interface import BookingService
     from omnidapter.services.calendar.interface import CalendarService
+    from omnidapter.services.crm.interface import CrmService
     from omnidapter.stores.credentials import StoredCredential
     from omnidapter.transport.hooks import TransportHooks
     from omnidapter.transport.retry import RetryPolicy
@@ -134,6 +135,7 @@ class Connection:
 
         Raises:
             UnsupportedCapabilityError: If the provider does not support calendars.
+            ServiceAuthorizationError: If the connection was not authorized for calendar.
             Use ``conn.supports(ServiceKind.CALENDAR)`` to check first.
         """
         return self.service(ServiceKind.CALENDAR)
@@ -147,3 +149,13 @@ class Connection:
             Use ``conn.supports(ServiceKind.BOOKING)`` to check first.
         """
         return self.service(ServiceKind.BOOKING)
+
+    def crm(self) -> CrmService:
+        """Return the CRM service for this connection.
+
+        Raises:
+            UnsupportedCapabilityError: If the provider does not support CRM.
+            ServiceAuthorizationError: If the connection was not authorized for CRM.
+            Use ``conn.supports(ServiceKind.CRM)`` to check first.
+        """
+        return self.service(ServiceKind.CRM)

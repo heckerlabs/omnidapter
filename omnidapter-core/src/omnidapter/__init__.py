@@ -78,6 +78,32 @@ from omnidapter.services.calendar.requests import (
     UpdateCalendarRequest,
     UpdateEventRequest,
 )
+from omnidapter.services.crm.capabilities import CrmCapability
+from omnidapter.services.crm.models import (
+    Activity,
+    ActivityKind,
+    Company,
+    Contact,
+    ContactAddress,
+    ContactEmail,
+    ContactPhone,
+    Deal,
+    DealStage,
+)
+from omnidapter.services.crm.requests import (
+    CreateActivityRequest,
+    CreateCompanyRequest,
+    CreateContactRequest,
+    CreateDealRequest,
+    ListActivitiesRequest,
+    ListCompaniesRequest,
+    ListContactsRequest,
+    ListDealsRequest,
+    UpdateActivityRequest,
+    UpdateCompanyRequest,
+    UpdateContactRequest,
+    UpdateDealRequest,
+)
 from omnidapter.stores.credentials import CredentialStore, StoredCredential
 from omnidapter.stores.memory import InMemoryCredentialStore, InMemoryOAuthStateStore
 from omnidapter.stores.oauth_state import OAuthStateStore
@@ -152,6 +178,29 @@ __all__ = [
     "UpdateCalendarRequest",
     "UpdateEventRequest",
     "GetAvailabilityRequest",
+    # CRM
+    "CrmCapability",
+    "Contact",
+    "ContactAddress",
+    "ContactEmail",
+    "ContactPhone",
+    "Company",
+    "Deal",
+    "DealStage",
+    "Activity",
+    "ActivityKind",
+    "ListContactsRequest",
+    "CreateContactRequest",
+    "UpdateContactRequest",
+    "ListCompaniesRequest",
+    "CreateCompanyRequest",
+    "UpdateCompanyRequest",
+    "ListDealsRequest",
+    "CreateDealRequest",
+    "UpdateDealRequest",
+    "ListActivitiesRequest",
+    "CreateActivityRequest",
+    "UpdateActivityRequest",
     # Version
     "__version__",
 ]

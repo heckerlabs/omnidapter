@@ -10,13 +10,14 @@ from omnidapter.core.metadata import (
     ServiceKind,
 )
 from omnidapter.services.booking.capabilities import BookingCapability
+from omnidapter.services.crm.capabilities import CrmCapability
 
 JOBBER_PROVIDER_KEY = "jobber"
 
 JOBBER_METADATA = ProviderMetadata(
     provider_key=JOBBER_PROVIDER_KEY,
     display_name="Jobber",
-    services=[ServiceKind.BOOKING],
+    services=[ServiceKind.BOOKING, ServiceKind.CRM],
     auth_kinds=[AuthKind.OAUTH2],
     oauth=OAuthMetadata(
         authorization_endpoint="https://api.getjobber.com/api/oauth/authorize",
@@ -56,6 +57,25 @@ JOBBER_METADATA = ProviderMetadata(
                 BookingCapability.CUSTOMER_LOOKUP,
                 BookingCapability.CUSTOMER_MANAGEMENT,
                 BookingCapability.MULTI_STAFF,
+            ]
+        ],
+        ServiceKind.CRM.value: [
+            c.value
+            for c in [
+                CrmCapability.LIST_CONTACTS,
+                CrmCapability.GET_CONTACT,
+                CrmCapability.CREATE_CONTACT,
+                CrmCapability.UPDATE_CONTACT,
+                CrmCapability.DELETE_CONTACT,
+                CrmCapability.SEARCH_CONTACTS,
+                CrmCapability.LIST_COMPANIES,
+                CrmCapability.GET_COMPANY,
+                CrmCapability.CREATE_COMPANY,
+                CrmCapability.UPDATE_COMPANY,
+                CrmCapability.LIST_ACTIVITIES,
+                CrmCapability.CREATE_ACTIVITY,
+                CrmCapability.UPDATE_ACTIVITY,
+                CrmCapability.DELETE_ACTIVITY,
             ]
         ],
     },

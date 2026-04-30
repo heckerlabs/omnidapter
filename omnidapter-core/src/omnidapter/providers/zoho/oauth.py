@@ -16,6 +16,11 @@ class ZohoOAuthMixin(OAuthProviderMixin):
     client_secret_env_var = "ZOHO_CLIENT_SECRET"
     token_endpoint = ZOHO_TOKEN_ENDPOINT
     authorization_endpoint = "https://accounts.zoho.com/oauth/v2/auth"
-    default_scopes = ["ZohoCalendar.calendar.ALL", "ZohoCalendar.event.ALL"]
+    default_scopes = [
+        "ZohoCalendar.calendar.ALL",
+        "ZohoCalendar.event.ALL",
+        "ZohoCRM.modules.ALL",
+        "ZohoCRM.settings.ALL",
+    ]
     supports_pkce = False
     scope_separator = ","
