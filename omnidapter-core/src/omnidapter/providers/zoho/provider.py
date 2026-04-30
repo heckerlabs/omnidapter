@@ -49,6 +49,15 @@ class ZohoProvider(ZohoOAuthMixin, BaseProvider):
                 retry_policy=retry_policy,
                 hooks=hooks,
             )
+        if kind == ServiceKind.CRM:
+            from omnidapter.providers.zoho.crm import ZohoCrmService
+
+            return ZohoCrmService(
+                connection_id=connection_id,
+                stored_credential=stored_credential,
+                retry_policy=retry_policy,
+                hooks=hooks,
+            )
         from omnidapter.core.errors import UnsupportedCapabilityError
 
         raise UnsupportedCapabilityError(

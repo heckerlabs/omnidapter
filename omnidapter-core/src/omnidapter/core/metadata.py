@@ -15,7 +15,7 @@ class ServiceKind(str, Enum):
 
     CALENDAR = "calendar"
     BOOKING = "booking"
-    CRM = "crm"  # reserved for future
+    CRM = "crm"
 
 
 class AuthKind(str, Enum):

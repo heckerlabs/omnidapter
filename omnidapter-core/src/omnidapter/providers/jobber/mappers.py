@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timedelta
 
 from omnidapter.services.booking.models import (
@@ -11,6 +12,14 @@ from omnidapter.services.booking.models import (
     BookingStatus,
     ServiceType,
     StaffMember,
+)
+from omnidapter.services.crm.models import (
+    Activity,
+    ActivityKind,
+    Company,
+    Contact,
+    ContactEmail,
+    ContactPhone,
 )
 
 
@@ -105,4 +114,50 @@ def to_availability_slot(start: datetime, end: datetime, service_id: str) -> Ava
         start=start,
         end=end,
         service_id=service_id,
+    )
+
+
+def to_crm_contact(data: dict) -> Contact:
+    emails_raw = data.get("emails") or []
+    phones_raw = data.get("phones") or []
+    return Contact(
+        id=str(data.get("id", "")),
+        name=data.get("name") or None,
+        company_name=data.get("companyName") or None,
+        emails=[ContactEmail(address=e["address"]) for e in emails_raw if e.get("address")],
+        phones=[
+            ContactPhone(number=p["number"], label=p.get("description"))
+            for p in phones_raw
+            if p.get("number")
+        ],
+        provider_data=data,
+    )
+
+
+def to_crm_company(data: dict) -> Company:
+    emails_raw = data.get("emails") or []
+    phones_raw = data.get("phones") or []
+    return Company(
+        id=str(data.get("id", "")),
+        name=data.get("companyName") or data.get("name") or "",
+        email=emails_raw[0].get("address") if emails_raw else None,
+        phone=phones_raw[0].get("number") if phones_raw else None,
+        provider_data=data,
+    )
+
+
+def to_crm_activity(data: dict) -> Activity:
+    occurred_at = None
+    if created := data.get("createdAt"):
+        with contextlib.suppress(ValueError, TypeError):
+            occurred_at = parse_dt(created)
+    client = data.get("client") or {}
+    contact_id = str(client["id"]) if client.get("id") else None
+    return Activity(
+        id=str(data.get("id", "")),
+        kind=ActivityKind.NOTE,
+        body=data.get("note") or None,
+        contact_id=contact_id,
+        occurred_at=occurred_at,
+        provider_data=data,
     )

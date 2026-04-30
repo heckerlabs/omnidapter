@@ -51,6 +51,7 @@ from typing import Any
 from omnidapter_sdk.api.booking_api import BookingApi
 from omnidapter_sdk.api.calendar_api import CalendarApi
 from omnidapter_sdk.api.connections_api import ConnectionsApi
+from omnidapter_sdk.api.crm_api import CrmApi
 from omnidapter_sdk.api.link_tokens_api import LinkTokensApi
 from omnidapter_sdk.api.providers_api import ProvidersApi
 from omnidapter_sdk.api_client import ApiClient
@@ -144,6 +145,7 @@ class ConnectionClient:
     Attributes:
         booking: Booking operations for this connection.
         calendar: Calendar operations for this connection.
+        crm: CRM operations for this connection.
 
     Example::
 
@@ -165,6 +167,7 @@ class ConnectionClient:
         connection_id: str,
         booking_api: BookingApi,
         calendar_api: CalendarApi,
+        crm_api: CrmApi,
     ) -> None:
         # To add a new service:
         #   1. Prefix its router operationIds with "<domain>_".
@@ -173,6 +176,7 @@ class ConnectionClient:
         #        self.<domain> = BoundServiceApi(connection_id, <domain>_api, "<domain>")
         self.booking = BoundServiceApi(connection_id, booking_api, "booking")
         self.calendar = BoundServiceApi(connection_id, calendar_api, "calendar")
+        self.crm = BoundServiceApi(connection_id, crm_api, "crm")
 
 
 class OmnidapterClient:
@@ -204,6 +208,7 @@ class OmnidapterClient:
     Attributes:
         booking: Booking operations (prefix-stripped, ``connection_id`` required).
         calendar: Calendar operations (prefix-stripped, ``connection_id`` required).
+        crm: CRM operations (prefix-stripped, ``connection_id`` required).
         connections: :class:`ConnectionsApi` — create, list, get, delete, and
             reauthorize connections.
         link_tokens: :class:`LinkTokensApi` — create short-lived link tokens
@@ -222,6 +227,7 @@ class OmnidapterClient:
         #        self.<domain> = PrefixStrippingApi(<Domain>Api(client), "<domain>")
         self.booking = PrefixStrippingApi(BookingApi(client), "booking")
         self.calendar = PrefixStrippingApi(CalendarApi(client), "calendar")
+        self.crm = PrefixStrippingApi(CrmApi(client), "crm")
         self.connections = ConnectionsApi(client)
         self.link_tokens = LinkTokensApi(client)
         self.providers = ProvidersApi(client)
@@ -249,4 +255,5 @@ class OmnidapterClient:
             connection_id,
             self.booking._api,
             self.calendar._api,
+            self.crm._api,
         )

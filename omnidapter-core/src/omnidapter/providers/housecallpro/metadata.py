@@ -9,13 +9,14 @@ from omnidapter.core.metadata import (
     ServiceKind,
 )
 from omnidapter.services.booking.capabilities import BookingCapability
+from omnidapter.services.crm.capabilities import CrmCapability
 
 HOUSECALLPRO_PROVIDER_KEY = "housecallpro"
 
 HOUSECALLPRO_METADATA = ProviderMetadata(
     provider_key=HOUSECALLPRO_PROVIDER_KEY,
     display_name="Housecall Pro",
-    services=[ServiceKind.BOOKING],
+    services=[ServiceKind.BOOKING, ServiceKind.CRM],
     auth_kinds=[AuthKind.API_KEY],
     capabilities={
         ServiceKind.BOOKING.value: [
@@ -35,6 +36,22 @@ HOUSECALLPRO_METADATA = ProviderMetadata(
                 BookingCapability.CUSTOMER_LOOKUP,
                 BookingCapability.CUSTOMER_MANAGEMENT,
                 BookingCapability.MULTI_STAFF,
+            ]
+        ],
+        ServiceKind.CRM.value: [
+            c.value
+            for c in [
+                CrmCapability.LIST_CONTACTS,
+                CrmCapability.GET_CONTACT,
+                CrmCapability.CREATE_CONTACT,
+                CrmCapability.UPDATE_CONTACT,
+                CrmCapability.DELETE_CONTACT,
+                CrmCapability.SEARCH_CONTACTS,
+                CrmCapability.LIST_ACTIVITIES,
+                CrmCapability.CREATE_ACTIVITY,
+                CrmCapability.UPDATE_ACTIVITY,
+                CrmCapability.DELETE_ACTIVITY,
+                CrmCapability.TAGS,
             ]
         ],
     },

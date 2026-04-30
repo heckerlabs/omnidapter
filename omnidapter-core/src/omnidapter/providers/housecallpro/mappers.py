@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timedelta
 
 from omnidapter.services.booking.models import (
@@ -11,6 +12,13 @@ from omnidapter.services.booking.models import (
     BookingStatus,
     ServiceType,
     StaffMember,
+)
+from omnidapter.services.crm.models import (
+    Activity,
+    ActivityKind,
+    Contact,
+    ContactEmail,
+    ContactPhone,
 )
 
 
@@ -108,4 +116,43 @@ def to_availability_slot(
         end=end,
         service_id=service_id,
         staff_id=staff_id,
+    )
+
+
+def to_crm_contact(data: dict) -> Contact:
+    emails = []
+    if data.get("email"):
+        emails = [ContactEmail(address=data["email"])]
+    phones = []
+    if data.get("mobile_number"):
+        phones.append(ContactPhone(number=data["mobile_number"], label="mobile"))
+    if data.get("home_number"):
+        phones.append(ContactPhone(number=data["home_number"], label="home"))
+    return Contact(
+        id=str(data.get("id", "")),
+        first_name=data.get("first_name") or None,
+        last_name=data.get("last_name") or None,
+        name=data.get("name")
+        or f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+        or None,
+        emails=emails,
+        phones=phones,
+        tags=data.get("tags") or [],
+        notes=data.get("notes") or None,
+        provider_data=data,
+    )
+
+
+def to_crm_activity(data: dict, contact_id: str | None = None) -> Activity:
+    occurred_at = None
+    if created := data.get("created_at"):
+        with contextlib.suppress(ValueError, TypeError):
+            occurred_at = parse_dt(created)
+    return Activity(
+        id=str(data.get("id", "")),
+        kind=ActivityKind.NOTE,
+        body=data.get("content") or data.get("body") or None,
+        contact_id=contact_id or str(data.get("customer_id", "")) or None,
+        occurred_at=occurred_at,
+        provider_data=data,
     )
